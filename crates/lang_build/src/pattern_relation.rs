@@ -190,6 +190,16 @@ impl<'a> PatternRelationContext<'a> {
         callable_owner: SemanticOwnerId,
         resolve_named: Option<&'a dyn Fn(&str) -> Option<NamedPatternObservation>>,
     ) -> Result<Self, PatternRelationFailure> {
+        if closure
+            .head
+            .as_ref()
+            .is_some_and(|head| !head.captures.is_empty())
+        {
+            return Err(unsupported(
+                "source callable capture inputs are unavailable: required binding and initialized dependency realization are not connected",
+                Some(Provenance::from_norm_origin("capture inputs", &closure.origin)),
+            ));
+        }
         if closure.head.as_ref().is_some_and(|head| {
             head.deduce.iter().any(|hole| hole.policy.is_some())
                 || head.params.iter().any(|param| {

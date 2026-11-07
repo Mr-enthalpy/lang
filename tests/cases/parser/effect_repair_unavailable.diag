@@ -1,0 +1,1 @@
+error UnsupportedEffectRepair "effect repair attachment is unavailable: full-expression Move[repair] consumer is not connected" @ 1:18 [17..26]

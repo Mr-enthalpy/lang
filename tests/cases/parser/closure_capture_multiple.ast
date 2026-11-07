@@ -10,22 +10,34 @@ Program
                   captures:
                     CaptureClause
                       items:
-                        CaptureItem Inferred
-                          initializer:
-                            Expr
-                              Pipe
-                                Segment has_incoming=false
-                                  OperatorExpr
-                                    Atom
-                                      Name a
-                        CaptureItem Inferred
-                          initializer:
-                            Expr
-                              Pipe
-                                Segment has_incoming=false
-                                  OperatorExpr
-                                    Atom
-                                      Name b
+                        CaptureItem Required
+                          slot:
+                            BindingSlot let=false
+                              deduce:
+                                None
+                              pattern:
+                                Binder
+                                  TextName a
+                              annotation:
+                                None
+                              with_clause:
+                                None
+                              initializer:
+                                None
+                        CaptureItem Required
+                          slot:
+                            BindingSlot let=false
+                              deduce:
+                                None
+                              pattern:
+                                Binder
+                                  TextName b
+                              annotation:
+                                None
+                              with_clause:
+                                None
+                              initializer:
+                                None
                   params:
                     ParamClause
                       extract:

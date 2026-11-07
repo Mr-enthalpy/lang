@@ -33,14 +33,20 @@ Program
                                           captures:
                                             CaptureClause
                                               items:
-                                                CaptureItem Inferred
-                                                  initializer:
-                                                    Expr
-                                                      Pipe
-                                                        Segment has_incoming=false
-                                                          OperatorExpr
-                                                            Atom
-                                                              Name cap
+                                                CaptureItem Required
+                                                  slot:
+                                                    BindingSlot let=false
+                                                      deduce:
+                                                        None
+                                                      pattern:
+                                                        Binder
+                                                          TextName cap
+                                                      annotation:
+                                                        None
+                                                      with_clause:
+                                                        None
+                                                      initializer:
+                                                        None
                                         BodyBlock
                                           forms:
                                             ExprForm
@@ -84,14 +90,20 @@ Program
                                         captures:
                                           CaptureClause
                                             items:
-                                              CaptureItem Inferred
-                                                initializer:
-                                                  Expr
-                                                    Pipe
-                                                      Segment has_incoming=false
-                                                        OperatorExpr
-                                                          Atom
-                                                            Name cap
+                                              CaptureItem Required
+                                                slot:
+                                                  BindingSlot let=false
+                                                    deduce:
+                                                      None
+                                                    pattern:
+                                                      Binder
+                                                        TextName cap
+                                                    annotation:
+                                                      None
+                                                    with_clause:
+                                                      None
+                                                    initializer:
+                                                      None
                                       BodyBlock
                                         forms:
                                           ExprForm
@@ -146,14 +158,20 @@ Program
                                           captures:
                                             CaptureClause
                                               items:
-                                                CaptureItem Inferred
-                                                  initializer:
-                                                    Expr
-                                                      Pipe
-                                                        Segment has_incoming=false
-                                                          OperatorExpr
-                                                            Atom
-                                                              Name cap
+                                                CaptureItem Required
+                                                  slot:
+                                                    BindingSlot let=false
+                                                      deduce:
+                                                        None
+                                                      pattern:
+                                                        Binder
+                                                          TextName cap
+                                                      annotation:
+                                                        None
+                                                      with_clause:
+                                                        None
+                                                      initializer:
+                                                        None
                                         BodyBlock
                                           forms:
                                             ExprForm

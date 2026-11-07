@@ -781,6 +781,11 @@ fn dump_capture_clause(output: &mut String, clause: &crate::CaptureClauseAst, in
     line(output, indent + 1, "items:");
     for item in &clause.items {
         match item {
+            crate::CaptureItemAst::Required { slot, .. } => {
+                line(output, indent + 2, "CaptureItem Required");
+                line(output, indent + 3, "slot:");
+                dump_binding_slot(output, slot, indent + 4);
+            }
             crate::CaptureItemAst::Explicit {
                 slot, initializer, ..
             } => {
@@ -906,6 +911,7 @@ fn diagnostic_code_label(code: DiagnosticCode) -> &'static str {
         DiagnosticCode::ExpectedBindingAnnotation => "ExpectedBindingAnnotation",
         DiagnosticCode::ExpectedEqual => "ExpectedEqual",
         DiagnosticCode::ExpectedPolicyLetOperand => "ExpectedPolicyLetOperand",
+        DiagnosticCode::UnsupportedEffectRepair => "UnsupportedEffectRepair",
         DiagnosticCode::EmptyPipeSegment => "EmptyPipeSegment",
         DiagnosticCode::ExpectedNameAfterDot => "ExpectedNameAfterDot",
         DiagnosticCode::ExpectedNameAfterDoubleDot => "ExpectedNameAfterDoubleDot",

@@ -207,7 +207,8 @@ NormProgram origin=Source@1:1[0..231]
                           deduce:
                             None
                           value_pattern:
-                            Binder "cap" origin=Derived(CaptureNameInference; unique free non-call bare name)@4:15[164..180]
+                            Pattern Error
+                              Error "capture shorthand requires exactly one free non-call bare name; found no candidate" origin=Derived(CaptureNameInference; ambiguous capture shorthand)@4:15[164..180]
                           annotation:
                             None
                           with_clause:
@@ -221,21 +222,20 @@ NormProgram origin=Source@1:1[0..231]
                               deduce:
                                 None
                               captures:
-                                Capture origin=Derived(CaptureNameInference; inferred capture elaborates to a let-shaped binding)@4:16[165..168]
+                                Capture origin=Source@4:16[165..168]
                                   slot:
-                                    BindingSlot let=true origin=Derived(CaptureNameInference; inferred capture elaborates to a let-shaped binding)@4:16[165..168]
+                                    BindingSlot let=true origin=Generated(PatternNormalize)@4:16[165..168]
                                       deduce:
                                         None
                                       value_pattern:
-                                        Binder "cap" origin=Derived(CaptureNameInference; unique free non-call bare name)@4:16[165..168]
+                                        Binder "cap" origin=Source@4:16[165..168]
                                       annotation:
                                         None
                                       with_clause:
                                         None
                                       initializer:
                                         None
-                                  initializer:
-                                    Name "cap" origin=Source@4:16[165..168]
+                                  required: call-context name
                               params:
                                 None
                           body:

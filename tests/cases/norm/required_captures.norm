@@ -1,0 +1,144 @@
+NormProgram origin=Source@1:1[0..106]
+  forms:
+    Form Let
+      Decl Let origin=Source@1:1[0..104]
+        BindingSlot let=true origin=Generated(PatternNormalize)@1:5[4..104]
+          deduce:
+            None
+          value_pattern:
+            Binder "f" origin=Source@1:5[4..5]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Closure placement=Ordinary origin=Source@1:9[8..104]
+              head:
+                ClosureHead origin=Generated(ClosureNormalize)@1:9[8..94]
+                  deduce:
+                    HoleDecl "T" origin=Generated(PatternNormalize)@1:10[9..10]
+                      annotation:
+                        None
+                  captures:
+                    Capture origin=Source@1:13[12..18]
+                      slot:
+                        BindingSlot let=true origin=Generated(PatternNormalize)@1:13[12..18]
+                          deduce:
+                            None
+                          value_pattern:
+                            Binder "heap" origin=Source@1:13[12..16]
+                          annotation:
+                            AnnotationPattern origin=Generated(PatternNormalize)@1:18[17..18]
+                              HoleRef "T" origin=Source@1:18[17..18]
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                      required: call-context name
+                    Capture origin=Source@1:21[20..36]
+                      slot:
+                        BindingSlot let=true origin=Generated(PatternNormalize)@1:21[20..36]
+                          policy:
+                            PolicySpec
+                              PolicyConjunction
+                                  PolicyAtom Name "runtime"
+                          deduce:
+                            None
+                          value_pattern:
+                            Binder "io" origin=Source@1:33[32..34]
+                          annotation:
+                            AnnotationPattern origin=Generated(PatternNormalize)@1:36[35..36]
+                              HoleRef "T" origin=Source@1:36[35..36]
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                      required: call-context name
+                    Capture origin=Source@1:39[38..39]
+                      slot:
+                        BindingSlot let=true origin=Generated(PatternNormalize)@1:39[38..39]
+                          deduce:
+                            None
+                          value_pattern:
+                            Binder "x" origin=Source@1:39[38..39]
+                          annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                      required: call-context name
+                    Capture origin=Source@1:42[41..57]
+                      slot:
+                        BindingSlot let=true origin=Generated(PatternNormalize)@1:42[41..57]
+                          policy:
+                            PolicySpec
+                              PolicyConjunction
+                                  PolicyAtom Name "p"
+                          deduce:
+                            None
+                          value_pattern:
+                            Binder "resource" origin=Source@1:48[47..55]
+                          annotation:
+                            AnnotationPattern origin=Generated(PatternNormalize)@1:57[56..57]
+                              HoleRef "T" origin=Source@1:57[56..57]
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                      required: call-context name
+                    Capture origin=Source@1:60[59..79]
+                      slot:
+                        BindingSlot let=true origin=Generated(PatternNormalize)@1:60[59..79]
+                          deduce:
+                            None
+                          value_pattern:
+                            Binder "eager" origin=Source@1:64[63..68]
+                          annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                      initializer:
+                        Name "globalheap" origin=Source@1:70[69..79]
+                    Capture origin=Derived(CaptureNameInference; inferred capture elaborates to a let-shaped binding)@1:82[81..84]
+                      slot:
+                        BindingSlot let=true origin=Derived(CaptureNameInference; inferred capture elaborates to a let-shaped binding)@1:82[81..84]
+                          deduce:
+                            None
+                          value_pattern:
+                            Binder "x" origin=Derived(CaptureNameInference; unique free non-call bare name)@1:82[81..84]
+                          annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                      initializer:
+                        Call origin=Derived(PipeFallback; ordinary expression-chain growth)@1:82[81..84]
+                          source:
+                            Product origin=Generated(ProductLift)@1:82[81..82]
+                              elements:
+                                ExprElem
+                                  Name "x" origin=Source@1:82[81..82]
+                          target:
+                            Name "x" origin=Source@1:84[83..84]
+                  params:
+                    BindingSlotElem
+                      BindingSlot let=false origin=Generated(PatternNormalize)@1:87[86..90]
+                        deduce:
+                          None
+                        value_pattern:
+                          Binder "self" origin=Source@1:87[86..90]
+                        annotation:
+                          None
+                        with_clause:
+                          None
+                        initializer:
+                          None
+              body:
+                NormBody origin=Source@1:96[95..104]
+                  forms:
+                    Form Expr
+                      Name "value" origin=Source@1:98[97..102]

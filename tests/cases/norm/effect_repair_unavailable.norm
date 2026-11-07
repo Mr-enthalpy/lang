@@ -1,0 +1,38 @@
+NormProgram origin=Source@1:1[0..43]
+  forms:
+    Form Let
+      Decl Let origin=Source@1:1[0..26]
+        BindingSlot let=true origin=Generated(PatternNormalize)@1:5[4..26]
+          deduce:
+            None
+          value_pattern:
+            Binder "value" origin=Source@1:5[4..9]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Generated(OperatorLowering)@1:13[12..26]
+              source:
+                Product origin=Generated(OperatorLowering)@1:13[12..26]
+                  elements:
+                    ExprElem
+                      Name "a" origin=Source@1:13[12..13]
+                    ExprElem
+                      Expr Error
+                        Error "unsupported effect repair attachment" origin=Source@1:17[16..26]
+              target:
+                OperatorTarget spelling="+" fixity=Binary arity=2 origin=Source@1:15[14..15]
+    Form Let
+      Decl Let origin=Source@2:1[28..41]
+        BindingSlot let=true origin=Generated(PatternNormalize)@2:5[32..41]
+          deduce:
+            None
+          value_pattern:
+            Binder "after" origin=Source@2:5[32..37]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Name "x" origin=Source@2:13[40..41]

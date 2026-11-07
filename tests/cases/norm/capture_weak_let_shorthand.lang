@@ -1,0 +1,5 @@
+let a = [x |> let]() => {};
+let b = [x.let]() => {};
+let c = [x::let]() => {};
+let d = [x + let]() => {};
+let e = [(runtime + mut) let x]() => {};
