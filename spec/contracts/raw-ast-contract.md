@@ -539,7 +539,7 @@ Automatic compile structural dependencies remain independent; runtime structural
 access is inadmissible. In-place closures prohibit explicit capture lists,
 not ordinary lifetime head clauses, and use Automatic value-capture mode.
 Automatic mode is also available to other admitted capture-list-free forms.
-Explicit list entries retain source order as bare positional CaptureProduct
+Explicit list specifications retain source order as bare positional CaptureSpecProduct
 entries across stages; automatic sequence is fixed at completed formation.
 Raw/Norm list preservation proves neither resolved exclusivity nor realization.
 Invocation consumes established realizations and fulfills required entries in

@@ -21,7 +21,7 @@ or semantics scheduled for removal. All acceptance IDs below are HIE-scoped.
 | M06 | AGENTS Done sentence; README/spine/guide completion summaries | Internal Done_chi/Done_Return remains private; effect owner's ordinary Done(v) branch | A07,E03 | Step/result Pattern consumer |
 | M07 | New topic; existing E §10 ABI applies | E §7.1 whole-original-K CPS and §11 template/grain; ordinary ABI1/ABI2, explicit optional Box | A01–A04,K01–K08 | Whole-K common-E CPS consumer plus ordinary O/materializer; no dedicated async layout |
 | M08 | return owner and control-flow contract barriers retained | Effect §3 propagates ordinary results; return §7 distinguishes targeted return | A05,A06,L05 | Common E/result handler |
-| M09 | New topic; return-normalization sketch §12 scoped non-goals | Effect §4 throw/Wait/reentry plus ordinary Drop; sketch links owner | E01,E02 | Throw expansion/Drop source execution |
+| M09 | Automatic Error/noerror return sketch and mechanical/Self references | Entire sketch replaced by strictly optional explicit library adapters; no ambient capability/type-triggered propagation; actual throw/Drop owned by effect §4 | E01,E02,RA01–RA05 | Ordinary explicit adapter/throw/Drop execution |
 | M10 | conformance intro; policy-visibility carrier summary; extraction contract | Effect §5 selected forced final Miss only; applicability/ordinary branch miss separate | E03–E05,C05 | Selected forced-execution/handler |
 | M11 | unified §3, invocation result and glossary/roadmap summaries | Formal return-only NameExpr; yield cannot expose instance-open root | S01 | Compile reach/yield consumer |
 | M12 | unified §20 and every repeated reify entry summary | ClosedReturn plus ClosedInterface compile-determined public regular shape | S04,S05 | Actual interface/dependency proof consumer |
@@ -36,7 +36,7 @@ proof-search requirements. Unknown evidence is unavailable, not permission.
 |---|---|---|
 | F01 | Unique declared capture resolution, no second selector or reopen | dependency §3 Bound/Mismatch/Unavailable, overload §4 seal |
 | F02 | Equal self/capture/args, initialized once, no duplicate Move/Kill | call §6.2–6.3 coherent projection/transaction |
-| F03 | Source erasure and explicit projected captures, optional Env authority | Pattern §11.1–11.2 FnExtract/FnRequest |
+| F03 | Spec/value separation, universal binder substitution, source erasure, original-resource disposition and optional Env authority | Pattern §11.1–11.2; dependency §4.1; FP01–FP08 |
 | F04 | Empty Post=Pre, inherited old names/new input defaults | lifecycle §2.1.8 Slice_epsilon and AutoPre |
 | F05 | First-layer Move locality and valid atomic repair | lifecycle §2.1.3/§2.1.8 Pre_MoveRepair/Valid |
 | F06 | Locate/submit conserve hierarchy and all live storage duties | heap §§1,3,4 Pre/commit/Post |
@@ -106,3 +106,25 @@ checked; history is unchanged. Passing Rust coverage establishes capture syntax,
 constraint/order/Hole/span preservation, pending-repair recovery and rejection
 before unsupported capture preparation/installation. The remaining semantic
 consumer rows above continue to be explicitly unavailable.
+
+## PR #118 audit corrections
+
+The external audit identified omissions beyond the earlier limited fresh-reader
+questions. Corrections are in place, not deferred deletion work:
+
+- The entire automatic Error/noerror return scheme is replaced by explicit
+  optional library adapters. Call-mode, Self and directory references grant no
+  automatic propagation. RA01–RA05 are pending normative targets.
+- CaptureSpecProduct is distinct from actual CaptureValueProduct. FnExtract
+  resolves no projection-site required name. beta and contract implication cover
+  every admitted future explicit input/world; original resources have exactly one
+  ordinary retention/transfer/Drop disposition. FP01–FP08 add pending normative
+  targets: 56 HIE rows in total, separately from RA01–RA05.
+- Control-flow, lifetime and mechanical directory indexes include current
+  owners, heap/effect/CPS and LC9–LC13. Whole-original-K CPS remains pending.
+
+These corrections change documentation/proof obligations only. Rust syntax and
+rejection tests do not execute projection, resource disposition, result adapters,
+Heap/Async/Effect or CPS. Earlier audit passes did not cover these omitted
+questions. Scout runs for this correction terminated at an external quota limit;
+decisive locations and final changes were verified directly by the primary agent.

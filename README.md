@@ -88,8 +88,14 @@ preserving live Places/history. The
 defines concrete Wait successors, atomic user repair, transparent propagation,
 throw and ordinary Drop cleanup. Effects carry no implicit runtime Stage or Box;
 global IO/heap are ordinary capability contexts. Function Pattern projection
-exposes former captures as explicit inputs. Yield cannot classify an instance
-NameExpr; reify also needs a compile-determined public regular effect interface.
+exposes former captures as explicit inputs. Projection consumes capture
+specifications, not projection-site capture
+values; absent heap does not prevent a proved parameterized interface. Future
+explicit inputs require mapped contracts and original resources keep exactly one
+ordinary owner/cleanup disposition. Error-shaped data alone has no effect;
+Result/Error adapters are explicitly selected ordinary library calls.
+Yield cannot classify an instance NameExpr; reify also needs a compile-determined
+public regular effect interface.
 The original common semantic continuation requires a
 [complete CPS account](spec/design/static-evaluation/evaluation-residual-and-optimization.md#71-whole-original-continuation-cps-conversion-consumer-pending),
 including pending callers, ordinary expression/control and cleanup across stages.

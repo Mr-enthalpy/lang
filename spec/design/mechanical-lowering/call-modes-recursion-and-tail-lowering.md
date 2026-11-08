@@ -90,7 +90,7 @@ and drop/cleanup boundaries.
 ## 4. Automatic call-mode insertion
 
 Call-mode insertion is the same kind of mechanical insertion as automatic
-argument passing and automatic return normalization.
+argument passing. Explicit user-requested adapters remain ordinary work.
 
 Automatic insertion must not happen on the surface AST. It must happen on a
 sufficiently normalized first-order AST, because the surface AST's last
@@ -98,8 +98,8 @@ expression may still be changed by:
 
 ```text
 argument passing normalization
-return normalization
-error propagation insertion
+ordinary result delivery
+explicit adapter/handler actions actually present in K
 compile reduction / residualization
 cond / guarded expression lowering
 ```
@@ -110,7 +110,7 @@ AST, not raw surface syntax:
 ```text
 surface AST
   -> syntactic normalization
-  -> pattern / argument / return normalization
+  -> resolved Pattern / argument / result consumers and common-K CPS correspondence
   -> compile reduction / residualization
   -> first-order AST
   -> tail-position analysis
@@ -237,8 +237,8 @@ Tail position must be judged on the first-order AST.
 
 ```text
 A call is tail-position eligible only after normalization has removed or made explicit:
-  implicit return normalization
-  implicit error propagation
+  ordinary result delivery
+  explicit adapter/handler actions
   guarded branch residualization
   argument adaptation
   local cleanup/drop boundaries
@@ -279,9 +279,9 @@ specified here, and this document does not depend on them for its meaning.
 
 - `mechanical-argument-passing-and-move-fixed-point.md` — produces the parameter
   objects that `tco` transports and that `loop` reuses in place.
-- `mechanical-return-normalization-and-error-policy.md` — the return-slot
-  counterpart whose normalization must be resolved before a call is
-  tail-position eligible.
+- [Explicit result adapters](mechanical-return-normalization-and-error-policy.md) —
+  only requested adapter actions contribute work relevant to tailness;
+  Error-shaped data never inserts propagation.
 - `compile-instance-invocation-and-result-delivery.md` — the invocation engine that
   should share the same `normal` / `tco` / `loop` call-mode vocabulary.
 - `pattern-normalization-and-first-order-overload.md` — part of the normalization

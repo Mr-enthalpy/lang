@@ -1052,6 +1052,11 @@ source authority; opaque implementation provenance and compile-known Val1 cannot
 restore navigation/reselection of source candidates. Former captures become
 explicit inputs of the projected value; RHS supplies ordinary arguments, not
 implicit capture slots. An ordinary Env Object may forward its fields explicitly.
+Interface projection uses CaptureSpecProduct and binder-to-formal substitution
+proof, not an actual call's CaptureValueProduct or local same-name lookup.
+Future explicit arguments may differ when the interface admits them. The actual
+selected projection action separately preserves/discharges original resources
+once; pure matching allocates, consumes and destroys none of them.
 In same-Type Policy migration, retained internal Paths must pass prospective destination-world
 hard applicability. RHS supplies no self/captures, lifetime pre/post or Pack spread; its
 head root immediate rank+1 type/Policy fully denotes, while deeper legal holes

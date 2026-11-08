@@ -586,7 +586,7 @@ pre-capture name scope and ordinary effect order; projections do not recapture.
 UseKind x DemandStage classifies the requested observation: StructuralAccess
 is compile-only; Value may be compile or runtime. Written lists choose Explicit
 value mode and diagnose uncaptured external values. Otherwise admitted forms
-may choose Automatic mode. Explicit CaptureProduct entries are bare positional
+may choose Automatic mode. Explicit CaptureSpecProduct entries are bare positional
 in source order across stages; automatic order is fixed per formed closure.
 RequiredCapture [x], [x:T], [p let x] has no initializer or formed source edge;
 it binds by declared name/constraints in the actual call context, without a
@@ -596,8 +596,17 @@ Persistence and escape use the lifetime owner's refinement handoff.
 
 ### Self projections and directional Function Patterns
 
+CaptureSpecProduct(c) contains ordered input requirements without source values
+or ResolveRequired. CaptureValueProduct(c,I,K) supplies actual bound material for
+a structured call. FnExtract reads specifications and proves capture-binder to
+explicit-formal substitution for all admitted future inputs/worlds; absence of a
+same-name heap at projection is not rejection. Pure extraction does not move or
+drop. Actual consuming projection accounts for every original owned occurrence
+exactly once via ordinary retention, transfer or Drop; explicit future arguments
+never silently reuse that original material.
+
 The [call owner](../design/symbol-world/function-object-call-model.md#62-consumer-directed-self-projections)
-separates CallAnchor, Param (CaptureProduct or singleton user receiver) and
+separates CallAnchor, Param (CaptureValueProduct or singleton user receiver) and
 Return (CallTarget plus activation). The first written self formal remains
 contextual source syntax, not a universal single internal Object slot.
 The [Pattern owner](../design/patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)

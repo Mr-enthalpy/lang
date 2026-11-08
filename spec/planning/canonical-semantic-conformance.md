@@ -89,7 +89,7 @@ they do not run RequiredCapture fulfillment or an initializer.
 | C04 | Raw/Norm [x] has required slot, no initializer | Never synthesize =x; malformed required annotation diagnoses | D syntax contract | P source fulfillment | S |
 | C05 | Candidate-local evidence and unique seal precede selected binding | Post-seal capture failure never selects runner-up | D overload §4 | P LC9 | S pre-install/prepare gate only |
 | C06 | Self/captures/args transfer coherently once | No duplicate Kill or field-ownership-derived source | D call §6 | P LC3/LC9 | None |
-| C07 | Fn value exposes former captures as explicit args | No implicit recovery from original context/known Val1 | D Pattern §11 | P FnExtract | None |
+| C07 | Fn value exposes capture specifications as explicit formals even without same-name context at projection | No projection-site value witness or hidden source recovery proves future calls | D Pattern §11 | P FnExtract | None |
 | C08 | Env Object forwards heap/IO fields normally | Wrapper grants no new access/lifetime or mandatory Box | D Pattern §11.2 | P ordinary forwarding | None |
 | H01 | Locate reads old heap then installs shadowing node | No self-resolving new binding or special push | D heap §1 | P LC11 | None |
 | H02 | Subborrow next_pool, replenish outward, terminate at None protocol | No reverse prev pointer required or pool copy inferred | D heap §1 | P library | None |
@@ -131,6 +131,20 @@ they do not run RequiredCapture fulfillment or an initializer.
 | K06 | Drop a successor holding both callee and caller material with fixed cleanup obligations | Exactly ordinary cleanup once; no stranded caller resource, duplicate Kill/Drop or exception unwind | D E §7.1/effect §4 | P LC13/LC12/Drop | None |
 | K07 | Compile handler and reify dependent cone share full CPS mapping with closed outward shape | No runtime-to-past flow, lost name/cut identity, projection re-selection or escaped active-boundary authority | D E §7.1/§8 | P LC13/reify | None |
 | K08 | Missing CPS context/control/delivery correspondence reports spanned unavailable at the requiring boundary | No claimed async success, invented Residual or new semantic facts from description conversion | D E §7.1 | P LC13 | None |
+| FP01 | Project a required-only [heap:T] entry where no heap exists, with available interface/substitution proof | No ResolveRequired at projection; absent local name alone cannot reject | D Pattern §11/dependency §4.1 | P LC6 | None |
+| FP02 | Call projected value with distinct explicit h1 and h2 satisfying all mapped constraints | No formation/projection same-name fallback, hidden capture or source-equality requirement | D Pattern §11 | P LC6/call | None |
+| FP03 | Future explicit input violates Pattern/Policy/access or mapped Pre | Reject that invocation; a prior projection-site matching heap is no proof | D Pattern §11 | P LC6/call | None |
+| FP04 | Source-specific initialized capture exposes sufficiently restrictive input domain | One observed value/same-Type equality cannot justify arbitrary replacement; unknown proof unavailable | D Pattern §11 | P substitution proof | None |
+| FP05 | beta maps distinct capture binders in source order followed by original args | Equal values/spellings cannot merge occurrences or add implicit self/capture positions | D Pattern §11 | P LC6 | None |
+| FP06 | Pure FnExtract observes interface while original holder keeps its actual resources | No initializer replay, Move, Drop or hidden ownership transfer from relation success | D Pattern §11.2 | P LC6 | None |
+| FP07 | Actual consuming projection proves one disposition per original owned occurrence | Missing disposition, duplicate owner/Drop or disappearing resource prevents successful delivery | D Pattern §11.2 | P LC6/lifecycle | None |
+| FP08 | Explicit later argument is moved once under its own authority; reference handles retain real targets | New h2 never consumes/restores old h1; interface/known Val1 grants no referent ownership or sealed retry | D Pattern §11.2 | P LC6/call | None |
+
+Optional result adaptation additionally follows
+[RA01–RA05](../design/mechanical-lowering/mechanical-return-normalization-and-error-policy.md#5-paired-acceptance-and-consumer-status):
+normal Error-shaped data delivery has no implicit effect, while explicitly
+requested value/effect adapters retain ordinary contracts. All adapter execution
+is pending; these rows add no Rust coverage claim.
 
 ## Stage, Policy and two-round calls
 

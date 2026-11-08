@@ -7,6 +7,12 @@ Representation choices belong in [open questions](open-questions.md).
 
 ## Heap / IO / effect convergence frontier
 
+Projection consumes capture specifications, not projection-site captured values.
+Prove binder substitution for every admitted future explicit input/world and
+conserve original resource custody/Drop separately. LC6 and FP01–FP08 remain
+unconnected normative targets. Optional Result/Error adapters are explicit
+ordinary calls; Error-shaped data performs no default effect or early return.
+
 The [migration closure](heap-io-effect-migration.md) records M01–M13 replacements,
 F01–F14 obligations and implementation phases, with
 [paired acceptance](canonical-semantic-conformance.md#heap-io-and-effect-acceptance).
@@ -102,7 +108,7 @@ Every step preserves one identity/authority relation and selected no-reopen.
 | Lifecycle | SemanticContinuation, LifeName, Region, supplied Pre, Kill/Preserve, fixed cleanup and Color; common transactions gate every action on earlier cleanup observations | Source producer facts, NLL/with, ReifyLife and destructors need ordinary control-flow facts; source actions must enter the common transaction |
 | Physical source | Discovery/decoding/provenance and normalized fragments retaining inherited navigation; empty fragments form no semantic names or owners | Declarations under inherited navigation require the qualified ordinary name/Path consumer; EntryContinuation, sibling overlays and dependency projection need E composition |
 | InvocationResult | Semantic result, residual and diagnostic transport | Residual requires a real remaining continuation; serial completion and residual ABI remain separate |
-| Closure / self / Function Pattern | Capture syntax/Pattern roots, contextual formal-frame carriers, ordinary sealed selection and transaction substrate | Requested UseKind/DemandStage classification, exclusive value-capture modes, invocation-indexed CaptureProduct, required binding, candidate-local implicit relation evidence, actual Param transfer and directional FnExtract/FnRequest are pending; generic closure heads do not implement RHS requests |
+| Closure / self / Function Pattern | Capture syntax/Pattern roots, contextual formal-frame carriers, ordinary sealed selection and transaction substrate | Requested UseKind/DemandStage classification, exclusive value-capture modes, invocation-indexed CaptureValueProduct, required binding, candidate-local implicit relation evidence, actual Param transfer and directional FnExtract/FnRequest are pending; generic closure heads do not implement RHS requests |
 | Delivery ABIKind | Canonical E law: FreshLet ABI1, ExistingTarget ABI2 | Delivery target consumer wiring and physical input-frontier/target-Place materialization remain pending; RVO/NRVO supplies no selection evidence |
 
 A missing canonical consumer reports unavailable or preserves an established

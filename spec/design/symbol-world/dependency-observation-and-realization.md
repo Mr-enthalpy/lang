@@ -128,8 +128,8 @@ precedence. `[x]` is required, while `[let x = x]` is initialized.
 ```text
 Gamma_call; K; candidate_entry |- ResolveRequired(slot, requested_name)
     => Bound(source, evidence) | Mismatch(proof) | Unavailable(d)
-Captured(c,I,K) = ResolveRequired(c, Gamma_call, K, Entry(I))  if Required(c)
-Captured(c,I,K) = FormedSource(c)                            if Initialized(c)
+Captured(d,I,K) = ResolveRequired(d, Gamma_call, K, Entry(I)) if Required(d)
+Captured(d,I,K) = FormedSource(d)                           if Initialized(d) or Automatic(d)
 ```
 
 Resolution uses the actual admitted call context and the declared requirement
@@ -151,6 +151,10 @@ their source. An initialized global IO/heap binding therefore survives local
 same-name shadowing. Required specifications survive copying/replication and
 are fulfilled afresh for each genuinely new invocation; a sealed invocation
 retains its bound source and cannot resolve it again at runtime.
+These laws preserve the original structured callable and its materials.
+Source-erasing projection does not mutate/rebind them: it exposes a separately
+parameterized interface under the spec/substitution/resource rules of §4.1
+and the Pattern owner.
 
 ## 4. Explicit and automatic dependency formation
 
@@ -211,11 +215,27 @@ Let B_K denote the existing bare positional Product at continuation K:
 
 ```text
 ExplicitCaptureSeq(C) = <d1,...,dn>  // specifications in source order, both stages
-CaptureProduct(C,I,K) = B_K(Captured(d1,I,K),...,Captured(dn,I,K))
-
 AutomaticCaptureSeq_Sigma(C) = <d1,...,dn>
-CaptureProduct_Sigma(C) = B_K(Realize(d1),...,Realize(dn))
+CaptureSeq(C) = the applicable fixed sequence above
+CaptureSpecProduct(C) = B(Spec(d1),...,Spec(dn))
+CaptureValueProduct(C,I,K) = B_K(Captured(d1,I,K),...,Captured(dn,I,K))
 ```
+
+Spec(d) is the capture binder/occurrence identity and its input rank, Pattern,
+Policy, access and lifecycle requirements. This is ordinary interface description
+material, not a supplied input value, resident read or source edge. It exists for
+required, initialized and automatic positions. An initializer's one formed value
+is not proof that arbitrary replacement inputs satisfy its implementation.
+
+CaptureSpecProduct has no invocation context argument and performs no
+ResolveRequired. CaptureValueProduct belongs only to an actual structured call:
+required entries then resolve in that call's admitted context, while initialized
+and automatic entries use their formed sources. Missing call context can make
+that value product unavailable, but cannot by itself prevent source-erasing
+interface projection from its available specifications. Such projection uses
+the Pattern owner's universal input/substitution obligation, not a sample value
+from the projection site. The requested spelling is not a name constraint on
+the projected value's future explicit argument.
 
 Every capture occupies a bare positional entry, even if it has a binder name.
 The layer is ordered by the ordinary Product rule. Thus interleaved compile,

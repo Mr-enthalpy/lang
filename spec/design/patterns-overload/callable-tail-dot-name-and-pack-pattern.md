@@ -378,7 +378,7 @@ Outer writes require an actually write-capable dependency realization and
 ordinary access/capability/lifetime checks. Explicit versus automatic formation
 does not independently grant or veto write authority.
 
-Each explicit list entry occupies a bare positional CaptureProduct entry in
+Each explicit list entry occupies a bare positional CaptureSpecProduct position in
 source order, including interleaved compile/runtime entries. Binder names do
 not make the layer unordered. Initializers use the common pre-capture environment
 and execute once per formation in ordinary order. Automatic value-capture

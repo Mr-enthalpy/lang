@@ -267,7 +267,7 @@ alternate relation or identity.
   source. Realization follows the source occurrence's selected ordinary action,
   uniquely up to observational equivalence; distinct candidates use ordinary
   preference or ambiguity, never backend choice. Initialization is once per formation.
-  Projections retain formed sources and already sealed required bindings.
+  Projections never rerun source initialization or re-resolve sealed required bindings.
   In-place syntax forms dependencies automatically and produces an ordinary
   first-class result. Automatic/InitializedCapture sources form once;
   RequiredCapture [x], [x:T], [p let x] has no initializer/source edge at formation
@@ -282,7 +282,7 @@ alternate relation or identity.
   Explicit captures form a bare positional Product in source order across stages;
   automatic order is fixed per formed closure. Required positions keep their
   specification order and bind per new invocation. Self has CallAnchor, Param and
-  Return projections; Param is CaptureProduct or the ordinary singleton receiver.
+  Return projections; Param is CaptureValueProduct or the ordinary singleton receiver.
   Candidate-local implicit evidence is read-only before selection; selected input
   moves once with no duplicate Kill. Function Pattern syntax always has an
   explicit -> boundary; arrowless material is Bare Product, not a function
@@ -303,6 +303,11 @@ alternate relation or identity.
   otherwise tied distinct candidates follow ordinary ambiguity.
   Function Pattern value projection makes former captures explicit interface
   inputs; neither known Val1 nor hidden implementation provenance restores them.
+  CaptureSpecProduct describes requirements without resolving names; only an
+  actual structured call forms CaptureValueProduct. Source-erasing projection
+  needs no same-name capture context. Prove binder-to-explicit-formal substitution
+  for every admitted future input/world, and account for original owned material
+  exactly once under the selected ordinary retention/transfer/Drop action.
   Lifetime persistence/escape refinement retains all ordinary checks; tau status
   grants no global lifetime and local dependency grants no universal prohibition.
 
@@ -340,6 +345,9 @@ capture/lifecycle interface shape. Runtime may choose inside a fixed sum; a
 runtime-dependent public shape needs ordinary handler/wrapper closure first.
 Pending consumers and their spanned unavailable boundaries are in the roadmap;
 no old interpretation is a compatibility path.
+Error-shaped ordinary data does not implicitly throw, form Wait or early-return.
+Result/Error adaptation is only an explicitly selected ordinary library call;
+there is no ambient Error-return capability or default type-triggered propagation.
 
 Do not close a question listed in `spec/planning/open-questions.md` for
 implementation convenience. Use opaque carriers and extension interfaces.

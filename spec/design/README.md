@@ -11,7 +11,7 @@ that the corresponding source semantics is implemented.
 | --- | --- |
 | Static evaluation, compile instances, open/close, NameExpr result shape, interpretation polarity, structural type formation, file/name production, dot/ADL | [static, name, and structural semantics](unified-static-name-and-structural-semantics.md) |
 | NameValue, two-level Read, Path projection/indexing and opposite-context interpretation | [Path algebra](symbol-world/structured-path-algebra-and-interpretation-polarity.md) |
-| General dependencies, Required/Initialized capture timing, observation kind/horizon, exclusive modes and invocation-indexed ordered CaptureProduct | [dependency realization](symbol-world/dependency-observation-and-realization.md) |
+| General dependencies, Required/Initialized timing, CaptureSpecProduct versus actual CaptureValueProduct, observation horizons and exclusive modes | [dependency realization](symbol-world/dependency-observation-and-realization.md) |
 | Product/result extraction and direct delivery | [result extraction](patterns-overload/return-value-extraction-and-implicit-decomposition.md) |
 | Product repetition wrappers, contextual expansion, Val1 identity and Policy-indexed unpacking | [Product algebra](patterns-overload/product-repetition-and-unpacking.md) |
 | Callable tails and Pack boundaries | [callable material](patterns-overload/callable-tail-dot-name-and-pack-pattern.md) |

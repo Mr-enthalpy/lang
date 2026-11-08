@@ -273,6 +273,12 @@ structural-source authority, even with compile-known Val1; opaque internal
 provenance is not authority. Former captures become explicit inputs of the
 projected value; RHS supplies those ordinary args, never implicit capture slots.
 Same-Type compile-to-runtime migration instead
+uses its separate retained-Path proof. Function Pattern projection observes
+CaptureSpecProduct without resolving required names at the projection site;
+CaptureValueProduct is only for actual structured invocation. Prove the binder
+mapping and contract for all admitted explicit inputs, not one captured witness.
+Actual resource retention/transfer/Drop remains exactly once; interface formals
+are not storage for the original capture. Same-Type migration
 checks retained Paths in the prospective destination world at hard A: false
 excludes, unknown stays unavailable. None of these consumers belongs in Norm.
 

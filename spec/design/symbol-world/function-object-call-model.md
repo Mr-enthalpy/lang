@@ -553,12 +553,12 @@ SelfProjection(I,Return) = (CallTarget(I),Activation(I))
 ReturnFrame(I) = SelfProjection(I,Return)
 
 ordinary user-defined x:T associated () call: SelfProjection(I,Param)=B_K(x)
-value-capture closure C: SelfProjection(I,Param)=CaptureProduct(C,I,K)
+value-capture closure C: SelfProjection(I,Param)=CaptureValueProduct(C,I,K)
 InternalInput(I,explicit_args)
   = Merge_K(SelfProjection(I,Param),B_K(explicit_args))
 ```
 
-CaptureProduct is defined only by the [dependency owner](dependency-observation-and-realization.md#41-ordered-value-capture-material).
+CaptureValueProduct is defined only by the [dependency owner](dependency-observation-and-realization.md#41-ordered-value-capture-material).
 Compile structural dependencies do not become value parameter positions.
 The ordinary user receiver is the cardinality-one case; closure captures can
 have cardinality zero, one or many. The contextual first formal can observe

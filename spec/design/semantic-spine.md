@@ -124,7 +124,11 @@ AssociatedNamespace(T) is MemberScope(Core(T)), distinct from /tau(T).
 Dependency realization is fixed by the source occurrence's selected ordinary
 action, uniquely up to observational equivalence, before layout is chosen.
 Closure value-capture modes are exclusive, with automatic compile structural
-dependencies independent. CaptureProduct is bare positional material; explicit
+dependencies independent. CaptureSpecProduct describes ordered requirements;
+CaptureValueProduct supplies actual structured-call input only. Source-erasing
+Function Pattern projection uses specifications and a universally sound binder
+substitution, without resolving same-name context at the projection site. Actual
+original resource ownership/Drop is accounted once, separately from future args. Explicit
 order follows source specifications, with required sources bound per invocation;
 automatic order is fixed per formation. Source placement and dependency
 formation origin supply no post-formation overload evidence. Selected callable

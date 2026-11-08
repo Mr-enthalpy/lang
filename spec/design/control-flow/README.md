@@ -14,6 +14,8 @@ future work.
 | Document | Purpose |
 |---|---|
 | `targeted-return-and-d-reduction.md` | Separate ReturnEvent/ReturnTarget inference, UnitDiscard, path-tail unit fallthrough, direct result delivery and internal completion with no local return contribution |
+| [Effect steps](effect-steps-and-continuation-handoff.md) | Ordinary Done/Wait, handlers, throw/Drop and forced actual PatternMiss; Error-shaped data alone performs no effect |
+| [Whole-original-K CPS](../static-evaluation/evaluation-residual-and-optimization.md#71-whole-original-continuation-cps-conversion-consumer-pending) | Pending common-E composition of all ordinary contexts, caller suffixes, delivery and cleanup across stages |
 
 ## Status
 

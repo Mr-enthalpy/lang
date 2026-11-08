@@ -56,7 +56,7 @@ these handoffs supply no standalone evaluator or executable success claim.
 | Input material | Required slot/name/rank/Pattern/Policy, actual context/entry/K, initialized sources | Preceding Post/cut, existing names, new args, fixed MoveEffect, destination, repair/id | Actual local layer/next_pool, allocations, descriptors, support/duty credentials, guaranteed capability | Original common K/CPS correspondence including pending caller suffixes; selected cut, yield/resume Patterns, held material, repair, actual handler and compile/reify boundary |
 | Existing action | Ordinary R_vis/hard A and selected invocation | Empty slicing or actual handoff Move | Ordinary locate, object relocate or consuming submit | Step/Wait, resume/handler/drop, forced actual Miss |
 | Ordinary program | Actual selected source read/transfer/ref | Mapped name projection, ordinary rebind/ref repair | Library routing/allocation/descriptor calls with narrowly trusted external success | Ordinary selected calls/contracts/repair/destructors; throw expansion |
-| Output lifecycle material | Bound CaptureProduct, names/origin/region and canonical observed inputs | Unchanged epsilon world or validated successor AutoPre | Real moved value, or unchanged live Places with transferred support/duty and restored old heap | Done(v) or Wait(y,k), valid successor and held cleanup responsibility |
+| Output lifecycle material | Bound CaptureValueProduct, names/origin/region and canonical observed inputs | Unchanged epsilon world or validated successor AutoPre | Real moved value, or unchanged live Places with transferred support/duty and restored old heap | Done(v) or Wait(y,k), valid successor and held cleanup responsibility |
 | Commit/delivery | One coherent Param/args transfer and four-way contract | Atomic Move[repair], no visible intermediate callable | Existing common action, all Pre then joint Post | Actual branch only; LC10 handoff, ordinary resume/Drop |
 | Failure/unavailable | Proved mismatch in ordinary A; missing consumer unavailable; post-seal failure terminal | No successful Post or partial successor on failed/unknown repair | No capability rejects; unknown credentials/guarantee unavailable; legal submit cannot hide runtime failure | Missing consumer unavailable; selected forced final mismatch uses legal PatternMiss handoff; unhandled compile effect diagnoses externally |
 | Dependencies | Source context, ordinary dependency/Pattern/Policy/E | LC1–LC5, source control/producer authority | LC3/LC4/LC7, name shadow/consumption, host globals | LC9/LC10/LC13, Function Pattern/effect syntax, common E/control/delivery |
@@ -291,7 +291,11 @@ these handoffs supply no standalone evaluator or executable success claim.
 
 ## LC6. Function Pattern and recursive interface consumption
 
-- **Input material:** Determined callable's exposed full input/capture contract,
+- **Input material:** Determined callable's CaptureSpecProduct and explicit input
+  specifications, beta binder-to-formal mapping and universal input/contract
+  substitution evidence, plus the actual original-resource disposition for a
+  consuming projection; no projection-site CaptureValueProduct is required.
+  Also supply the exposed full input/capture contract,
   expected Function Pattern, mapped U_default/entry assumptions, Pre/Post and
   ordinary Type/Policy evidence. RHS requests supply only explicit args/output/
   Policy; no capture/lifetime request slots are added.
@@ -305,10 +309,18 @@ these handoffs supply no standalone evaluator or executable success claim.
   actual selected call's mapped lifecycle obligations/results. Handwritten
   omitted Post means NoDelta; body omission uses LC5, not that interface default.
 - **Commit/delivery boundary:** At interface extraction require Pre_F => Pre_A
-  and Post_A => Post_F. Subsequent calls still check actual Pre and commit once.
+  and Post_A => Post_F under beta for every admitted explicit input/world.
+  Pure FnExtract commits no Move/Drop. Actual consuming projection accounts for
+  every original owned occurrence once through ordinary retention/transfer/Drop,
+  with no hidden implicit captured resource. Subsequent calls check actual
+  supplied arguments/Pre and commit once; their values may differ from original
+  sources when the exposed specifications admit them.
 - **Failure or unavailable result:** Insufficient Post rejects extraction;
   unknown implication/recurrence evidence is Unavailable. No implicit stronger
   Post, recursive default permission, runner-up or ABI change.
+  Absent same-name heap at projection is not failure. A single matching source
+  value proves no future-input substitution theorem; missing resource disposition
+  also leaves the actual consuming action unavailable.
 - **Unconnected consumer dependencies:** Directional Function Pattern source
   consumers, LC4/LC5, recursive family definitions and their actual evidence.
 - **Fidelity/composition obligations:** Contract preservation after source

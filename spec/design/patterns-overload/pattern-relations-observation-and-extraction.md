@@ -909,26 +909,27 @@ Dedicated Function Pattern syntax consumers and their source diagnostics remain
 pending; the examples above are normative grammar obligations, not a claim that
 current generic closure parsing implements them.
 
-For a concrete formed callable c, let ExplicitArgProduct(c) denote its explicit
-entry material as observed by the extraction relation, not invented sample
-arguments or a common overload signature. I below identifies the determined
-entry's matching projection and K its admitted context; pure extraction does
-not fabricate a body activation or move its input:
+For a determined concrete entry c, observe its ordinary interface description,
+including explicit argument specifications and the dependency owner's
+CaptureSpecProduct(c). This is declaration/contract material, not sample actuals:
 
 ```text
-FunctionLHSInput(c,I,K) = CaptureProduct(c,I,K) op_plus ExplicitArgProduct(c)
+FunctionLHSInputSpec(c) = CaptureSpecProduct(c) op_plus ExplicitArgSpecProduct(c)
+InterfaceContent(c) = the available ordinary input/return/Policy/effect/contract description
 FnExtract_Gamma(F_L,c,rho)
-  iff R_Gamma(Head_L,FunctionLHSInput(c,I,K),rho)
+  iff R_Gamma(F_L,InterfaceContent(c),rho)
   and ReturnPolicyRelation(F_L,c,rho)
-  and LifetimeContractCompatibility(F_L,c,rho)
+  and CaptureSubstitutionSound(F_L,c,beta)
+  and LifetimeContractCompatibility(F_L,c[beta],rho)
 ```
 
-Here op_plus is ordinary contextual Product composition. For the ordinary
-user-value receiver case the [call owner's](../symbol-world/function-object-call-model.md#62-consumer-directed-self-projections)
-implicit material is the singleton receiver instead of a closure CaptureProduct.
-RequiredCapture is validated in the actual admitted matching/call context, not
-resolved speculatively at closure formation. Missing context is unavailable.
-Extraction covers the entire observed input, including all meaningful capture
+This Function Pattern family consumes R_Gamma over ordinary interface material;
+it introduces no second Pattern solver or Object category. The receiver case
+observes its ordinary receiver specification. Pure extraction invokes neither
+ResolveRequired nor a body/capture initializer, and moves no input. Missing
+same-name heap at the projection site is not a rejection premise. Missing actual
+interface/implication evidence remains unavailable.
+Extraction covers the entire specified input, including all meaningful capture
 positions. Head_L may use ordinary explicit Pattern entries or one legal
 remainder such as ...captures. A Pack matches the contiguous remainder at an
 ordered layer; each normalized layer still admits at most one Pack. Anonymous
@@ -936,6 +937,26 @@ ordered layer; each normalized layer still admits at most one Pack. Anonymous
 relations, ranks, exact Hole identities and availability rules. Extraction
 observes P2, Pin, Pout, return and full lifetime pre/post contract. The callable's
 require and implementation body are not ordinary extractable interface material.
+
+The map beta sends each original capture BinderIdentity/occurrence to one
+distinct exposed explicit formal position, in capture sequence order, followed
+by the original explicit argument positions. Body capture uses resolve to those
+formals under ordinary lexical substitution, not the original requested spelling
+or formed source. Self/return projections retain their ordinary frame mapping;
+beta adds no extra self, hidden input or private candidate selection.
+
+CaptureSubstitutionSound means: for every complete explicit input and lifecycle
+world admitted by F_L, its mapped positions satisfy the source entry's input
+Pattern/Policy/access and applicable contract requirements. Under beta, the
+ordinary directions Pre_F implies Pre_c[beta] and Post_c[beta] implies Post_F
+hold, together with return/effect compatibility. This is a supported-family proof
+obligation, not enumeration of future values or an arbitrary universal solver.
+A matching projection-site value cannot prove it. Unknown proof is unavailable;
+proved incompatible input domains reject. No widening from a known initialized
+value to all same-Type values is implied. A required-only [heap:T] may project
+without heap present and later accept different explicit h1/h2 when each meets
+the exposed constraints; a source-specific implementation must expose sufficient
+constraints or fail projection.
 
 An overload collection supplies no concrete c without ordinary selection or
 other established concrete-value determination. LHS cannot assume shared
@@ -993,10 +1014,11 @@ FunctionPatternProjection(C,F)
   => not ExternalAuthority(StructuralOrigin(C))
 ```
 
-Projection Pre requires a determined concrete entry, successful full-input,
-return/Policy/regular-effect extraction and contract implication, with available
-required-capture context and ordinary transfer/access/lifecycle evidence where
-consumed. Its ordinary complete-value commit exposes the projected interface,
+Projection Pre requires a determined entry, available full-input specifications,
+return/Policy/regular-effect compatibility, beta and its substitution/contract
+proof. It does not require or resolve a projection-site required-capture value.
+An actual consuming projection additionally needs ordinary transfer/access/
+lifecycle evidence and the resource accounting below. Its complete-value commit exposes the projected interface,
 including explicit former-capture positions. Post preserves only the admitted
 implementation/internal obligations and interface observations, with external
 source authority erased. Failed or unavailable evidence produces no successful
@@ -1042,8 +1064,9 @@ actual dependencies, lifetime legality and ordinary sealed choices. It is not
 a built-in Function Pattern constructor, a guaranteed conversion or restoration
 of structural origin; reify's outward horizon remains runtime.
 
-After source-erasing Function Pattern value projection, original capture material
-is part of the value's **explicit** callable input. Such a value cannot fulfill
+After source-erasing Function Pattern value projection, original capture
+requirements become **explicit** callable formals. No actual capture resource
+is converted into a formal or silently transferred by that description. Such a value cannot fulfill
 those positions by recovering the closure's forgotten external source or by
 implicit lookup in its old formation context. RHS still has no implicit capture
 or contract slots: it supplies those exposed ordinary argument positions.
@@ -1053,6 +1076,35 @@ Object can hold a no-capture Function Pattern value and heap/IO fields, expose
 its own call entry and forward those fields explicitly (or locally bind context
 for another structured lazy closure). This is an optional ordinary representation,
 with its own access/lifetime premises and no mandatory boxing.
+
+#### Original capture resources and future explicit inputs
+
+FnExtract is a pure relation and creates no Move, Drop, clone or resource
+transfer. A non-consuming implementation leaves original initialized/automatic
+material with its actual existing holder and ordinary later cleanup. A consuming
+projection must account for each actual owned occurrence through an admitted
+ordinary transfer to a distinct holder/output or an ordinary completed Drop.
+It cannot lose that resource, duplicate its owner, replay its initializer or
+retain it as a hidden implicit argument of the projected function. Reference
+handles preserve their targets/generations; they do not own the referent.
+
+```text
+OwnedOccurrences_before = disjoint_union(OwnedOccurrences_after,
+                                        OccurrencesDischargedByOrdinaryActions)
+each original occurrence has exactly one disposition
+```
+
+These are occurrence/authority facts, not equality of values or assumed self
+field layout. If a legal ordinary operation exposes capture material for later
+use, the caller can retain it separately or in an Env Object and explicitly
+pass it; no automatic tuple extraction or public capture layout is supplied.
+The chosen consuming action must establish this disposition and all cleanup
+Post before successful delivery, or remain unavailable. A future projected
+call checks the actual supplied explicit inputs and their mapped Pre, moves
+selected material once and publishes its ordinary Post. Passing h2 does not
+consume, restore or implicitly select the source closure's former h1. Ordinary
+structured invocation of the unprojected closure retains its original source
+timing rules. Projection and execution never reopen a sealed source selection.
 
 ### 11.3 Regular effect Function Patterns
 
