@@ -279,7 +279,7 @@ specified here, and this document does not depend on them for its meaning.
 
 - `mechanical-argument-passing-and-move-fixed-point.md` — produces the parameter
   objects that `tco` transports and that `loop` reuses in place.
-- [Explicit result adapters](mechanical-return-normalization-and-error-policy.md) —
+- [Explicit result adapters](explicit-ordinary-result-adapters.md) —
   only requested adapter actions contribute work relevant to tailness;
   Error-shaped data never inserts propagation.
 - `compile-instance-invocation-and-result-delivery.md` — the invocation engine that

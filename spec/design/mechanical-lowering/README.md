@@ -61,7 +61,7 @@ format.
 
 - `mechanical-argument-passing-and-move-fixed-point.md` — canonical pass-action
   core, ordinary producer realizations, terminal Move and fixed cleanup ordering.
-- [Explicit result adapters](mechanical-return-normalization-and-error-policy.md) —
+- [Explicit result adapters](explicit-ordinary-result-adapters.md) —
   optional library calls, with no compiler-inserted default error propagation.
 - `call-modes-recursion-and-tail-lowering.md` — `normal` / `tco` / `loop`.
 

@@ -141,7 +141,7 @@ they do not run RequiredCapture fulfillment or an initializer.
 | FP08 | Explicit later argument is moved once under its own authority; reference handles retain real targets | New h2 never consumes/restores old h1; interface/known Val1 grants no referent ownership or sealed retry | D Pattern §11.2 | P LC6/call | None |
 
 Optional result adaptation additionally follows
-[RA01–RA05](../design/mechanical-lowering/mechanical-return-normalization-and-error-policy.md#5-paired-acceptance-and-consumer-status):
+[RA01–RA05](../design/mechanical-lowering/explicit-ordinary-result-adapters.md#5-paired-acceptance-and-consumer-status):
 normal Error-shaped data delivery has no implicit effect, while explicitly
 requested value/effect adapters retain ordinary contracts. All adapter execution
 is pending; these rows add no Rust coverage claim.
