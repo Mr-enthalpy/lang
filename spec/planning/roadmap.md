@@ -389,3 +389,32 @@ fixtures, invented residual or default permission. Until connected, report a
 spanned unavailable diagnostic, or transport only an actually established
 remaining continuation. Keep executed coverage, design scenarios and unproved
 obligations separately visible in each implementation PR.
+
+## 10. Structured E host and incremental revalidation readiness
+
+The [host handoff](../contracts/e-host-architecture-and-incremental-revalidation.md)
+establishes document requirements for structured common K/LE, synchronized
+projections, provenance-bearing relations, separate snapshot/current-world/
+replayable caches and fine-grained dependency revalidation. Lifecycle Pre/Post
+content changes invalidate actual consumers even when ordinary interfaces and
+machine ABI shape stay equal. Automatic Post propagates through ordinary E
+calculations until required outward observations are proved stable, including
+supported stops within a function, or a real check fails/is unavailable.
+
+Status: **document constraints established; execution consumers pending;
+HA01–HA18 executable acceptance not yet passed**. Existing common transactions,
+owner/instance interning, sealed-frame and exact-key package-cache tests cover
+only their substrate slices. They do not implement contract-content dependency
+tracking, automatic-summary propagation or complete common-K/CPS correspondence.
+
+Connect LC1–LC13/common-E source producers and formed-body/actual-exit consumers
+as their dependencies become available, then preserve lawful revision mappings,
+record consumed semantic observations and revalidate affected call positions/
+subcontinuations through the same E. Recursive families require their own
+domain/termination or rejection/unavailable evidence; name-item SCC collapse
+keeps its independently fixed boundaries. Future O rewrites retain these
+dependencies at new positions; machine-artifact validity follows its own actual
+dependencies. No independent checker, universal solver or O/Planner/M API is
+introduced. [HA01–HA18](../contracts/e-host-architecture-and-incremental-revalidation.md#111-distinguishing-architecture-targets)
+are normative input-change/trigger/stop-or-failure targets, not executed source
+tests; future implementation PRs must report their real connected coverage.
