@@ -37,7 +37,7 @@ proof-search requirements. Unknown evidence is unavailable, not permission.
 | F01 | Unique declared capture resolution, no second selector or reopen | dependency §3 Bound/Mismatch/Unavailable, overload §4 seal |
 | F02 | Equal self/capture/args; LiveContext_s to CallContext_k has separately proved name correspondence, ownership and cleanup duties, with no default self-field ownership or duplicate Move/Kill | call §6.2–6.3 and effect §2 |
 | F03 | Spec/value separation, universal binder substitution, source erasure, original-resource disposition and optional Env authority | Pattern §11.1–11.2; dependency §4.1; FP01–FP08 |
-| F04 | Empty Post=Pre, inherited old names/new input defaults | lifecycle §2.1.8 Slice_epsilon and AutoPre |
+| F04 | Lifecycle id Pre=Post; epsilon, InPlace capture AutoPre and held handoff material inherit actual Post in the legal vocabulary; only new input names default, and repair id does not make Move[id] identity | lifecycle §2.1.8 id/Slice_epsilon/AutoPre; effect §2; LC10/LC12/LC13 |
 | F05 | First-layer Move locality and valid atomic repair | lifecycle §2.1.3/§2.1.8 Pre_MoveRepair/Valid |
 | F06 | Locate/submit conserve hierarchy and all live storage duties | heap §§1,3,4 Pre/commit/Post |
 | F07 | Guaranteed submit over every admitted Pre state | heap §4 SubmitCap, feasible metadata guarantee |
@@ -137,3 +137,12 @@ The call owner's no-relookup rule is scoped to formed automatic/initialized
 sources, and terminal forced extraction means no reselection/reconversion,
 without excluding a legally handled actual PatternMiss. These are specification
 clarifications only; standard providers and handoff execution remain pending.
+
+The lifecycle identity clarification makes Pre(id)=Post(id) explicit on complete
+observations of the same material. InPlace capture AutoPre and suspension's held
+handoff material both consume it; the latter inherits the legally mapped actual
+successful Move/repair Post. Default repair id preserves only its own input;
+ordinary Move and destination Valid are still required. F04, L01–L03 and
+LC10/LC12/LC13 carry these unexecuted obligations, including no fresh defaults,
+no invented facts and no weakening or loss of cleanup/history. Existing source
+execution remains pending.

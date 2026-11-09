@@ -242,6 +242,12 @@ In-place syntax has no explicit capture clause; free external observations form
 automatic dependency requirements and ordinary realizations. These established
 sources do not recapture. InPlace existing captures inherit preceding Post when
 Pre is omitted; only genuinely new input names use default entry generation.
+This is the lifecycle identity law Pre(id)=Post(id) on the same observed
+material. Held material delivered at suspension reuses it on the legally mapped
+successful handoff Post; it is not initialized again. Omitted repair id preserves
+its own repair-entry state, while the composite Move[id] still performs its
+ordinary Move and must prove destination validity. Neither the capture body nor
+the resumed body is declared to be id by this interface-generation rule.
 Actual access/capability/lifetime checks decide outer writes.
 Ordinary => closures use one explicit or automatic value-capture mode. An
 explicit list excludes automatic value capture; missing external values are

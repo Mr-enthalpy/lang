@@ -630,10 +630,15 @@ targets. Physical layout and RVO/NRVO do not select ABIKind.
 
 ### Empty slice / Move repair
 
-Post(K_minus)=Pre(K_plus) for an empty action slice in the same world.
+Lifecycle-continuation id has Pre(id)=Post(id) on the same material and
+name/generation vocabulary; an empty slice therefore has
+Post(K_minus)=Pre(K_plus) in the same world.
 InPlace existing automatic captures inherit that state, rather than generating
 new default origins. Actual handoff proves atomic Move[repair] and publishes
 only a valid successor, with legal name projection and default repair id.
+Held handoff material reuses the id law on the mapped successful handoff Post,
+with no fresh defaults. Default repair id preserves its own input; Move[id]
+still includes the actual Move and need not preserve the entire source world.
 The suspending side supplies repair; ordinary new resume arguments use entry
 name rules. See the [lifecycle owner](../design/lifetime/lifetime-policy-and-overload-boundary.md#218-empty-slices-inherited-autopre-and-atomic-move-repair).
 

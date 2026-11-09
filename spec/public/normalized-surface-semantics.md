@@ -1610,8 +1610,13 @@ The [effect owner](../design/control-flow/effect-steps-and-continuation-handoff.
 defines `(yield_val,resume_pattern) wait @{repair}` and
 `(yield_val) |> wait (resume_pattern)@{repair}` as one handoff contract. Repair
 binds to the complete preceding expression more weakly than full E; parentheses
-delimit it, and omission means id. Throw is its specified Wait/reentry/return
-abbreviation. Function Pattern effect syntax adds nearest-unit postfix `~`,
+delimit it, and omission means id. The lifecycle owner's identity law Pre=Post
+also generates InPlace automatic-capture and held handoff-material AutoPre;
+handoff uses the legally mapped successful Move/repair Post, without new defaults.
+Repair id preserves its own input, not the whole Move[id] transaction. These
+are later semantic consumer obligations, not Norm computations.
+Throw is its specified Wait/reentry/return abbreviation. Function Pattern effect
+syntax adds nearest-unit postfix `~`,
 with ordinary `||` alternatives and an explicit arrow for each step.
 
 These source consumers are pending. The exact `@{` shape is rejected as

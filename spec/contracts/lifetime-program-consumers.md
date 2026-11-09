@@ -56,11 +56,11 @@ these handoffs supply no standalone evaluator or executable success claim.
 | Input material | Required slot/name/rank/Pattern/Policy, actual context/entry/K, initialized sources | Preceding Post/cut, existing names, new args, fixed MoveEffect, destination, repair/id | Actual local layer/next_pool, allocations, descriptors, support/duty credentials, guaranteed capability | Original common K/CPS correspondence including pending caller suffixes; selected cut, yield/resume Patterns, held material, repair, actual handler and compile/reify boundary |
 | Existing action | Ordinary R_vis/hard A and selected invocation | Empty slicing or actual handoff Move | Ordinary locate, object relocate or consuming submit | Step/Wait, resume/handler/drop, forced actual Miss |
 | Ordinary program | Actual selected source read/transfer/ref | Mapped name projection, ordinary rebind/ref repair | Library routing/allocation/descriptor calls with narrowly trusted external success | Ordinary selected calls/contracts/repair/destructors; throw expansion |
-| Output lifecycle material | Bound CaptureValueProduct, names/origin/region and canonical observed inputs | Unchanged epsilon world or validated successor AutoPre | Real moved value, or unchanged live Places with transferred support/duty and restored old heap | Done(v) or Wait(y,k), valid successor and held cleanup responsibility |
+| Output lifecycle material | Bound CaptureValueProduct, names/origin/region and canonical observed inputs | Equal id Pre/Post (including epsilon); held handoff material inherits mapped successful Move/repair Post as successor AutoPre | Real moved value, or unchanged live Places with transferred support/duty and restored old heap | Done(v) or Wait(y,k), valid successor and held cleanup responsibility |
 | Commit/delivery | One coherent Param/args transfer and four-way contract | Atomic Move[repair], no visible intermediate callable | Existing common action, all Pre then joint Post | Actual branch only; LC10 handoff, ordinary resume/Drop |
 | Failure/unavailable | Proved mismatch in ordinary A; missing consumer unavailable; post-seal failure terminal | No successful Post or partial successor on failed/unknown repair | No capability rejects; unknown credentials/guarantee unavailable; legal submit cannot hide runtime failure | Missing consumer unavailable; selected forced final mismatch uses legal PatternMiss handoff; unhandled compile effect diagnoses externally |
 | Dependencies | Source context, ordinary dependency/Pattern/Policy/E | LC1–LC5, source control/producer authority | LC3/LC4/LC7, name shadow/consumption, host globals | LC9/LC10/LC13, Function Pattern/effect syntax, common E/control/delivery |
-| Fidelity/composition | Unique declared binding, fixed sequence, eager once, one transfer, no field ownership premise | Existing InPlace captures inherit Post; only new input names default; first-layer locality and deeper history preserved | No live-byte movement for submit, orphan/duplicate duty or history rewrite; feasible metadata guarantee; regular local elimination; separate migration chain | Exact cleanup, no unwind/implicit Box/invented residual; yield no NameExpr classification; reify shape closed; O preserves observable repair/handler actions |
+| Fidelity/composition | Unique declared binding, fixed sequence, eager once, one transfer, no field ownership premise | InPlace captures and held handoff material use the same id law; only new input names default; repair id is local, full Move[id] still checks Move/Valid, first-layer locality and deeper history | No live-byte movement for submit, orphan/duplicate duty or history rewrite; feasible metadata guarantee; regular local elimination; separate migration chain | Exact cleanup, no unwind/implicit Box/invented residual; yield no NameExpr classification; reify shape closed; O preserves observable repair/handler actions |
 
 ## LC13. Whole-original-K CPS correspondence (pending)
 
@@ -71,6 +71,11 @@ self. Name/generation mapping, unique ownership disposition and exact ordinary
 cleanup responsibility require separate evidence. Proving one grants neither
 of the others; failure/unknown in any prevents successful handoff publication.
 Required/resume specifications do not become input values through this mapping.
+The mapped successful Post on held material is also its identity-delivery Pre
+and Post, and generates that part of successor AutoPre. LC10/LC12/LC13 must
+preserve this equality without fresh defaults or invented facts. It says
+nothing about identity of the full Move[id] transaction or the resumed body;
+actual Move/repair, Valid and the three separate transfer proofs remain required.
 
 - **Input material:** Actual common K and outward delivery, pending caller
   contexts, selected actions/frames, guards, dependencies, name/cut mapping,

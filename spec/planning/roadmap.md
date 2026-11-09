@@ -17,14 +17,16 @@ The [migration closure](heap-io-effect-migration.md) records M01–M13 replaceme
 F01–F14 obligations and implementation phases, with
 [paired acceptance](canonical-semantic-conformance.md#heap-io-and-effect-acceptance).
 Current owners already define one meaning for Required/Initialized capture,
-inherited InPlace AutoPre, explicit inputs after Function Pattern source erasure,
+the lifecycle id law Pre=Post reused by InPlace capture and held suspension
+material AutoPre, explicit inputs after Function Pattern source erasure,
 guaranteed heap submit, Step/Wait/repair/throw, complete original-K CPS
 correspondence and compile-closed reify effects.
 There is no pending semantic deletion or alternative compatibility behavior.
 
 The connected slice is required-versus-initialized capture syntax/Norm and its
 goldens, plus unavailable captured-call-entry/relation gates and unsupported
-repair attachment diagnostic. Semantic capture binding, FnExtract, slice/MoveRepair,
+repair attachment diagnostic. Semantic capture binding, FnExtract, slice/MoveRepair
+(including id continuity and mapped handoff AutoPre),
 global providers, heap library/submit, regular effects, wait/handler/throw/Miss,
 yield/reify checks and generation-grain/ordinary ABI consumers remain pending.
 The original common continuation's full CPS conversion/composition is a

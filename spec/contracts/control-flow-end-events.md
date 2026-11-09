@@ -137,6 +137,12 @@ completion as matchable Done(v). These are ordinary effect sum branches, not
 the internal completion in §5. A repair attachment applies to the complete
 expression; the suspending side proves atomic Move[repair], default id, before
 exposing k. Resume is an ordinary new call of that concrete callable.
+Lifecycle id has Pre=Post. The held handoff material therefore inherits the
+legally mapped successful Move/repair Post as its identity-delivery interface
+and AutoPre, just as existing InPlace automatic captures inherit their preceding
+Post. Default repair id preserves only its own input; the full Move[id] still
+needs ordinary Move and destination Valid evidence. New resume names are not
+existing handoff material and retain ordinary entry rules.
 
 Throw is the specified Wait/reentry/return abbreviation. Propagating its ordinary
 effect through call results does not cross the Ordinary targeted-return barrier.

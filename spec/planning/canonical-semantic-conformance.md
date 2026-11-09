@@ -100,9 +100,9 @@ they do not run RequiredCapture fulfillment or an initializer.
 | H07 | Post-submit free uses transferred complete duties | No orphaned or duplicate release duty | D heap §4 | P library | None |
 | H08 | Object relocation requests up(H) or permitted regular outer path | No no-action source rewrite or automatic alias repair | D heap §§4–5 | P library | None |
 | H09 | All local layers submitted eliminates covered local storage barrier | Unsubmitted/uncovered or independent ref barrier still blocks | D heap §5 | P regular proof | None |
-| L01 | Empty slice Post=Pre | Do not reset existing names/history | D lifecycle §2.1.8 | P LC10 | None |
-| L02 | InPlace captures inherit Post; new args alone default | No U_default regeneration of old captures | D lifecycle §2.1.8 | P LC10 | None |
-| L03 | Id handoff succeeds when destination relations valid | First-layer order broken without legal repair rejects | D lifecycle §2.1.8 | P LC10 | None |
+| L01 | Lifecycle-continuation id has equal complete Pre/Post; empty slicing composes that identity | No reset of names/generations/history/cleanup duties, weakening of complete observations or creation of unknown facts | D lifecycle §2.1.8 | P LC10 | None |
+| L02 | InPlace automatic captures generate AutoPre by inheriting preceding Post through id; new args alone default | No U_default regeneration of old captures or claim that the closure body is id | D lifecycle §2.1.8 | P LC10 | None |
+| L03 | Valid Move[id] hands off material whose identity-delivery Pre/Post and AutoPre equal its mapped successful handoff Post | No fresh defaults or identity of the whole Move[id]/resumed body inferred; broken first-layer order without legal repair rejects, and missing proof stays unavailable | D lifecycle §2.1.8/effect §2 | P LC10/LC12 | None |
 | L04 | User repair with real ref/rebind premises publishes valid successor | No invalid intermediate k, invented repair or unsafe missing Pre | D lifecycle §2.1.8 | P MoveRepair | S unsupported attachment only |
 | L05 | Concrete successor resumes/moves/returns ordinarily | No uniform Future type or reopened predecessor | D effect §§1–2 | P LC12 | None |
 | A01 | Bare Product continuation returns via ordinary ABI1 | No implicit Box inferred from return/async | D E §11 | P materializer | None |

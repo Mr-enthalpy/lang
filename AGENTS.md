@@ -316,8 +316,13 @@ alternate relation or identity.
 Heap/IO/effect semantics are closed in the dependency/call/Pattern/lifecycle
 owners, [effect owner](spec/design/control-flow/effect-steps-and-continuation-handoff.md)
 and [heap owner](spec/design/lifetime/heap-stack-and-storage-responsibility.md).
-Empty action slices preserve Post=Pre; existing InPlace automatic captures
-inherit preceding Post, while genuinely new input names use entry defaults.
+Lifecycle-continuation id has Pre=Post on the same observed material and
+name/generation vocabulary. Empty slices, existing InPlace automatic-capture
+AutoPre and held suspension handoff material reuse this law; existing material
+inherits its established Post, while genuinely new input names use entry defaults.
+For handoff, equality is on the legally mapped successful Move/repair Post.
+Default repair id preserves its own input, but the full Move[id] is not thereby
+identity and still requires ordinary Move/destination Valid evidence.
 Wait hands off a new concrete callable by atomic Move[repair], default id,
 validated by the suspending side before exposure. Self/captures/args are equal
 call/lifecycle material, with no field-ownership premise or duplicate Kill.

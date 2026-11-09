@@ -41,7 +41,7 @@ execution are separately pending in the roadmap.
 Inputs are the actual selected action/activation/cut, yielded value, live
 continuation material, resume Pattern, ordinary dependencies and user repair.
 The [lifecycle owner](../lifetime/lifetime-policy-and-overload-boundary.md#218-empty-slices-inherited-autopre-and-atomic-move-repair)
-owns Valid, empty-slice continuity and Move[rho].
+owns Valid, the id law Pre(id)=Post(id), empty-slice continuity and Move[rho].
 
 The live captured material delivered across the cut is ordinary continuation
 output material. Its call-context projection need not be an owned field subtree
@@ -59,6 +59,17 @@ ordinary call/dependency context; it is not an additional Wait payload, Object
 axis or hidden registry. Unfulfilled RequiredCapture and resume requirements
 remain specifications, not values bound early by this projection. Resume's new
 argument names are introduced only by its ordinary invocation.
+
+The generated lifecycle interface of this held material uses that same id law
+as InPlace automatic-capture AutoPre. Let H_k be the legally mapped observation
+of the actual successful Move/repair Post on that material. Its zero-action
+delivery interval has Pre(id_H_k)=Post(id_H_k)=H_k, and the held-material part of
+AutoPre(k) is H_k. No fresh entry defaults reset these existing occurrences or
+their cleanup duties. This is equality in the successor's name/generation
+vocabulary, not equality of the original and new self Objects or a guarantee
+that the resumed body preserves state. Default repair id likewise preserves
+its own input state; the composite Move[id] must still prove every ordinary
+Move and destination Valid premise and may change the source state.
 
 Three obligations are checked separately before successful handoff publication:
 

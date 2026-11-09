@@ -832,22 +832,37 @@ conjunctions of Color atoms or make Color an arbitrary proposition black box.
 
 #### 2.1.8 Empty slices, inherited AutoPre and atomic Move repair
 
-For the same lifecycle world at an empty action slice:
+The identity action id on a lifecycle continuation preserves its complete
+established lifecycle observations. On the same material and name/generation
+vocabulary, its Pre and Post are equal, not merely compatible or related by a
+one-way implication:
+
+```text
+Sigma_s -- id --> Sigma_s
+Pre(id) = Post(id) = Sigma_s
+```
+
+This equality retains origin, generations, regions, Color, access, history and
+outstanding cleanup duties. It creates no fresh default state or missing fact.
+Unknown required observations remain unavailable. Empty slicing is this identity
+law applied between adjacent actions in the same lifecycle world:
 
 ```text
 K = K_minus ; epsilon ; K_plus
 Slice_epsilon(Sigma_s) = Sigma_s
-Post(K_minus) = Pre(K_plus) = Sigma_s
+Post(K_minus) = Pre(id) = Post(id) = Pre(K_plus) = Sigma_s
 ```
 
 InPlace automatic captures already exist at this slice. With omitted explicit
 Pre their AutoPre is the preceding Post with legal name projection, retaining
-origin, region, Color, access and history. New input names formed at entry use
-the default rules of §2.1.2 only for those names. An explicit Pre constrains
+origin, region, Color, access and history. Thus the inherited capture material's
+identity interval has equal Pre/Post; this is not a fresh invocation-default
+calculation or a claim that the closure body is id. New input names formed at
+entry use the default rules of §2.1.2 only for those names. An explicit Pre constrains
 the actual inherited world; it cannot erase history. An Ordinary closure has a
 real formation/call boundary and cannot claim epsilon continuity by syntax.
 
-An actual handoff instead proves the composite selected transaction:
+An actual handoff additionally proves the composite selected transaction:
 
 ```text
 Pre_MoveRepair(Sigma_s, names, rho, destination)
@@ -859,6 +874,31 @@ commit publishes only Sigma_prime and its complete successor callable
 AutoPre(k) = RenameAndProject_(s->k)(Sigma_prime)
 rho omitted = id
 ```
+
+The same identity law generates the lifecycle interface of the already
+established live handoff material, after the actual Move/repair and legal
+correspondence have been validated:
+
+```text
+H_k = RenameAndProject_(s->k)(Sigma_prime) on held handoff material
+Pre(id_H_k) = Post(id_H_k) = H_k
+AutoPre(k) restricted to held handoff material = H_k
+```
+
+id_H_k denotes the zero-action delivery interval for that material; recognizing
+it inserts no extra Move, binding, clone or repair. Handoff material keeps the
+actual successful Post rather than receiving new default origins or obligations.
+The equality compares observations in the successor vocabulary, not the original
+self and new k as identical Objects. It does not describe execution of k's body.
+New resume parameters still receive only their ordinary entry rules when formed;
+unfulfilled RequiredCapture slots remain specifications until their admitted call.
+
+The identity of an omitted repair is also local: Pre(rho=id) = Post(rho=id)
+in its actual repair-entry world. Move[id] still includes the selected Move and
+may change generations/regions or ownership under the ordinary rules. It is not
+id on the entire source world and is not evidence that destination Valid holds.
+The equality of these identity intervals does not extend to a nonidentity
+Move/repair, which retains its own validated state transformation.
 
 Trivial killing Move resets the first-level region (region_0, called Region_1
 in §2.1.3), retaining origin and deeper regions. In particular the destination

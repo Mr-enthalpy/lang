@@ -63,7 +63,9 @@ remains pending (LC9–LC12); the traces are positive/negative acceptance eviden
    instead forms once and ignores later same-name shadowing. Repeated/equal
    values never merge capture occurrence identities or sealed invocation inputs.
 2. At an empty InPlace slice, an existing r carries the preceding Post into
-   AutoPre. New input q alone receives default entry generation. Recreating r's
+   AutoPre by the identity law Pre(id)=Post(id). The identity interval preserves
+   r's complete observed state; it does not assert the closure body is id.
+   New input q alone receives default entry generation. Recreating r's
    origin as a fresh default world would break Post=Pre and is rejected. An
    explicit Pre must hold in this inherited world, not overwrite its history.
 3. `let heap = heap ref .. locate(pool);` reads old heap and forms a legal local
@@ -75,11 +77,16 @@ remains pending (LC9–LC12); the traces are positive/negative acceptance eviden
    barriers even for preference-regular unknown depth, but an independent invalid
    ref still blocks return. Object relocate instead performs real storage Move.
 4. With v and r both crossing wait, trivial Move can violate
-   `region_0(r) < origin(r).region`. Id then fails before exposure. The suspending
-   side may supply `@{r rebind = v ref;}` only with real exclusive/access/validity
+   `region_0(r) < origin(r).region`. Move[id] then fails its destination Valid
+   check before exposure: the id repair preserves its own input and cannot fix
+   the invalid Move result. The suspending side may supply
+   `@{r rebind = v ref;}` only with real exclusive/access/validity
    premises. Atomic Move[repair] delivers a complete legal concrete k and its
-   successor AutoPre; it never publishes an invalid k and repairs later. Immediate
-   legal Resume can justify a larger generated slice, preserving observable
+   successor AutoPre; it never publishes an invalid k and repairs later. The
+   held material's zero-action delivery has equal Pre/Post at the legally mapped
+   successful handoff Post, retaining history and cleanup duties without new
+   defaults. The actual Move may still have changed generations or ownership.
+   Immediate legal Resume can justify a larger generated slice, preserving observable
    repair actions. `expression ?` may return through ordinary ABI1 without Box;
    explicit `? Box` introduces ordinary storage duties, separately discharged.
 5. A selected forced actual match failure can yield PatternMiss by throw. A

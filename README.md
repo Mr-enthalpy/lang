@@ -92,6 +92,9 @@ terminal root compatible with single-linked HeapStack construction; other user
 Heap/IO shapes remain unconstrained.
 Live captured output maps to successor call context under separately checked
 name, ownership and cleanup obligations, not default self-field ownership.
+Lifecycle id has equal Pre/Post: InPlace automatic captures inherit preceding
+Post, and held suspension material inherits the legally mapped successful
+handoff Post. Default repair id does not make the composite Move an identity.
 Function Pattern projection exposes former captures as explicit inputs. It
 consumes capture specifications, not projection-site capture values; absent
 heap does not prevent a proved parameterized interface. Future
@@ -178,6 +181,8 @@ structural dependencies remain independent. Captures form an ordered bare
 Product of specifications in source order; required positions bind per new call.
 In-place syntax uses automatic value capture and inherits preceding slice Post
 for existing captures when Pre is omitted; only new input names use entry defaults.
+This follows the same lifecycle id Pre=Post law as held suspension handoff
+material's inheritance of the mapped successful handoff Post.
 The [call owner](spec/design/symbol-world/function-object-call-model.md#62-consumer-directed-self-projections)
 separates self's call anchor, implicit parameter Product and return frame.
 The [Pattern owner](spec/design/patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)

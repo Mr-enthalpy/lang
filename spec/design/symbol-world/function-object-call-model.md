@@ -722,9 +722,14 @@ Deferred automatic/initialized formation retains its actual obligations and
 cannot turn into invocation-site recapture.
 
 For InPlace automatic existing captures, omitted Pre inherits the formation
-slice's preceding Post, as specified by the lifecycle owner's empty-slice law.
+slice's preceding Post, as specified by the lifecycle owner's id law
+Pre(id)=Post(id) and its empty-slice application. On the legally projected
+existing capture material, the identity interval has equal Pre/Post; this
+neither resets entry facts nor declares the closure body's actions to be id.
 Only genuinely new entry parameter names use entry defaults. A real Move/repair
-boundary supplies its validated successor state; Ordinary closure boundaries
+boundary supplies its validated successor state; held handoff material inherits
+that Post through the same identity law. Default repair id does not make the
+whole Move[id] transaction an identity. Ordinary closure boundaries
 are not empty slices.
 
 Bind, Move, Copy, Return, Store and Pass are ordinary value operations on the
