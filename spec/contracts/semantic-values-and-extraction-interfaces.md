@@ -42,6 +42,9 @@ Already selected forced extraction/delivery consumes its proved total-root
 mismatch through the result owner's [one root conversion rule](../design/patterns-overload/return-value-extraction-and-implicit-decomposition.md#forced-extraction-and-one-root-conversion).
 Applicability remains conversion-free; missing mismatch/root evidence is
 unavailable. Selected conversion or final extraction failure never reopens.
+If that final actual forced relation proves mismatch, its connected execution
+consumer uses the [PatternMiss effect protocol](../design/control-flow/effect-steps-and-continuation-handoff.md#5-forced-patternmiss-and-compile-boundaries).
+Applicability/ordinary branch mismatch and unavailable consumers do not throw.
 Its content input is the Object's `Val1?` and owned `Val2`. Structural
 extraction additionally requires explicit `DirectPatternChild` evidence and
 the `StructuralDefault` family filter.

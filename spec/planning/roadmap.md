@@ -5,6 +5,45 @@ This document records consumer coverage and dependency order. Passing storage
 or syntax tests establishes their stated slice, not complete source evaluation.
 Representation choices belong in [open questions](open-questions.md).
 
+## Heap / IO / effect convergence frontier
+
+Projection consumes capture specifications, not projection-site captured values.
+Prove binder substitution for every admitted future explicit input/world and
+conserve original resource custody/Drop separately. LC6 and FP01–FP08 remain
+unconnected normative targets. Optional Result/Error adapters are explicit
+ordinary calls; Error-shaped data performs no default effect or early return.
+
+The [migration closure](heap-io-effect-migration.md) records M01–M13 replacements,
+F01–F14 obligations and implementation phases, with
+[paired acceptance](canonical-semantic-conformance.md#heap-io-and-effect-acceptance).
+Current owners already define one meaning for Required/Initialized capture,
+the lifecycle id law Pre=Post reused by InPlace capture and held suspension
+material AutoPre, explicit inputs after Function Pattern source erasure,
+guaranteed heap submit, Step/Wait/repair/throw, complete original-K CPS
+correspondence and compile-closed reify effects.
+There is no pending semantic deletion or alternative compatibility behavior.
+
+The connected slice is required-versus-initialized capture syntax/Norm and its
+goldens, plus unavailable captured-call-entry/relation gates and unsupported
+repair attachment diagnostic. Semantic capture binding, FnExtract, slice/MoveRepair
+(including id continuity and mapped handoff AutoPre),
+global providers, heap library/submit, regular effects, wait/handler/throw/Miss,
+yield/reify checks and generation-grain/ordinary ABI consumers remain pending.
+The original common continuation's full CPS conversion/composition is a
+foundational pending common-E obligation, including ordinary no-wait work,
+nested pending callers, every expression/control/delivery context, fixed cleanup
+and compile/reify projections. LC13 specifies its handoff; local wait splitting
+or a native caller stack abandoned on suspension is insufficient.
+Use the existing spanned unsupported source boundary; only a genuinely remaining
+continuation may cross as Residual. Missing lifecycle/resource consumers cannot
+silently execute a supplied host approximation or ignored capture list.
+
+Dependency order: capture/Function Pattern/AutoPre -> global capability and heap
+protocol plus original-K CPS/control/delivery composition ->
+Wait/repair/effect/handler -> throw/PatternMiss/compile/reify ->
+cross-stage composition and proved O/materialization. Each connected slice must
+replace/gate its old path before execution is claimed.
+
 ## 1. One source and evaluation pipeline
 
 ```text
@@ -71,7 +110,7 @@ Every step preserves one identity/authority relation and selected no-reopen.
 | Lifecycle | SemanticContinuation, LifeName, Region, supplied Pre, Kill/Preserve, fixed cleanup and Color; common transactions gate every action on earlier cleanup observations | Source producer facts, NLL/with, ReifyLife and destructors need ordinary control-flow facts; source actions must enter the common transaction |
 | Physical source | Discovery/decoding/provenance and normalized fragments retaining inherited navigation; empty fragments form no semantic names or owners | Declarations under inherited navigation require the qualified ordinary name/Path consumer; EntryContinuation, sibling overlays and dependency projection need E composition |
 | InvocationResult | Semantic result, residual and diagnostic transport | Residual requires a real remaining continuation; serial completion and residual ABI remain separate |
-| Closure / self / Function Pattern | Capture syntax/Pattern roots, contextual formal-frame carriers, ordinary sealed selection and transaction substrate | Requested UseKind/DemandStage classification, exclusive value-capture modes, fixed CaptureProduct, candidate-local implicit relation evidence, actual Param transfer and directional FnExtract/FnRequest are pending; generic closure heads do not implement RHS requests |
+| Closure / self / Function Pattern | Capture syntax/Pattern roots, contextual formal-frame carriers, ordinary sealed selection and transaction substrate | Requested UseKind/DemandStage classification, exclusive value-capture modes, invocation-indexed CaptureValueProduct, required binding, candidate-local implicit relation evidence, actual Param transfer and directional FnExtract/FnRequest are pending; generic closure heads do not implement RHS requests |
 | Delivery ABIKind | Canonical E law: FreshLet ABI1, ExistingTarget ABI2 | Delivery target consumer wiring and physical input-frontier/target-Place materialization remain pending; RVO/NRVO supplies no selection evidence |
 
 A missing canonical consumer reports unavailable or preserves an established
@@ -117,7 +156,7 @@ saved authority. Writes, moves and invalidations keep their ordinary effects.
 
 Reach includes accessible members, Products, captures, references and share
 targets. Required unknown reachability is unavailable. An instance-open self-root
-type must be the single direct complete type result. External types and ordinary
+type must be the single direct complete type formal return result. External types and ordinary
 values are legal without acquiring that NameExpr. ReturnEvent and delivery remain
 real boundaries even for equal self returns.
 
@@ -175,7 +214,9 @@ ordinary actions retain their meaning without failed execution retry.
 
 Dependencies separate requirements, selected ordinary realization and layout.
 Realization is unique up to observational equivalence for one selected action.
-Explicit/automatic occurrences retain identity; invocation does not recapture.
+Explicit/automatic occurrences retain identity. Automatic/initialized sources
+are retained; required specifications bind at each admitted new call and their
+observed sources enter canonical inputs.
 Dependency lifetime and escape remain ordinary checked handoffs.
 
 Serial completion consumes path-sensitive UnitDiscard, unit fallthrough,

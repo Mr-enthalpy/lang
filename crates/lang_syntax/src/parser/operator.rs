@@ -344,6 +344,22 @@ fn parse_postfix_expr_in_context(
         if let Some(current) = current_operator(parser) {
             if is_postfix_operator(current.spelling) {
                 let operator = bump_operator(parser, current);
+                if current.spelling == OperatorSpelling::At
+                    && parser.cursor.at_symbol(Symbol::LBrace)
+                {
+                    // Repair attaches below complete E. Until that carrier is
+                    // connected, never reinterpret it as high-binding @ + closure.
+                    let repair = super::closure::parse_body_block(parser);
+                    let span = expr.span.join(repair.span);
+                    parser.error(
+                        DiagnosticCode::UnsupportedEffectRepair,
+                        "effect repair attachment is unavailable: full-expression Move[repair] consumer is not connected",
+                        operator.span.join(repair.span),
+                    );
+                    expr =
+                        error_operator_expr(parser, "unsupported effect repair attachment", span);
+                    continue;
+                }
                 if current.spelling == OperatorSpelling::Dollar {
                     parser.pattern_context = !parser.pattern_context;
                 }

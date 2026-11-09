@@ -79,7 +79,8 @@ See `normalized-surface-semantics.md` §3–§7 for the full rules. Preserve:
   In-place capture lists are rejected, and malformed callable tails stay Error.
 - Ordinary capture clauses are lists of let-shaped bindings. Explicit
   `[let x = E]` and `[x = E]` share `BindingSlot` normalization; shorthand
-  `[E]` elaborates to `let n = E` only when normalized `E` has exactly one
+  bare `[x]`, `[x:T]` and `[p let x]` declare RequiredCapture without initializer.
+  Other non-bare `[E]` elaborates to initialized `let n = E` only when normalized `E` has exactly one
   distinct free non-call bare name. Capture initializers share the pre-capture name environment;
   their effects follow ordinary formation order and run once.
 - Only the complete `[[Name]] {` shape bypasses an available capture slot.
@@ -231,14 +232,23 @@ Normalization produces syntax carriers, not semantic values. Every legal
 completed closure expression yields full tau_C. DotName normalizes to ordinary
 `name::adl` navigation; its provenance grants no dispatch or binding privilege.
 
-Source-written captures are explicit binding requirements. `[x]` is
-`[let x = x]` with no written mode override, not automatic const
-capture. Any implicit capture requirement needs later resolved free-reference
+Source-written captures are explicit requirements. `[x]`, `[x:T]` and `[p let x]`
+bind required material in the actual admitted new call context; `[let x=E]`
+initializes once at formation. Neither implies automatic const capture.
+Automatic capture analysis needs later resolved free-reference
 and external-eligibility analysis. Capture requirements do not define `self`
 fields, layout, or ABI.
 In-place syntax has no explicit capture clause; free external observations form
-automatic dependency requirements and ordinary realizations. Invocation does
-not recapture. Actual access/capability/lifetime checks decide outer writes.
+automatic dependency requirements and ordinary realizations. These established
+sources do not recapture. InPlace existing captures inherit preceding Post when
+Pre is omitted; only genuinely new input names use default entry generation.
+This is the lifecycle identity law Pre(id)=Post(id) on the same observed
+material. Held material delivered at suspension reuses it on the legally mapped
+successful handoff Post; it is not initialized again. Omitted repair id preserves
+its own repair-entry state, while the composite Move[id] still performs its
+ordinary Move and must prove destination validity. Neither the capture body nor
+the resumed body is declared to be id by this interface-generation rule.
+Actual access/capability/lifetime checks decide outer writes.
 Ordinary => closures use one explicit or automatic value-capture mode. An
 explicit list excludes automatic value capture; missing external values are
 diagnosed. Automatic compile structural dependencies remain independent;
@@ -266,11 +276,39 @@ lifetime clauses or spread. Its root rank+1 type/Policy fully denotes; deeper
 holes and LHS deduction retain ordinary rules. Follow the existing call and
 Pattern owners. Projected Function Pattern values necessarily erase external
 structural-source authority, even with compile-known Val1; opaque internal
-provenance is not authority. Same-Type compile-to-runtime migration instead
+provenance is not authority. Former captures become explicit inputs of the
+projected value; RHS supplies those ordinary args, never implicit capture slots.
+Same-Type compile-to-runtime migration instead
+uses its separate retained-Path proof. Function Pattern projection observes
+CaptureSpecProduct without resolving required names at the projection site;
+CaptureValueProduct is only for actual structured invocation. Prove the binder
+mapping and contract for all admitted explicit inputs, not one captured witness.
+Actual resource retention/transfer/Drop remains exactly once; interface formals
+are not storage for the original capture. Same-Type migration
 checks retained Paths in the prospective destination world at hard A: false
 excludes, unknown stays unavailable. None of these consumers belongs in Norm.
 
 ## 6. Common Misreadings
+
+For resource/effect work read the [heap owner](../design/lifetime/heap-stack-and-storage-responsibility.md)
+and [effect owner](../design/control-flow/effect-steps-and-continuation-handoff.md).
+The [whole-original-K CPS consumer](../design/static-evaluation/evaluation-residual-and-optimization.md#71-whole-original-continuation-cps-conversion-consumer-pending)
+is also mandatory and pending: all original semantic continuation contexts,
+including pending caller suffixes, ordinary no-wait work, cleanup, return and
+compile/reify boundaries must compose faithfully. Local wait splitting, Raw/Norm
+rewriting and a separate async evaluator cannot substitute for this account.
+Heap relocate transfers existing support/release responsibility under a guaranteed
+Pre and preserves live Places; object relocation moves real storage. Wait yields
+a concrete ordinary callable by valid atomic Move[repair], default id. Throw
+uses that protocol; dropping its continuation cleans ordinarily, without unwind.
+Internal completion and effect Done(v) are distinct. IO/heap need no effect or
+shared stack shape; async needs no implicit Box or uniform state-machine type.
+Only selected forced actual mismatch throws PatternMiss. Yield cannot create an
+instance NameExpr, and reify public effect/input/output/capture/lifecycle shape
+must be compile-determined; runtime branch choice inside a fixed sum is legal.
+The [migration index](../planning/heap-io-effect-migration.md) names pending
+consumers, unavailable diagnostics and paired acceptance. Do not use generic
+Name/operator parsing or carrier tests as proof those consumers execute.
 
 - "`a b` must be a call" — no; it is composition into the product-call skeleton.
 - "`(args)` after a name is the argument list" — no; it is the source-product
@@ -375,7 +413,8 @@ and optimizer structures cannot introduce program facts.
 - Killable is instance-local; MoveEffect is fixed before observation; Movable
   is frontier legality. Equal types and ZST layout prove no blanket exemption.
   with placement precedes @; killing move adds no old-generation destructor.
-- Split/D is restricted residualization, Done is internal boundary completion,
+- Split/D is restricted residualization, internal Done_chi/Done_Return is boundary completion,
+  effect Done(v) is an ordinary matchable normal-result branch,
   and residual escape is a separate current-state ordinary compile consumer.
   Return contributes no synthetic local unit.
 - Naked operators use operator[op], dot .op uses op::adl, explicit paths stay
@@ -421,8 +460,11 @@ checks; wrappers preserve those obligations without a source-origin veto. Lifeti
 checked through the explicit refinement handoff, not inferred from tau status.
 
 Callable-head P2 reify has outward runtime horizon Policy and requires a return
-classifier explicit or input-inferable without reverse migration. Its active
-closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
+classifier explicit or input-inferable without reverse migration. Its outward
+input/output, regular effect, capture and lifecycle interface shape must also be
+compile-determined independently of runtime reverse flow; ordinary handlers or
+wrappers close runtime-dependent shape before exposure. Runtime choice within a
+fixed regular sum is legal. Its active closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
 and mixed-Policy outputs are legal; the need for reify follows the continuation's
 reverse dependencies. Legal Policy ranks have exactly the form
 absent* runtime* compile*. PolicyPair is the common two-rank window. Ordinary

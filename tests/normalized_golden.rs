@@ -1,5 +1,21 @@
 use std::fs;
 #[test]
+fn capture_weak_let_shorthand() {
+    assert_norm_case("capture_weak_let_shorthand", false);
+}
+#[test]
+fn required_captures() {
+    assert_norm_case("required_captures", false);
+}
+#[test]
+fn required_capture_errors() {
+    assert_norm_case("required_capture_errors", true);
+}
+#[test]
+fn effect_repair_unavailable() {
+    assert_norm_case("effect_repair_unavailable", true);
+}
+#[test]
 fn product_repetition_material() {
     assert_norm_case("product_repetition_material", false);
 }

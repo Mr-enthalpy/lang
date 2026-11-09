@@ -1,5 +1,9 @@
 use std::fs;
 #[test]
+fn required_capture_and_effect_material() {
+    assert_lexer_case("required_capture_and_effect_material", false);
+}
+#[test]
 fn reify_p2() {
     assert_lexer_case("reify_p2", false);
 }

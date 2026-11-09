@@ -38,7 +38,9 @@ of the same logic; it is neither mutation nor move nor aliasing.
 
 The new instance preserves the already determined semantic dependency material,
 using their ordinary copy/share/ref rules. It does not re-execute arbitrary
-surrounding code or re-resolve outer names. A captured reference keeps its
+surrounding code or re-resolve formed sources. RequiredCapture specifications
+remain requirements until each new admitted call; replication binds none early.
+A captured reference keeps its
 referent; copying the closure does not duplicate that referent or extend its
 lifetime.
 

@@ -248,7 +248,9 @@ ErrorAst; an error cannot be represented as a valid empty Block.
 CaptureClause ::= "[" CaptureItem ("," CaptureItem)* "]"
 
 CaptureItem
-  ::= PolicySpec "let" BindingCore "=" Expr
+  ::= RequiredName [":" AnnotationPattern]
+   |  [PolicySpec] "let" RequiredName [":" AnnotationPattern]
+   |  PolicySpec "let" BindingCore "=" Expr
    |  "let" BindingCore "=" Expr
    |  BindingCore "=" Expr
    |  Expr
@@ -258,7 +260,8 @@ The Raw AST preserves whether a capture was explicit or shorthand:
 
 ```text
 CaptureItemAst
-  = Explicit {
+  = Required { slot: BindingSlotAst, span: Span }
+  | Explicit {
       slot: BindingSlotAst,
       initializer: ExprAst
     }
@@ -272,7 +275,13 @@ formal parameters. `[let x = E]` and `[x = E]` are equivalent; a policy prefix
 requires the `let` anchor, for example `[runtime let x = E]`. Alias `===`
 remains form-level and is rejected after capture `let`.
 
-`[E]` is inferable shorthand. It normalizes to
+Bare `[name]`, `[name:rank]` and `[p let name]` have no initializer and preserve
+RequiredCapture, never an implicit `=name`. Required slots retain the requested
+name and constraints; semantic fulfillment belongs to the actual admitted call.
+Malformed required slots retain syntax diagnostics rather than becoming eager
+expression shorthand.
+
+Only non-bare `[E]` uses inferable initialized shorthand. It normalizes to
 `[let n = E]` exactly when the normalized expression contains one distinct
 free bare name `n` in non-call-target position. Occurrences are deduplicated;
 a name may also appear as a call target without losing its non-call evidence.
@@ -405,12 +414,12 @@ NormClosurePlacement
   | Ordinary
 ```
 
-Normalized captures are uniformly explicit bindings:
+Normalized captures preserve the source-timing distinction:
 
 ```text
 NormCapture {
   slot: NormBindingSlot,
-  initializer: NormExpr,
+  initializer: Option<NormExpr>, // None Required; Some Initialized
   origin: NormOrigin
 }
 ```
@@ -517,9 +526,10 @@ complete body. Nested callables inherit outer references, allocate their own
 owner/root, and extend the environment with their own telescope. Ordinary
 value binders do not alter hole identity.
 
-Normalized source capture items are explicit let-shaped bindings. `[x]` is
-explicit shorthand for `[let x = x]` with no written mode override; it is not
-automatic const capture. Future resolved free-reference analysis may create
+Normalized source capture items are explicit let-shaped requirements. `[x]`,
+`[x:T]` and `[p let x]` are RequiredCapture without source read or initializer.
+`[let x=E]` and non-bare expression shorthand are InitializedCapture. Neither
+implies automatic const capture. Future resolved free-reference analysis may create
 separate implicit eligible capture requirements carrying requested Policy and
 required access capability. Such requirements are abstract dependencies, not
 `self` fields or layout decisions. Each closure has one explicit or automatic
@@ -529,11 +539,11 @@ Automatic compile structural dependencies remain independent; runtime structural
 access is inadmissible. In-place closures prohibit explicit capture lists,
 not ordinary lifetime head clauses, and use Automatic value-capture mode.
 Automatic mode is also available to other admitted capture-list-free forms.
-Explicit list entries retain source order as bare positional CaptureProduct
+Explicit list specifications retain source order as bare positional CaptureSpecProduct
 entries across stages; automatic sequence is fixed at completed formation.
 Raw/Norm list preservation proves neither resolved exclusivity nor realization.
-Invocation consumes
-the established realizations without recapture; outer writes use ordinary
+Invocation consumes established realizations and fulfills required entries in
+the admitted actual call context without reopening a sealed binding; outer writes use ordinary
 access/capability/lifetime judgments.
 After formation, placement and capture origin supply no overload applicability,
 specificity or preference evidence. Distinct tied candidates remain ambiguous.
@@ -568,16 +578,19 @@ capture/self, lifetime clauses or spread. Existing generic closure-head carriers
 are not proof of these consumers. Projected Function Pattern values necessarily
 erase external structural-source authority; opaque internal provenance/known
 Val1 cannot restore it. This is a semantic projection, not same-Type Policy
-migration or a parser action. No parser syntax or diagnostic is changed here.
+migration or a parser action. Original captures become explicit input positions
+of the projected value; RHS supplies those ordinary args, never implicit
+capture slots. Optional Env Objects forward their own fields normally.
 
 ## 10. Diagnostics
 
-The implementation has 34 `DiagnosticCode` variants. Pattern validation and
+Pattern validation, pending repair attachment and
 PolicyLet operand recovery use:
 
 ```text
 MultiplePackPatternsAtSameLevel
 ExpectedPolicyLetOperand
+UnsupportedEffectRepair
 ```
 
 `MultiplePackPatternsAtSameLevel` is reserved for a consumer that projects normalized Pattern
@@ -682,8 +695,11 @@ requested-name selectors and expression bodies require ordinary source
 span/recovery coverage when wired. Semantic rules never feed back into parsing.
 
 Callable-head P2 reify has outward runtime horizon Policy and requires a return
-classifier explicit or input-inferable without reverse migration. Its active
-closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
+classifier explicit or input-inferable without reverse migration. Its outward
+input/output, regular effect, capture and lifecycle interface shape must also be
+compile-determined independently of runtime reverse flow; ordinary handlers or
+wrappers close runtime-dependent shape before exposure. Runtime choice within a
+fixed regular sum is legal. Its active closed boundary admits actual reverse-dependent work. P2 runtime with P1 compile
 and mixed-Policy outputs are legal; the need for reify follows the continuation's
 reverse dependencies. Legal Policy ranks have exactly the form
 absent* runtime* compile*. PolicyPair is the common two-rank window. Ordinary
@@ -743,6 +759,28 @@ Product; comma holes retain Unit and available call-input exposure already
 preserves their distinct arities. The do/default handoff remains a canonical
 acceptance obligation, not an implemented Raw/Norm node inventory. Every connected grammar/recovery rule needs token,
 AST, Norm and diagnostic golden coverage before that frontier is claimed closed.
+
+## Unified effect surface handoff
+
+Canonical proposed spelling and role (semantic owners are linked in the design
+index): wait expression/yield-resume Pattern, low-binding full-expression
+`E@{repair}`, postfix throw, effect-Pattern nearest-unit postfix `~`, ordinary
+`heap relocate;`, and `expression ? Box` for explicit ordinary storage wrapping.
+Wait/throw/locate/relocate remain weak Names; ordinary uses are not globally
+reserved. `? Box` preserves ordinary unpack/target-call direction and grants no
+automatic allocation. Effect `~` is restricted to the dedicated Function Pattern
+domain, not a global change to ordinary postfix operator precedence.
+
+Future Raw/Norm carriers must preserve yield versus resume Pattern, repair body,
+complete-expression extent, effect grouping/arrows, source spans and recovery.
+No HIR, selected candidate or lifecycle-world update belongs in them. Until
+connected, the exact `@{` attachment is diagnosed as unsupported and cannot
+lower to an ordinary high-binding @ followed by an unrelated closure. Ordinary
+`n@` remains valid operator syntax. Wait/throw/effect Pattern parsing and all
+execution remain pending. Ordinary generic Name calls are not proof of these
+consumers. Required/Initialized capture preservation is implemented separately
+from semantic capture fulfillment; source callable capture execution must report
+unavailable until its ordinary consumer is connected.
 
 ## Lifecycle expression handoff
 

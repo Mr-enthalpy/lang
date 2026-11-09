@@ -74,7 +74,7 @@ compile-to-runtime same-Type migration. The
 checks their recoverability in each candidate's prospective destination world
 at hard A: false excludes, unknown is unavailable. Source-world success alone
 is insufficient. This reads actual retained requirements, not InPlace origin,
-and never authorizes invocation-site recapture or a placement-based Bind/Move/
+and never authorizes re-resolution of formed sources or a placement-based Bind/Move/
 Store/Pass ban. An already accepted view retains its established obligations.
 
 ### 2.1 Realization is fixed by the selected ordinary action
@@ -107,30 +107,54 @@ live reference through closure lowering; a reference read retains its actual
 target and generation through the ordinary reference semantics. The backend
 may change representation only while preserving the chosen observations.
 
-## 3. Explicit dependency clauses
+## 3. Required and initialized captures
+
+Capture source timing is independent of Explicit/Automatic value-capture mode:
 
 ```text
-[let x = E]
-[x = E]
-[x]
+[name], [name: rank], [p let name] => RequiredCapture(slot, requested_name)
+[p let name = E], [name = E]      => InitializedCapture(slot, E)
 ```
 
-These forms provide explicit binding/dependency material for closure formation
-under the existing shorthand rules. [x] is not automatically const and does
-not create write authority.
+A RequiredCapture declares name-sensitive necessary call material. Formation
+retains its binder, requested name, rank, Pattern and Policy; it executes no
+implicit `name = name`, reads no source resident and establishes no source edge.
+InitializedCapture evaluates E once at reached formation under ordinary
+selection/Pre/commit/Post and retains the resulting source realization.
+Non-bare expression shorthand `[E]` may infer an InitializedCapture binder under
+the syntax owner's unique free-name rule; the reserved required forms take
+precedence. `[x]` is required, while `[let x = x]` is initialized.
 
-Initializers share the pre-capture name environment. A later item cannot see
-a newly created earlier capture binder merely because it occurs later in the
-list. This common name scope does not make effects simultaneous: evaluation
-order, reads, writes and one-time effects follow ordinary formation semantics.
+```text
+Gamma_call; K; candidate_entry |- ResolveRequired(slot, requested_name)
+    => Bound(source, evidence) | Mismatch(proof) | Unavailable(d)
+Captured(d,I,K) = ResolveRequired(d, Gamma_call, K, Entry(I)) if Required(d)
+Captured(d,I,K) = FormedSource(d)                           if Initialized(d) or Automatic(d)
+```
 
-Each reached formation occurrence executes its initializers as prescribed.
-Projection does not repeat execution, and invoking the body does not rerun
-the formation expressions.
+Resolution uses the actual admitted call context and the declared requirement
+of this entry. Nearest-name resolution is unique; a missing/incompatible local
+name cannot fall back to a formation-time global. Ordinary rank, Pattern,
+Policy, access and lifecycle obligations still apply. Required unknown evidence
+is unavailable. This is fulfillment of a declared input, not dynamic lookup by
+arbitrary body strings. The body resolves its capture binder lexically.
 
-Resolved external dependencies without an explicit clause use established
-ordinary reads and permitted dependency formation. Renaming this relationship
-does not expand automatic borrowing, copying or writing.
+Candidate-local availability is read-only in the existing R_vis/hard-A pipeline;
+it performs no initializer, Move or body execution and adds no preference.
+After the ordinary unique seal, selected binding/Pre failure is terminal, with
+no contextual overload search or runner-up. Only selected input is moved once.
+
+All initialized entries share the enclosing pre-capture name environment.
+Their effects follow ordinary formation order, once per reached occurrence.
+Projection, copying and invocation do not rerun those expressions or change
+their source. An initialized global IO/heap binding therefore survives local
+same-name shadowing. Required specifications survive copying/replication and
+are fulfilled afresh for each genuinely new invocation; a sealed invocation
+retains its bound source and cannot resolve it again at runtime.
+These laws preserve the original structured callable and its materials.
+Source-erasing projection does not mutate/rebind them: it exposes a separately
+parameterized interface under the spec/substitution/resource rules of §4.1
+and the Pattern owner.
 
 ## 4. Explicit and automatic dependency formation
 
@@ -161,18 +185,20 @@ Capture initializers retain their pre-capture environment and ordinary
 once-per-formation effects. Occurrence and binder identities are preserved,
 never deduplicated by spelling or value equality.
 
-Each occurrence establishes ordinary requirements and realizations while
-forming the closure. The source occurrence's selected ordinary action fixes
+Automatic observations and initialized occurrences establish realizations while
+forming the closure; explicit required entries retain specifications until call
+fulfillment (§3). The source occurrence's selected ordinary action fixes
 whether its realization uses owned material, ref/share, a stable link or
 another existing legal relation, with all of that relation's premises and the
 uniqueness law in §2.1. These are not implementation alternatives for one action.
 No automatic borrow, copy or write permission follows
 merely from needing a source.
 
-Both return complete tau and invoke using established dependencies. There is
-no separate embedding environment, delayed lookup by spelling at candidate use,
-or recapture during invocation. Formation that is not ready retains its
-formation obligations rather than claiming a completed dependency.
+Both return complete tau. Invocation uses formed realizations and fulfills
+declared RequiredCapture entries in its actual call context. There is no
+separate embedding environment or arbitrary dynamic body lookup. Formation
+that is not ready retains its real obligations; an unresolved required source
+is a legal call requirement, not an unfinished eager initializer.
 
 Bind, Move, Copy, Return, Store and Pass are ordinary operations on either
 result. Their legality depends on actual dependencies and ordinary access,
@@ -188,12 +214,28 @@ binder identities and ordinary evidence remain observable under their own rules.
 Let B_K denote the existing bare positional Product at continuation K:
 
 ```text
-ExplicitCaptureSeq(C) = <d1,...,dn>  // source list order, across both stages
-CaptureProduct(C) = B_K(Realize(d1),...,Realize(dn))
-
+ExplicitCaptureSeq(C) = <d1,...,dn>  // specifications in source order, both stages
 AutomaticCaptureSeq_Sigma(C) = <d1,...,dn>
-CaptureProduct_Sigma(C) = B_K(Realize(d1),...,Realize(dn))
+CaptureSeq(C) = the applicable fixed sequence above
+CaptureSpecProduct(C) = B(Spec(d1),...,Spec(dn))
+CaptureValueProduct(C,I,K) = B_K(Captured(d1,I,K),...,Captured(dn,I,K))
 ```
+
+Spec(d) is the capture binder/occurrence identity and its input rank, Pattern,
+Policy, access and lifecycle requirements. This is ordinary interface description
+material, not a supplied input value, resident read or source edge. It exists for
+required, initialized and automatic positions. An initializer's one formed value
+is not proof that arbitrary replacement inputs satisfy its implementation.
+
+CaptureSpecProduct has no invocation context argument and performs no
+ResolveRequired. CaptureValueProduct belongs only to an actual structured call:
+required entries then resolve in that call's admitted context, while initialized
+and automatic entries use their formed sources. Missing call context can make
+that value product unavailable, but cannot by itself prevent source-erasing
+interface projection from its available specifications. Such projection uses
+the Pattern owner's universal input/substitution obligation, not a sample value
+from the projection site. The requested spelling is not a name constraint on
+the projected value's future explicit argument.
 
 Every capture occupies a bare positional entry, even if it has a binder name.
 The layer is ordered by the ordinary Product rule. Thus interleaved compile,
@@ -204,23 +246,28 @@ runtime storage slot without losing its semantic position.
 Automatic sequencing is encoded from resolved source-use relations and is
 determinate and fixed for each completed closure. The definition of a use and
 the cross-implementation ordinal mapping are not a stable public guarantee.
-Invocation, copy, return and reify never rediscover, rerun or reorder captures.
+Invocation, copy, return and reify never rerun initialized sources or reorder
+positions. Required entries keep their position while their declared source is
+bound at each new invocation; copying does not bind them early.
 Distinct occurrence/binder identities and selected realizations cannot be
 collapsed because their values are equal. These are semantic Product positions,
 not public fields, an environment Object or a fixed machine layout.
 
 ### 4.2 Compile partner dependencies
 
-A selected CompilePartner retains the dependencies established by ordinary
-callable formation. Its CompileInstance key observes the parent owner, selected
+A selected CompilePartner retains formed dependencies and the actual sources
+bound for its required inputs. Its CompileInstance key observes the parent owner, selected
 receiver/call-entry pair and canonical invocation inputs. Dependencies legally
 retained by that selected callable preserve their actual identity and lifetime;
-there is no hidden caller-environment input. Requested-name material enters In.
+required bound material is canonical invocation input, not a hidden environment
+coordinate. Different observed required sources cannot alias the same key by
+omitting them. Requested-name material enters In.
 
 Every closure keeps its lexical, Self, navigation and dependency layer. A nested
 closure may use only legally available material, including an enclosing instance
 self-name through ordinary admitted dependencies. Invocation consumes those
-realizations at their established lexical and navigation coordinates.
+realizations at their established coordinates; required binding is the declared
+call-input operation of §3, not a change to body lexical/navigation scope.
 
 ## 5. Projections of one dependency
 
@@ -230,7 +277,8 @@ D -> Pi_sigma(D)
 
 Compile evaluation may consume permitted type/Pattern information while
 unreadable runtime Val1 remains in the residual continuation. Runtime does
-not resolve the concrete source again.
+not resolve an already bound source again. A newly formed invocation fulfills
+its required specifications at its own actual frontier.
 
 If initialization itself contains runtime actions, their formation residue
 must remain. Compile evaluation cannot fabricate an already initialized
@@ -261,8 +309,9 @@ state equality and cannot merge distinct snapshots or selected instances.
 
 Copying or anchored replication of a formed callable preserves its established
 dependency material through the existing legal value/ref/share/copy relations.
-It does not rerun surrounding expressions, resolve external names again or
-extend a referenced object's lifetime.
+It does not rerun surrounding expressions, re-resolve formed sources or extend
+a referenced object's lifetime. Required specifications remain requirements;
+their later fulfillment follows §3 rather than replication-time lookup.
 
 The [lifetime handoff](../lifetime/lifetime-policy-and-overload-boundary.md#8-closure-dependency-lifetime-refinement-handoff)
 owns persistence and move/escape refinement. This dependency relation adds no
@@ -278,4 +327,7 @@ unfold self's capture layout; self remains observable through normalized Pattern
 algebra without public transparent structure. A callable reify P2 boundary uses the same E and ordinary input, dependency
 and current-name-position lifecycle facts. Actual reverse dependencies determine
 the materialized successor cone; unrelated compile type work remains ready.
-Its outward result classifier must be fixed without reverse-dependent input.
+Its outward result classifier and input/output/regular-effect/capture/lifecycle
+interface shape satisfy ClosedReturn and ClosedInterface in
+[unified §20](../unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration),
+independently of runtime reverse flow. A fixed sum still admits runtime branch choice.

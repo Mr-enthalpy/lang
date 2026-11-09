@@ -71,8 +71,8 @@ self-name and admitted dependencies.
 
 ## 3. Compile result structure determines expression kind
 
-Whether a completed expression is a NameExpr is determined by the structure of
-its result, not merely by the fact that it was evaluated at compile horizon.
+At the formal normal-return result boundary, whether a completed expression is
+a NameExpr is determined by its result structure, not merely by compile horizon.
 
 Let:
 
@@ -110,6 +110,13 @@ made into a new NameExpr merely because its result has type `type`.
 This single-self-root law prevents an instance-open type from escaping hidden
 inside a Product, closure capture, reference wrapper, or other accessible
 result shape.
+
+Wait's yield_val is not return_val. It never invokes the return-specific
+instance NameExpr classification. An instance-open root cannot escape via yield,
+even directly, or hidden in an effect sum/Product/capture/reference. Such an
+exposure fails the root-escape obligation; it cannot acquire n_I. Already legal
+ordinary type/name values retain their established identity when yielded. Vec
+and Option-like compile names are still classified at their formal return.
 
 ## 4. Interpretation polarity and arbitrary `$` nesting
 
@@ -544,7 +551,10 @@ Observing final members of `T1` requires a new ordinary formation/call on `T1`.
 ## 18. Dependencies and opaque self
 
 Compile callables may have ordinary implicit dependencies. Formation records
-requirements and selected realizations; readiness separately asks whether the
+automatic/initialized realizations and required capture specifications. New
+invocation fulfills required sources in its admitted call context, and includes
+observed material in canonical inputs; sealed binding never re-resolves.
+Readiness separately asks whether the
 current action needs a concrete value that is available. Runtime materialization
 can supply such a value to a delayed continuation. Dependency validity and
 instance reuse retain all result-affecting identities and observations.
@@ -620,8 +630,13 @@ rule. Failure of that completion, including its selected conversion or final
 root relation, is terminal failure of the selected call.
 
 ```text
+ClosedInterface_K(B) iff
+  compile elaboration determines outward input/output, regular effect shape,
+  necessary capture and lifecycle requirements independently of RevDeps(B)
+
 ReverseAllowed_K(m) iff
   ActiveBoundary_K(m)=B and P2(B)=reify and ClosedReturn_K(B)
+  and ClosedInterface_K(B)
   and m is the selected ordinary same-Type migration candidate
 ```
 
@@ -633,6 +648,13 @@ authorize that nested callable to form a new reverse request. Already admitted
 dependent work can include ordinary helper calls, retaining the request's B
 identity and validity. Leaving B or changing to a foreign continuation supplies
 no reusable boundary authority.
+
+Runtime may choose any actual branch inside a fixed regular shape such as
+A || B. If transparent propagation would make the public interface shape depend
+on runtime information, an ordinary handler/wrapper must close it to a
+compile-determined Function Pattern before exposure. Reify allows effects under
+this closed interface; it cannot infer an unsettled compile interface from a
+runtime value. ClosedReturn and all ordinary dependency/lifetime premises remain.
 
 Compile-to-runtime and scoped runtime-to-compile migration share existing-first,
 direct candidate selection, endpoints, capability, DynamicLegality and no-reopen.

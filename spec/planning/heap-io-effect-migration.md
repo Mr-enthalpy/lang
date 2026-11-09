@@ -1,0 +1,148 @@
+# Heap, IO and effect migration closure
+
+Baseline: merged PR #117, commit 49d0511d865eb1d19fe1534d9ba5b148122ec162.
+This is an implementation/verification index, not a second semantic authority.
+The external handoff's N01–N20 and U01–U06 are distributed among current owners;
+history is neither needed nor read for current interpretation.
+
+## Replacement closure M01–M13
+
+Original locations refer to that baseline, for review without consulting history.
+Each replacement is in place; pending means an unconnected consumer, never text
+or semantics scheduled for removal. All acceptance IDs below are HIE-scoped.
+
+| ID | Original current location / affected rule | Current owner / replacement | Positive and negative acceptance | Remaining consumer |
+|---|---|---|---|---|
+| M01 | dependency §§3–4, README lines 141–147, AGENTS dependency paragraph | dependency §3 Required/Initialized; invocation-bound §4.1 Product and §4.2 canonical inputs | C01–C03,C05,C06 | LC9 fulfillment/ordinary realization |
+| M02 | Raw §4.2/§7/§9; public capture elaboration; callable material §2 | Same positions distinguish Required versus Initialized, no synthetic bare-name initializer | C04,C01,C02,C03 | Capture syntax/carriers connected; semantic LC9 pending |
+| M03 | lifecycle §2.1.2/§2.1.6 entry defaults; glossary/CSF-T11 | lifecycle §2.1.8 empty slice and new-input-only defaults, call §7.3 | L01,L02 | LC10 inherited AutoPre |
+| M04 | call §6.2–6.3 Param summaries; owner graph/Self satellites | Same positions equal call/lifecycle inputs, no field ownership premise, coherent pass | C06,L05 | LC9/LC3 actual transfer |
+| M05 | Pattern §11.1, CSF-T17/T21, public/guide/glossary | Pattern §11.2 boundary makes former captures explicit; optional ordinary Env forwarding | C07,C08,A06 | FnExtract/FnRequest/LC6 |
+| M06 | AGENTS Done sentence; README/spine/guide completion summaries | Internal Done_chi/Done_Return remains private; effect owner's ordinary Done(v) branch | A07,E03 | Step/result Pattern consumer |
+| M07 | New topic; existing E §10 ABI applies | E §7.1 whole-original-K CPS and §11 template/grain; ordinary ABI1/ABI2, explicit optional Box | A01–A04,K01–K08 | Whole-K common-E CPS consumer plus ordinary O/materializer; no dedicated async layout |
+| M08 | return owner and control-flow contract barriers retained | Effect §3 propagates ordinary results; return §7 distinguishes targeted return | A05,A06,L05 | Common E/result handler |
+| M09 | Automatic Error/noerror return sketch and mechanical/Self references | Entire sketch replaced by strictly optional explicit library adapters; no ambient capability/type-triggered propagation; actual throw/Drop owned by effect §4 | E01,E02,RA01–RA05 | Ordinary explicit adapter/throw/Drop execution |
+| M10 | conformance intro; policy-visibility carrier summary; extraction contract | Effect §5 selected forced final Miss only; applicability/ordinary branch miss separate | E03–E05,C05 | Selected forced-execution/handler |
+| M11 | unified §3, invocation result and glossary/roadmap summaries | Formal return-only NameExpr; yield cannot expose instance-open root | S01 | Compile reach/yield consumer |
+| M12 | unified §20 and every repeated reify entry summary | ClosedReturn plus ClosedInterface compile-determined public regular shape | S04,S05 | Actual interface/dependency proof consumer |
+| M13 | New capability requirements, broad existing host boundary preserved | host §6 and heap owner: ordinary contexts, optional Wait protocols | H01–H09,S02,S03,S06 | Global providers/library/LC11 |
+
+## Formal proof obligations F01–F14
+
+These are consumer obligations over admitted domains, not unbounded compiler
+proof-search requirements. Unknown evidence is unavailable, not permission.
+
+| ID | Obligation | Canonical judgment and evidence |
+|---|---|---|
+| F01 | Unique declared capture resolution, no second selector or reopen | dependency §3 Bound/Mismatch/Unavailable, overload §4 seal |
+| F02 | Equal self/capture/args; LiveContext_s to CallContext_k has separately proved name correspondence, ownership and cleanup duties, with no default self-field ownership or duplicate Move/Kill | call §6.2–6.3 and effect §2 |
+| F03 | Spec/value separation, universal binder substitution, source erasure, original-resource disposition and optional Env authority | Pattern §11.1–11.2; dependency §4.1; FP01–FP08 |
+| F04 | Lifecycle id Pre=Post; epsilon, InPlace capture AutoPre and held handoff material inherit actual Post in the legal vocabulary; only new input names default, and repair id does not make Move[id] identity | lifecycle §2.1.8 id/Slice_epsilon/AutoPre; effect §2; LC10/LC12/LC13 |
+| F05 | First-layer Move locality and valid atomic repair | lifecycle §2.1.3/§2.1.8 Pre_MoveRepair/Valid |
+| F06 | Locate/submit conserve hierarchy and all live storage duties | heap §§1,3,4 Pre/commit/Post |
+| F07 | Guaranteed submit over every admitted Pre state | heap §4 SubmitCap, feasible metadata guarantee |
+| F08 | Conservative regular sources and complete local-layer elimination | heap §5 StorageSource/L_pi and LocalLayers theorem |
+| F09 | Actual one-step trace, unselected branches have no actions | effect §§1–3; Pattern §11.3 regular Function Pattern |
+| F10 | Legal grain equivalence preserves all observations | E §11 Legal/Generate/Obs |
+| F11 | Dropped concrete continuation cleans exactly once ordinarily | effect §4 plus lifecycle fixed cleanup/destructors |
+| F12 | Yield no instance NameExpr; compile-closed reify public shape | unified §§3,20 self-root and ClosedInterface |
+| F13 | Host/resource protocols compose without mandatory effect or IO stack | host §6, heap §6 and independent migration |
+| F14 | Complete original-K CPS preserves caller suffixes, all contexts/stages, selected origin, delivery/targets and exact cleanup; LiveContext_s -- Move[repair] --> CallContext_k proves name map, custody and cleanup separately | E §7.1, effect §2, LC13 and K01–K08; execution pending |
+
+## Dependency order and unavailable boundaries
+
+| Phase | Concrete work / gate | Current executable boundary |
+|---|---|---|
+| 1 | Capture preservation, then required call binding, Function Pattern flattening, inherited AutoPre | Required/Initialized Raw/Norm syntax and tests connected. Source captured call entries reject before installation or relation preparation with explicit unsupported capture-input diagnostic. LC9/FnExtract/LC10 execution pending. |
+| 2 | Ordinary HeapStack/pool library, guaranteed submit and global providers | No connected global capability or pool protocol; ordinary source consumer reports unavailable. Rust storage carriers prove no successful allocation/submit. |
+| 3 | Full original/common-K CPS conversion/composition, then Wait/resume, repair, regular Function Pattern and handler | Whole-K CPS consumer/LC13 is pending, including ordinary no-wait work and caller suffixes across all contexts/stages. Exact repair attachment reports UnsupportedEffectRepair; no high-binding @ plus closure fallback. Dedicated Wait/effect parsing and common-E steps remain pending. Ordinary @/value-side ~ remain legal. |
+| 4 | Throw/forced PatternMiss, compile yield and ClosedInterface | Source execution unavailable at existing common-E/extraction frontier; no fake catchable static diagnostic or invented residual. |
+| 5 | Legal grain generation, stage/heap cross-composition, ordinary ABI materialization | Pending consumers; no automatic Box/state-machine/heap-escape command. Prove Obs equivalence per adopted transform. |
+
+The [conformance matrix](canonical-semantic-conformance.md#heap-io-and-effect-acceptance)
+separates defined semantics, pending consumers and actual executable slices.
+Complete each phase with source-produced positive/negative, identity, no-reopen,
+non-derivability and authority-uniqueness evidence before claiming it connected.
+Generic syntax/storage fixtures establish only their explicit limited slice.
+
+The original continuation's full CPS obligation is broader than identifying
+local wait cuts: pending caller contexts, inputs, let/assignment/result delivery,
+guarded control/recursion, cleanup and compile/reify boundaries must compose in
+one E/K. Its equations/Pre/Post are owned by E §7.1, the handoff is LC13 and all
+K01–K08 acceptance rows have no executable coverage. Conversion need not be
+implemented in this PR; it cannot be omitted from future async execution.
+
+## Fresh-reader acceptance
+
+A fresh read-only agent reads AGENTS, README, semantic spine and current owners,
+without history or the external handoff, and answers: when [x] binds; InPlace
+AutoPre; heap relocate; Wait result; throw cleanup; Function Pattern source
+erasure; when reify needs interface closure. Any contrary inference blocks
+acceptance and requires editing its decisive current premise in place.
+
+Independent fresh-reader audit completed on 2026-11-08 without history or the
+external handoff. All seven answers matched the current owners: per-new-call
+required binding versus once-formed initialized sources; inherited InPlace
+Post; guaranteed place-preserving pool submission; concrete Wait successor and
+suspending-side atomic repair without mandatory Box; ordinary Drop for throw;
+source-erasing Function Pattern with explicit former captures; and compile-closed
+reify interface with runtime choice inside fixed sums. No contradictory current
+premise was found. The audit identified incomplete ClosedInterface references in
+Policy, Pattern adaptation and dependency summaries; these were synchronized.
+This is independent documentation acceptance, not pending semantic execution.
+The seven-question audit predates the explicit CPS obligation; it is not
+evidence of whole-K CPS conversion coverage. The publication review additionally
+checks whole-K CPS wording/correspondence and the unexecuted K01–K08 matrix.
+An additional fresh read-only publication audit passed on 2026-11-08 after the
+CPS clarification and review corrections. It verified E §7.1, LC13, K01–K08,
+single coherent CallInputs and required specifications without early source
+materialization. It read no history or external handoff and claimed no CPS
+execution. Source review also caught and fixed over-broad weak-name let capture
+recognition; initialized expression shorthand now has dedicated regression goldens.
+
+Final repository validation: cargo fmt --all, cargo check --all-targets, cargo
+test and git diff --check pass. Added local Markdown destinations/anchors were
+checked; history is unchanged. Passing Rust coverage establishes capture syntax,
+constraint/order/Hole/span preservation, pending-repair recovery and rejection
+before unsupported capture preparation/installation. The remaining semantic
+consumer rows above continue to be explicitly unavailable.
+
+## PR #118 audit corrections
+
+The external audit identified omissions beyond the earlier limited fresh-reader
+questions. Corrections are in place, not deferred deletion work:
+
+- The entire automatic Error/noerror return scheme is replaced by explicit
+  optional library adapters. Call-mode, Self and directory references grant no
+  automatic propagation. RA01–RA05 are pending normative targets.
+- CaptureSpecProduct is distinct from actual CaptureValueProduct. FnExtract
+  resolves no projection-site required name. beta and contract implication cover
+  every admitted future explicit input/world; original resources have exactly one
+  ordinary retention/transfer/Drop disposition. FP01–FP08 add pending normative
+  targets: 56 HIE rows in total, separately from RA01–RA05.
+- Control-flow, lifetime and mechanical directory indexes include current
+  owners, heap/effect/CPS and LC9–LC13. Whole-original-K CPS remains pending.
+
+These corrections change documentation/proof obligations only. Rust syntax and
+rejection tests do not execute projection, resource disposition, result adapters,
+Heap/Async/Effect or CPS. Earlier audit passes did not cover these omitted
+questions. Scout runs for this correction terminated at an external quota limit;
+decisive locations and final changes were verified directly by the primary agent.
+
+The follow-up interface/proof clarification fixes standard globalheap's
+single-linked-compatible terminal root obligation while leaving other user Heap
+and IO shapes unconstrained. Effect §2 gives the LiveContext/CallContext map with
+separate name, ownership and cleanup evidence; F02/F14 and LC12/LC13 consume it.
+The call owner's no-relookup rule is scoped to formed automatic/initialized
+sources, and terminal forced extraction means no reselection/reconversion,
+without excluding a legally handled actual PatternMiss. These are specification
+clarifications only; standard providers and handoff execution remain pending.
+
+The lifecycle identity clarification makes Pre(id)=Post(id) explicit on complete
+observations of the same material. InPlace capture AutoPre and suspension's held
+handoff material both consume it; the latter inherits the legally mapped actual
+successful Move/repair Post. Default repair id preserves only its own input;
+ordinary Move and destination Valid are still required. F04, L01–L03 and
+LC10/LC12/LC13 carry these unexecuted obligations, including no fresh defaults,
+no invented facts and no weakening or loss of cleanup/history. Existing source
+execution remains pending.

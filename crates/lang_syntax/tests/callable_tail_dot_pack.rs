@@ -209,6 +209,11 @@ fn capture_items_normalize_to_let_shaped_bindings() {
         let capture = &closure.head.as_ref().unwrap().captures[0];
         assert!(capture.slot.has_let, "{fixture}");
         assert!(capture.slot.initializer.is_none(), "{fixture}");
+        assert_eq!(
+            capture.initializer.is_none(),
+            fixture.contains("[x]"),
+            "{fixture}"
+        );
         assert!(
             matches!(&capture.slot.value_pattern, NormPattern::Binder { name, .. } if name.as_deref() == Some(expected)),
             "{fixture}: {:#?}",
@@ -272,7 +277,7 @@ fn capture_items_normalize_to_let_shaped_bindings() {
 }
 
 #[test]
-fn capture_inference_ignores_locally_bound_names_and_binds_simultaneously() {
+fn capture_inference_ignores_locals_and_preserves_common_initializer_scope() {
     let closure = normalized_closure("let f = [{ let local = outer; local }]() => { value };");
     assert!(matches!(
         &closure.head.as_ref().unwrap().captures[0]
@@ -287,16 +292,50 @@ fn capture_inference_ignores_locally_bound_names_and_binds_simultaneously() {
     assert!(captures.iter().all(|capture| {
         matches!(
             &capture.initializer,
-            NormExpr::Name { text, .. } if text == "outer"
+            Some(NormExpr::Name { text, .. }) if text == "outer"
         )
     }));
 }
 
 #[test]
+fn weak_let_inside_expression_capture_does_not_create_a_required_binding() {
+    for source in [
+        "let f = [x |> let]() => {};",
+        "let f = [x.let]() => {};",
+        "let f = [x + let]() => {};",
+        "let f = [x::let]() => {};",
+    ] {
+        let output = parsed(source);
+        let raw = lang_syntax::dump_ast(&output.program);
+        assert!(raw.contains("CaptureItem Inferred"), "{raw}");
+        assert!(!raw.contains("CaptureItem Required"), "{raw}");
+        let closure = normalized_closure(source);
+        assert!(closure.head.as_ref().unwrap().captures[0]
+            .initializer
+            .is_some());
+    }
+    let closure = normalized_closure("let f = [x |> let]() => {};");
+    assert!(matches!(
+        &closure.head.as_ref().unwrap().captures[0].slot.value_pattern,
+        NormPattern::Binder { name: Some(name), .. } if name == "x"
+    ));
+    for prefix in ["runtime", "(runtime + mut)", "p"] {
+        let closure = normalized_closure(&format!("let f = [{prefix} let x]() => {{}};"));
+        assert!(closure.head.as_ref().unwrap().captures[0]
+            .initializer
+            .is_none());
+        assert!(closure.head.as_ref().unwrap().captures[0]
+            .slot
+            .policy
+            .is_some());
+    }
+}
+
+#[test]
 fn deduce_keeps_capture_slot_open_unless_complete_strategy_tail_is_present() {
     for fixture in [
-        "let f = [[cap] => { cap }] () => { value };",
-        "let f = <T> [[cap] => { cap }] () => { value };",
+        "let f = [[let cap=cap] => { cap }] () => { value };",
+        "let f = <T> [[let cap=cap] => { cap }] () => { value };",
     ] {
         let captured = normalized_closure(fixture);
         assert_eq!(captured.placement, NormClosurePlacement::Ordinary);
@@ -351,6 +390,81 @@ fn canonical_sequence_accepts_pack_as_a_direct_pattern_child() {
             "normalized Pattern validator must reject {fixture}"
         );
     }
+}
+
+#[test]
+fn required_captures_preserve_constraints_order_and_have_no_source_expression() {
+    let source =
+        "let f = <T>[heap:T, runtime let io:T, x, let eager=globalheap, x x](self) => { value };";
+    let parsed = parsed(source);
+    let raw = lang_syntax::dump_ast(&parsed.program);
+    assert_eq!(raw.matches("CaptureItem Required").count(), 3);
+    let closure = normalized_closure(source);
+    let head = closure.head.as_ref().unwrap();
+    assert_eq!(head.captures.len(), 5);
+    for capture in &head.captures[..3] {
+        assert!(capture.initializer.is_none());
+        assert!(capture.slot.initializer.is_none());
+        let NormOrigin::Source(span) = capture.origin else {
+            panic!("source capture span")
+        };
+        assert!(source[span.byte_start..span.byte_end].contains(
+            match &capture.slot.value_pattern {
+                NormPattern::Binder {
+                    name: Some(name), ..
+                } => name,
+                other => panic!("required binder: {other:?}"),
+            }
+        ));
+    }
+    assert!(head.captures[1].slot.policy.is_some());
+    assert_eq!(
+        annotation_hole_target(head.captures[0].slot.annotation.as_ref().unwrap()),
+        annotation_hole_target(head.captures[1].slot.annotation.as_ref().unwrap()),
+    );
+    assert!(matches!(&head.captures[3].initializer,
+        Some(NormExpr::Name { text, .. }) if text == "globalheap"));
+    assert!(head.captures[4].initializer.is_some());
+}
+
+#[test]
+fn required_nested_capture_is_not_an_outer_initialized_source() {
+    let closure = normalized_closure("let f = [[cap] => { cap }]() => { value };");
+    let capture = &closure.head.as_ref().unwrap().captures[0];
+    assert!(matches!(capture.slot.value_pattern, NormPattern::Error(_)));
+    let Some(NormExpr::Closure(inner)) = &capture.initializer else {
+        panic!("preserved nested closure");
+    };
+    assert!(inner.head.as_ref().unwrap().captures[0]
+        .initializer
+        .is_none());
+}
+
+#[test]
+fn malformed_required_captures_and_pending_repair_keep_spanned_errors() {
+    for source in ["let f = [heap:]() => {};", "let f = [let _]() => {};"] {
+        let output = parse(source);
+        assert!(!output.diagnostics.is_empty(), "{source}");
+        assert!(output
+            .diagnostics
+            .iter()
+            .all(|d| d.span.byte_end <= source.len()));
+    }
+    let source = "let v = a + b@{r rebind = v ref;}; let after = x;";
+    let output = parse(source);
+    let diagnostic = output
+        .diagnostics
+        .iter()
+        .find(|d| d.code == DiagnosticCode::UnsupportedEffectRepair)
+        .unwrap();
+    assert_eq!(
+        &source[diagnostic.span.byte_start..diagnostic.span.byte_end],
+        "@{r rebind = v ref;}"
+    );
+    let dump = lang_syntax::dump_ast(&output.program);
+    assert!(dump.contains("unsupported effect repair attachment"));
+    assert!(dump.contains("TextName after"), "{dump}");
+    assert!(parse("let v = n@; let w = n~;").diagnostics.is_empty());
 }
 
 #[test]

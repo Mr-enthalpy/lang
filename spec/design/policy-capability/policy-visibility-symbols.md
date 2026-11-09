@@ -194,8 +194,10 @@ The typed substrate currently provides:
   Invocation records actual hidden host/callee/body observations directly;
   an initializer never infers horizon obstruction from a generic failure or
   an absent diagnostic. Exposed candidates still undergo ordinary selection.
-  Reached candidate errors
-  and selected-body failures remain diagnostics. Horizon visibility supplies
+  Static candidate errors and unavailable selected-body frontiers remain
+  diagnostics. Selected forced actual Pattern failure follows ordinary
+  PatternMiss effect handling; unhandled compile effects diagnose at the outer
+  boundary. Horizon visibility supplies
   no delete-body execution-legality proof;
 - atomic builtin type-key / concrete numeric Tnum separation and current
   first-order TypeValue projections. These registries perform concrete type

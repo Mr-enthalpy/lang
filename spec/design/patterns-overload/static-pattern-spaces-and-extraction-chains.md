@@ -106,6 +106,9 @@ Done_chi(v) is evaluator completion state, never an Object, Pattern, user
 value, name, Val2 member, stored value or source constructor. It participates
 in no ordinary lookup, Norm, @, ref/share, migration or Pattern matching.
 A user declaration named Done is ordinary and grants no completion privilege.
+The matchable effect Done(v) branch is a distinct ordinary sum protocol under
+the [effect owner](../control-flow/effect-steps-and-continuation-handoff.md);
+it is not Done_chi and supplies no internal chain/target authority.
 The boundary consumes its own completed channel and exposes only ordinary
 payload results. A nested chain unwraps at its boundary before the outer
 chain makes its independent completion; no user-visible Done(Done(v)) arises.

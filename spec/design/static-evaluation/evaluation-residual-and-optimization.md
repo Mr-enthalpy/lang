@@ -190,11 +190,83 @@ host, and physical normalization laws. It does not repair or redefine them.
 Concrete residual frames, effect summaries, storage, and planner algorithms
 remain representation/implementation work.
 
+### 7.1 Whole-original-continuation CPS conversion (consumer pending)
+
+Async's continuation requirement applies to the **entire original common
+semantic continuation K**, including ordinary computation without a written
+wait. Its semantic consumer must provide a complete continuation-passing (CPS)
+account, rather than converting only wait-containing closure bodies. Here
+original means the resolved semantic continuation, not Raw AST. CPS conversion
+belongs after the relevant ordinary semantic resolution/selection and retains
+unresolved future work as guarded material; it never executes future paths to
+construct that account. A genuinely future invocation still selects at its own
+actual frontier. Already sealed calls retain their origin.
+
+```text
+CPS(K, outward_delivery) => (K_cps, correspondence)
+Obs(E(K)) = Obs(E(K_cps))
+```
+
+This is fidelity of one E/K under an admitted representation, not evaluation
+twice or a second CPS evaluator. It is not an opportunity-seeking continuation
+rewrite performed by E saturation. The correspondence covers action identities,
+actual branch guards/order, selected frames, dependencies, name/cut projections,
+activations/return targets, delivery consumers and fixed cleanup obligations.
+Outward_delivery is the existing semantic delivery role; it is not another
+user-written argument, self slot, Policy plane or new source ABI.
+
+Let Q denote the pending ordinary context up to the applicable explicit handler
+or outward delivery boundary. For an unhandled effect, the composition law is:
+
+```text
+Plug_Q(Done(v)) = Continue_Q(v)
+Plug_Q(Wait(y,k)) = Wait(y, Compose_Q(k))
+Step(Compose_Q(k), resume_args) ~= Plug_Q(Step(k, resume_args))
+```
+
+Continue_Q performs Q's existing normal delivery/completion checks, not an
+unconstrained temporary result. Compose_Q retains both the callee remainder and
+the pending caller suffix in the next concrete callable. Actual formation and
+handoff require all ordinary dependencies and atomic Move[repair] premises;
+this equation grants no move/copy permission. A handler that consumes an effect
+delimits Q according to its ordinary selected behavior. Forwarding repeats this
+composition only for the actual unhandled branch. Dropping the resulting
+successor cleans all held callee/caller material exactly once through ordinary
+Drop; already committed work is never replayed.
+
+Coverage is comprehensive: expression/call input and Product evaluation,
+let/assignment and result delivery, nested calls and their pending suffixes,
+non-tail/tail serial work, guarded branches, admitted recursion/iteration,
+handlers/resume/forwarding, target-return routing, and destructor/cleanup
+continuations. Compile/runtime projections and reify's actual dependent E cone
+use this same account, preserving ClosedReturn/ClosedInterface and the Ordinary
+target-return barrier. It cannot be confined to an async-marked sublanguage,
+runtime-only path, explicit await sites, or a native stack abandoned on Wait.
+
+Conversion Pre requires actual common-continuation/control/delivery and selected
+origin correspondence, with ordinary dependency/lifecycle/cleanup evidence for
+every real transfer. Description conversion creates no business action or fact
+by itself. Actual producer commits still use the common transaction and joint
+Post; Post exposes only the complete valid mapped continuation and its real
+responsibilities. Missing correspondence or an unsupported context reports a
+spanned unavailable diagnostic at its requiring boundary. It cannot report
+successful propagation with the caller suffix missing, invent a Residual, or
+silently fall back to an effect-blind serial executor.
+
+This semantic CPS obligation is closed; its common-E consumer and concrete IR
+are pending. Ordinary source carriers and capture-gate tests do not implement it.
+It neither prescribes a uniform Future/state-machine representation nor forces
+Box, stack frames or one physical object per semantic edge. O may directly
+generate larger legal slices under §11, including direct-style machine paths
+where equivalent, without erasing observable repair/handler actions or inserting
+unnecessary Move boundaries. Whole-K CPS and generation grain are separate
+obligations.
+
 ## 8. Runtime reification of E
 
 Callable P2 reify has outward runtime Policy and executes through the same E.
 The [unified judgment](../unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration)
-owns its syntax, ActiveBoundary, ClosedReturn and ReverseAllowed premises.
+owns its syntax, ActiveBoundary, ClosedReturn, ClosedInterface and ReverseAllowed premises.
 
 ```lang
 let f = (self, runtime let args):reify -> _:R$ => {
@@ -253,6 +325,11 @@ material does not recapture. Missing readiness cannot be justified by speculativ
 execution of the body that consumes it. Closure dependency persistence passes
 through the [lifetime handoff](../lifetime/lifetime-policy-and-overload-boundary.md#8-closure-dependency-lifetime-refinement-handoff).
 
+RequiredCapture is a specification, not an initialized source: a new invocation
+fulfills it in its declared actual call context. Once bound/sealed it is retained
+by every projection. The dependency owner defines this operation; no deferred
+eager initialization or arbitrary body lookup follows from it.
+
 ## 10. E-selected return delivery convention
 
 This owner defines the semantic ABIKind from an established result consumer:
@@ -295,7 +372,8 @@ stack bound.
 A later machine PR consumes at least:
 
 ```text
-<SelectedCall, NormalizedPassMoves, ReturnDeliveryTarget,
+<CommonContinuationMaterial with CPS correspondence,
+ SelectedCall, NormalizedPassMoves, ReturnDeliveryTarget,
  ABIKind, LifetimeEvidence, MachineTargetFacts>
 ```
 
@@ -306,3 +384,38 @@ need explicit machine boundaries preserving E's guarantees. Physical frame
 allocation, calling encodings and FFI ABI are not implemented by this specification
 revision. SCC lifecycle evidence is supplied by the independent lifetime work,
 never chosen by machine layout or optimization success.
+
+## 11. Atomic cuts and requested generation grain
+
+The [effect owner](../control-flow/effect-steps-and-continuation-handoff.md)
+defines Step/Wait. The template is the whole original K with the CPS account of
+§7.1, including pending caller contexts, not an isolated callee body.
+Serial n waits identify n+1 semantic atomic slices A_0..A_n
+in the common continuation template. Those are not n+1 mandatory generated
+Objects. A materialization request selects retained boundaries B from this
+template and can generate a continuous G_(i,j) directly when ordinary handler/
+resume and projection evidence justifies the internal handoffs. It need not
+split objects then fuse them, or generate up to 2^n possible partitions.
+
+```text
+Legal(K,B1) and Legal(K,B2) and preserved observable internal actions
+  => Obs(Generate(K,B1)) = Obs(Generate(K,B2))
+```
+
+Obs includes values, effect traces and admitted lifecycle/cleanup observations.
+Generate is O/materialization of the same E/K, not a new evaluator. Actual Move/
+repair obligations occur at actual retained boundaries. An inlined boundary
+cannot invent an unnecessary Move. Observable repair/handler actions must still
+execute with equivalent effects or force retention of the cut. Every affected
+projection revalidates; finite regular shape supplies no arbitrary fusion proof.
+
+`let coro = expression ?; coro return;` delivers concrete movable bare Product
+continuation material under ordinary ABI1 and stack-growth-frontier semantics.
+If ordinary Move/escape is legal, no implicit Box is needed. `? Box` explicitly
+introduces storage/pool dependencies. Legal pool submission can discharge those
+local storage duties before return; it does not change object storage positions.
+`val =` uses ordinary ExistingTarget ABI2. These syntax examples are pending
+source acceptance targets. Async, boxing and Function Pattern projection are
+independent choices. Neither return nor async instructs O to infer heap escape,
+allocate a box, generate a uniform Future/state-machine type, or choose a special
+async ABI. The existing ordinary materialization inputs in §10.1 suffice.

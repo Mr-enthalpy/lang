@@ -10,7 +10,7 @@ use super::{
     expr::parse_expr_until,
     form::Parser,
     let_stmt::{parse_binding_slot, parse_product_extract, BindingSlotContext},
-    policy::parse_policy_spec_until,
+    policy::{parse_policy_spec_until, try_parse_policy_spec_before_let},
     product::error_expr,
 };
 
@@ -863,23 +863,32 @@ fn parse_capture_clause(
             break;
         }
 
-        if capture_item_is_explicit_binding(parser) {
+        if capture_item_is_binding(parser) {
             let mut slot =
-                parse_binding_slot(parser, BindingSlotContext::Capture, inherited_deduce, true);
-            let missing_initializer_span = parser.cursor.current_span();
-            let initializer = slot.initializer.take().unwrap_or_else(|| {
-                error_expr(
-                    parser,
-                    "expected `=` in capture binding",
-                    missing_initializer_span,
-                )
-            });
-            let span = slot.span.join(initializer.span);
-            items.push(CaptureItemAst::Explicit {
-                slot,
-                initializer,
-                span,
-            });
+                parse_binding_slot(parser, BindingSlotContext::Capture, inherited_deduce, false);
+            if let Some(initializer) = slot.initializer.take() {
+                let span = slot.span.join(initializer.span);
+                items.push(CaptureItemAst::Explicit {
+                    slot,
+                    initializer,
+                    span,
+                });
+            } else {
+                if !matches!(&slot.pattern,
+                    BindingPatternAst::Binder(crate::BinderNameAst::Text(name)) if name.text != "_")
+                {
+                    parser.error(
+                        DiagnosticCode::InvalidClosureHead,
+                        "required capture needs a name binder",
+                        slot.span,
+                    );
+                    slot.pattern = BindingPatternAst::Error(
+                        parser.error_ast("required capture needs a name binder", slot.span),
+                    );
+                }
+                let span = slot.span;
+                items.push(CaptureItemAst::Required { slot, span });
+            }
         } else {
             let initializer = parse_expr_until(parser, |p| {
                 p.cursor.at_symbol(Symbol::Comma) || p.cursor.at_symbol(Symbol::RBracket)
@@ -919,7 +928,35 @@ fn parse_capture_clause(
     }
 }
 
-fn capture_item_is_explicit_binding(parser: &Parser<'_>) -> bool {
+fn capture_item_is_binding(parser: &mut Parser<'_>) -> bool {
+    if parser.cursor.at_name("let") {
+        return true;
+    }
+    let (_, first) = parser
+        .cursor
+        .peek_at_skip_trivia(parser.cursor.current_index());
+    if matches!(first.kind, TokenKind::Name)
+        && matches!(
+            parser.cursor.peek_next_non_trivia().kind,
+            TokenKind::Symbol(Symbol::Colon | Symbol::Comma | Symbol::RBracket)
+        )
+    {
+        return true;
+    }
+    // Only a grammatical Policy prefix may anchor `let`. A weak name used as
+    // a call target or path component inside expression shorthand is ordinary.
+    let saved = parser.cursor.current_index();
+    let policy_binding = try_parse_policy_spec_before_let(parser, |p| {
+        p.is_form_boundary()
+            || p.cursor.at_symbol(Symbol::Equal)
+            || p.cursor.at_symbol(Symbol::Comma)
+            || p.cursor.at_symbol(Symbol::RBracket)
+    })
+    .is_some();
+    parser.cursor.set_index(saved);
+    if policy_binding {
+        return true;
+    }
     let mut index = parser.cursor.current_index();
     let mut paren_depth = 0usize;
     let mut bracket_depth = 0usize;

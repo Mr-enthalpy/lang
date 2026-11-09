@@ -48,6 +48,56 @@ end-to-end through source E. Recognizing its ordinary syntax is not execution of
 its lifecycle operations; in particular the names in selected, construction and
 partbox below are not an installed standard-library API.
 
+## Unified resource and handoff walkthroughs
+
+These five traces consume the dependency, heap, effect and lifecycle owners;
+helpers are ordinary library combinations except explicitly required host
+capabilities and guaranteed external submit facilities. All source execution
+remains pending (LC9–LC12); the traces are positive/negative acceptance evidence.
+
+1. Form `[heap:T]` where heap is absent: retain the required slot without reading
+   a source. At a new call with admitted local heap:T, ordinary candidate-local
+   evidence and unique selection bind that source, then one input transaction
+   moves it. Missing/incompatible local heap rejects or reports unavailable;
+   a global visible at formation cannot fill the gap. `[let heap=globalheap]`
+   instead forms once and ignores later same-name shadowing. Repeated/equal
+   values never merge capture occurrence identities or sealed invocation inputs.
+2. At an empty InPlace slice, an existing r carries the preceding Post into
+   AutoPre by the identity law Pre(id)=Post(id). The identity interval preserves
+   r's complete observed state; it does not assert the closure body is id.
+   New input q alone receives default entry generation. Recreating r's
+   origin as a fresh default world would break Post=Pre and is rejected. An
+   explicit Pre must hold in this inherited world, not overwrite its history.
+3. `let heap = heap ref .. locate(pool);` reads old heap and forms a legal local
+   next_pool dependency. A selected guaranteed `heap relocate;` transfers all
+   covered support/release duties/descriptors, preserving live x's Place and
+   history, then reveals the old heap binding. A pool without that guarantee
+   cannot submit; metadata exhaustion cannot appear as a hidden legal failure.
+   Submitting every introduced local layer removes covered local storage return
+   barriers even for preference-regular unknown depth, but an independent invalid
+   ref still blocks return. Object relocate instead performs real storage Move.
+4. With v and r both crossing wait, trivial Move can violate
+   `region_0(r) < origin(r).region`. Move[id] then fails its destination Valid
+   check before exposure: the id repair preserves its own input and cannot fix
+   the invalid Move result. The suspending side may supply
+   `@{r rebind = v ref;}` only with real exclusive/access/validity
+   premises. Atomic Move[repair] delivers a complete legal concrete k and its
+   successor AutoPre; it never publishes an invalid k and repairs later. The
+   held material's zero-action delivery has equal Pre/Post at the legally mapped
+   successful handoff Post, retaining history and cleanup duties without new
+   defaults. The actual Move may still have changed generations or ownership.
+   Immediate legal Resume can justify a larger generated slice, preserving observable
+   repair actions. `expression ?` may return through ordinary ABI1 without Box;
+   explicit `? Box` introduces ordinary storage duties, separately discharged.
+5. A selected forced actual match failure can yield PatternMiss by throw. A
+   handler discards its concrete recovery continuation using ordinary Drop and
+   returns an Err-like sum; no candidate reopens and previous effects remain.
+   Applicability/ordinary branch miss never throws. Compile success creates the
+   matched names once for following work; an unhandled effect diagnoses externally.
+   Yield of an instance-open self root is rejected, never classified as return
+   NameExpr. Reify with fixed A || B may choose either runtime branch; a shape
+   inferred from runtime values must first be closed by an ordinary wrapper.
+
 ## 1. Branches, recursion and nested InPlace exits
 
 ### Source and selected actions

@@ -287,6 +287,12 @@ and the [nested-return walkthrough](../lifetime/lifetime-algebra-walkthroughs.md
 
 ## 7. Consumer coverage
 
+Ordinary effect Done(v)/Wait(y,k) results and transparent propagation are owned
+by [effect steps](effect-steps-and-continuation-handoff.md). They do not use
+Done_Return or grant return-capability reachability across an Ordinary closure.
+Throw's return is within its specified expansion; cleanup comes from ordinary
+Drop of the delivered concrete continuation, not target-return unwinding.
+
 | Concept | Connected consumer | Canonical relation |
 |---|---|---|
 | Return terminal forms | Parsed, normalized as `ReturnEvent` | Same |

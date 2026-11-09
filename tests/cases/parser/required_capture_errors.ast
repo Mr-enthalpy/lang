@@ -1,0 +1,128 @@
+Program
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName f
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure Ordinary
+                      FnHeadPrefix
+                        captures:
+                          CaptureClause
+                            items:
+                              CaptureItem Required
+                                slot:
+                                  BindingSlot let=false
+                                    deduce:
+                                      None
+                                    pattern:
+                                      Binder
+                                        TextName heap
+                                    annotation:
+                                      Error "expected binding annotation"
+                                    with_clause:
+                                      None
+                                    initializer:
+                                      None
+                        params:
+                          ParamClause
+                            extract:
+                              elements:
+                      BodyBlock
+                        forms:
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName g
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure Ordinary
+                      FnHeadPrefix
+                        captures:
+                          CaptureClause
+                            items:
+                              CaptureItem Required
+                                slot:
+                                  BindingSlot let=true
+                                    deduce:
+                                      None
+                                    pattern:
+                                      Error "required capture needs a name binder"
+                                    annotation:
+                                      None
+                                    with_clause:
+                                      None
+                                    initializer:
+                                      None
+                        params:
+                          ParamClause
+                            extract:
+                              elements:
+                      BodyBlock
+                        forms:
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName h
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure Ordinary
+                      FnHeadPrefix
+                        captures:
+                          CaptureClause
+                            items:
+                              CaptureItem Required
+                                slot:
+                                  BindingSlot let=true
+                                    deduce:
+                                      None
+                                    pattern:
+                                      Error "required capture needs a name binder"
+                                    annotation:
+                                      None
+                                    with_clause:
+                                      None
+                                    initializer:
+                                      None
+                        params:
+                          ParamClause
+                            extract:
+                              elements:
+                      BodyBlock
+                        forms:

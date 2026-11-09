@@ -174,8 +174,15 @@ root or actual classifier snapshot. A matched input invokes no converter.
 Unavailable(d) has no conversion branch. Ordinary overload applicability uses
 the same Query_Gamma/R_Gamma interface and does not enter this
 forced-consumer rule. After selecting k, failure of its Pre/body/result or the
-final root extraction is terminal; it neither retries conversion nor reopens
-the already selected producer or surrounding candidate family. The converted
+final root extraction is terminal with respect to candidate selection and
+conversion insertion: it neither retries conversion nor reopens the already
+selected producer or surrounding candidate family. This does not prohibit a
+handled effect. A proved final mismatch of the selected forced extraction
+actually executed follows the [PatternMiss throw protocol](../control-flow/effect-steps-and-continuation-handoff.md#5-forced-patternmiss-and-compile-boundaries).
+Unavailable evidence, applicability/ordinary branch mismatch and failed Pre
+retain their own rules; they do not become PatternMiss through this wording.
+Actual effects of an ordinary selected converter follow its declared protocol,
+without reopening any seal. The converted
 result is checked by R_Gamma once, without recursive insertion. Publication
 uses the enclosing common transaction; failed completion publishes no partial
 root or destination. General conversion execution requires its ordinary E

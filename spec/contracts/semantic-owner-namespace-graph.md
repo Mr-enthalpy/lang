@@ -97,6 +97,9 @@ Product for closures or singleton x for an ordinary user receiver. Candidate-loc
 read-only evidence needs no common capture layout; actual selected transfer is
 one lifetime-coherent transaction. CallableOwner and tag/activation identity
 are preserved independently of all parameter positions.
+Self, formed/required captures and explicit input have equal standing in call
+and lifecycle mapping; physical field layout supplies no ownership/source edge.
+RequiredCapture retains specifications until its admitted new call binds them.
 
 A standalone ordinary callable is retained as ActualSelf; its Param may instead
 be its formed capture Product. An ordinary field function keeps its own callable

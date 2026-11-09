@@ -59,8 +59,8 @@ same-Type Policy migration are separate ordinary operations.
   available, and what monotone comparison law does each use?
 - What is the final call-site candidate-family selector syntax?
 - What are the remaining later B-filter interfaces and their proof carriers?
-- Which effect/error/panic/resource capability dimensions are added to
-  DynamicLegality?
+- Which concrete proof carriers encode ordinary effect/resource legality in
+  DynamicLegality? Step/Wait/throw/PatternMiss semantics are closed by their owner.
 
 PolicyMode={const,mut} and independent OpenPolicy={open,close},
 demand formation before maxima,
@@ -90,13 +90,18 @@ and deduced modes; unknown required OpenHere is unavailable, not false.
 The [E owner](../design/static-evaluation/evaluation-residual-and-optimization.md#10-e-selected-return-delivery-convention)
 fixes ABIKind by FreshLet/ExistingTarget delivery. Machine frontier, slot and
 FFI encodings remain open representation work; RVO/NRVO cannot choose the law.
+The same owner's [whole-original-K CPS obligation](../design/static-evaluation/evaluation-residual-and-optimization.md#71-whole-original-continuation-cps-conversion-consumer-pending)
+is closed, including caller-context composition, ordinary no-wait/control work,
+cleanup, stages and reify. Its common-E consumer is pending in the roadmap;
+concrete IR/encoding above may vary without making that coverage optional.
 
 Runtime main and actual stack-relative evaluation horizons, two-round R_vis then
 ordinary C_sigma selection, no speculative candidate execution and retained
 selected origin are closed. Concrete witness/cache representation is open.
 
-Runtime continuation may not re-resolve a name, namespace path, candidate
-family, or sealed invocation. E saturation, projection synchronization and
+Runtime continuation may not re-resolve an already bound name, namespace path,
+candidate family or sealed invocation. A genuinely new invocation fulfills
+declared RequiredCapture at its own frontier. E saturation, projection synchronization and
 rewrite revalidation are fixed. Omitted ReturnTarget selects the outermost function in the reachable segment
 bounded by the nearest Ordinary closure after an event exists. InPlace adds no
 barrier; explicit targets and capability calls cannot cross the segment, and
@@ -233,8 +238,8 @@ ordinary source/host work; their implementation does not create authority.
 - How are region/generation persistence, movement and escape checked for
   automatically formed closure dependencies?
 - How should the NLL/control-flow graph be represented?
-- How are `return`, effect, and sync operations integrated into the shared
-  semantic continuation?
+- Which concrete IR encodes the closed return, Step/Wait/handler and sync
+  operations in the shared semantic continuation?
 
 Operator tokens/fixity/precedence/parse associativity are grammar facts; semantic
 naked use selects operator[op], dot .op selects op::adl and explicit paths stay
@@ -251,7 +256,8 @@ legal ordinary actions and never retry failed execution. These are closed laws,
 not a pending choice based on RHS type or declaration count.
 
 Dependency observation classification, exclusive value-capture modes and fixed
-capture sequences, consumer-directed self projections, directional Function
+capture specification sequences and invocation-bound required sources,
+consumer-directed self projections, directional Function
 Pattern LHS/RHS, and omitted-contract defaults/implication are closed by the
 existing dependency/call/Pattern/lifetime owners. Their carriers and source
 consumers remain pending. The [SCC handoff](../design/lifetime/lifetime-policy-and-overload-boundary.md#85-per-name-scc-collapse-at-continuation-boundaries)

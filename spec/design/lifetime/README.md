@@ -3,7 +3,10 @@
 - [Lifetime values, bootstrap and library facilities](lifetime-policy-and-overload-boundary.md)
 - [SafetyPolicy and external semantic admission](unsafe-semantic-admission.md)
 - [Four design walkthroughs](lifetime-algebra-walkthroughs.md), subordinate to the owners
-- [Source consumer handoff LC1–LC8](../../contracts/lifetime-program-consumers.md)
+- [HeapStack and storage responsibility](heap-stack-and-storage-responsibility.md)
+- [Source consumer handoffs LC1–LC13](../../contracts/lifetime-program-consumers.md),
+  including required call binding, inherited AutoPre/MoveRepair, guaranteed heap
+  submission, effect/Drop and whole-original-K CPS correspondence
 
 Lifetime mechanisms are ordinary value programs over the whole common
 continuation with business Stage forgotten. The owner fixes projection,

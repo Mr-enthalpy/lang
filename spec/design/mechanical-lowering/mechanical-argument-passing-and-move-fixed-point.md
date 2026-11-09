@@ -442,9 +442,10 @@ errors. It does not implement Touch, cleanup scheduling or lifetime checking.
 ## 16. Dependency-bearing closure results
 
 A legal completed closure expression returns full tau_C through ordinary
-struct formation. Its dependency requirements and semantic realizations
-precede layout and ABI selection. Mechanical transport preserves these
-realizations without recapture, and checks FormationLegal, LifetimeLegal,
+struct formation. Its formed dependencies and required specifications precede
+layout and ABI selection. Mechanical transport preserves these realizations
+and specifications; required source fulfillment occurs in each admitted new
+call, with no re-resolution of a sealed source. It checks FormationLegal, LifetimeLegal,
 Pre/Post, MoveEffect/Movable, EscapeLegal and owned transfer/promotion where
 applicable. Neither complete-type status nor ZST layout grants global survival.
 The [lifetime refinement handoff](../lifetime/lifetime-policy-and-overload-boundary.md#8-closure-dependency-lifetime-refinement-handoff)

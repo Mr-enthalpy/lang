@@ -463,6 +463,8 @@ pub struct CaptureClauseAst {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum CaptureItemAst {
+    /// Name-sensitive call requirement; no formation-time initializer/source.
+    Required { slot: BindingSlotAst, span: Span },
     /// A full let-shaped binding. `let` may be omitted when no policy prefix
     /// needs it as an anchor.
     Explicit {
@@ -470,7 +472,7 @@ pub enum CaptureItemAst {
         initializer: ExprAst,
         span: Span,
     },
-    /// Source-preserving capture shorthand. Normalization must infer exactly
+    /// Non-bare expression shorthand. Normalization must infer exactly
     /// one free non-call bare name and elaborate this into a binding.
     Inferred { initializer: ExprAst, span: Span },
 }

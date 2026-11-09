@@ -4241,6 +4241,16 @@ impl SemanticWorld {
         declared_result_class: DeclaredResultClass,
         provenance: Provenance,
     ) -> Result<SemanticValueId, BuildError> {
+        if closure
+            .head
+            .as_ref()
+            .is_some_and(|head| !head.captures.is_empty())
+        {
+            return Err(BuildError::single(crate::Diagnostic::hard_error(
+                "source callable capture inputs are unavailable: required binding and initialized dependency realization are not connected",
+                Some(provenance),
+            )));
+        }
         let receiver_type = self.type_for_pattern(pattern).ok_or_else(|| {
             BuildError::single(crate::Diagnostic::hard_error(
                 "associated Pattern owner has no TypeValue",

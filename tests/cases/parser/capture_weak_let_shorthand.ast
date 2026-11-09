@@ -1,0 +1,215 @@
+Program
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName a
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure Ordinary
+                      FnHeadPrefix
+                        captures:
+                          CaptureClause
+                            items:
+                              CaptureItem Inferred
+                                initializer:
+                                  Expr
+                                    Pipe
+                                      Segment has_incoming=false
+                                        OperatorExpr
+                                          Atom
+                                            Name x
+                                      Segment has_incoming=true
+                                        OperatorExpr
+                                          Atom
+                                            Name let
+                        params:
+                          ParamClause
+                            extract:
+                              elements:
+                      BodyBlock
+                        forms:
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName b
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure Ordinary
+                      FnHeadPrefix
+                        captures:
+                          CaptureClause
+                            items:
+                              CaptureItem Inferred
+                                initializer:
+                                  Expr
+                                    Pipe
+                                      Segment has_incoming=false
+                                        OperatorExpr
+                                          Atom
+                                            MemberSugar
+                                              object:
+                                                Name x
+                                              selector:
+                                                TextName let
+                        params:
+                          ParamClause
+                            extract:
+                              elements:
+                      BodyBlock
+                        forms:
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName c
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure Ordinary
+                      FnHeadPrefix
+                        captures:
+                          CaptureClause
+                            items:
+                              CaptureItem Inferred
+                                initializer:
+                                  Expr
+                                    Pipe
+                                      Segment has_incoming=false
+                                        OperatorExpr
+                                          Atom
+                                            NavPath
+                                              components:
+                                                component Name x
+                                                component Name let
+                        params:
+                          ParamClause
+                            extract:
+                              elements:
+                      BodyBlock
+                        forms:
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName d
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure Ordinary
+                      FnHeadPrefix
+                        captures:
+                          CaptureClause
+                            items:
+                              CaptureItem Inferred
+                                initializer:
+                                  Expr
+                                    Pipe
+                                      Segment has_incoming=false
+                                        OperatorExpr
+                                          OperatorSugar fixity=Binary operator="+"
+                                            lhs:
+                                              Atom
+                                                Name x
+                                            rhs:
+                                              Atom
+                                                Name let
+                        params:
+                          ParamClause
+                            extract:
+                              elements:
+                      BodyBlock
+                        forms:
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName e
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure Ordinary
+                      FnHeadPrefix
+                        captures:
+                          CaptureClause
+                            items:
+                              CaptureItem Required
+                                slot:
+                                  BindingSlot let=true
+                                    policy:
+                                      PolicySpec
+                                        PolicyConjunction
+                                            PolicyAtom Group
+                                              PolicyConjunction
+                                                  PolicyAtom Name "runtime"
+                                                  PolicyAtom Name "mut"
+                                    deduce:
+                                      None
+                                    pattern:
+                                      Binder
+                                        TextName x
+                                    annotation:
+                                      None
+                                    with_clause:
+                                      None
+                                    initializer:
+                                      None
+                        params:
+                          ParamClause
+                            extract:
+                              elements:
+                      BodyBlock
+                        forms:

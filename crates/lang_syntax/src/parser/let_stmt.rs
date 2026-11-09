@@ -171,6 +171,11 @@ fn parse_binding_slot_after_prefix(
 
     let initializer = match context {
         BindingSlotContext::Let => Some(parse_let_value(parser, require_initializer)),
+        BindingSlotContext::Capture
+            if !require_initializer && !parser.cursor.at_symbol(Symbol::Equal) =>
+        {
+            None
+        }
         BindingSlotContext::Capture => Some(parse_capture_value(parser, require_initializer)),
         BindingSlotContext::Param | BindingSlotContext::Return => None,
     };

@@ -130,6 +130,50 @@ fn unknown_builtin_applicability_stops_selection_and_later_family_is_unformed() 
 }
 
 #[test]
+fn captured_associated_entry_rejects_before_any_installation() {
+    let base = CompilationWorld::from_manifest(&support::empty_app_manifest()).unwrap();
+    let declaration = base
+        .namespace_projection()
+        .capability()
+        .resolve_callable("IdentityType::core", &base.package_context())
+        .unwrap();
+    let namespace = declaration.parent.unwrap();
+    let mut world = base.semantic_world().clone();
+    let receiver = world
+        .symbol_in_namespace(namespace, &declaration.name)
+        .unwrap()
+        .ordinary_value()
+        .unwrap();
+    let pattern = world.value(receiver).unwrap().pattern;
+    for capture in ["heap", "heap:T", "runtime let heap", "let heap=globalheap"] {
+        let lang_syntax::NormExpr::Closure(closure) = support::initializer_from_source(&format!(
+            "let f = <T>[{capture}](self, t:type::):compile -> let r:type:: => delete;"
+        )) else {
+            panic!("closure")
+        };
+        let view = declared_policy_view(Stage::Compile, PolicyMode::Const);
+        let before = format!("{world:?}");
+        let failure = world
+            .register_associated_call_entry(
+                pattern,
+                namespace,
+                SymbolId(900_100),
+                &closure,
+                None,
+                view.clone(),
+                view,
+                None,
+                OrdinaryCandidateRole::Ordinary,
+                DeclaredResultClass::CompleteType,
+                Provenance::from_norm_origin("unsupported capture source", &closure.origin),
+            )
+            .unwrap_err();
+        assert!(format!("{failure:?}").contains("capture inputs are unavailable"));
+        assert_eq!(format!("{world:?}"), before, "{capture}");
+    }
+}
+
+#[test]
 fn builtin_selected_result_preserves_call_entry_declared_policy() {
     let base = CompilationWorld::from_manifest(&support::empty_app_manifest()).unwrap();
     let mut world = base.semantic_world().clone();

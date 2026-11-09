@@ -674,7 +674,9 @@ fn collect_closure_pack_errors(closure: &NormClosure, errors: &mut Vec<PatternVa
         }
         for capture in &head.captures {
             collect_slot_pack_errors(&capture.slot, errors);
-            collect_expr_pack_errors(&capture.initializer, errors);
+            if let Some(initializer) = &capture.initializer {
+                collect_expr_pack_errors(initializer, errors);
+            }
         }
         for clause in &head.clauses {
             match clause {
@@ -1042,7 +1044,8 @@ impl NormClosureHead {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct NormCapture {
     pub slot: NormBindingSlot,
-    pub initializer: NormExpr,
+    /// None is RequiredCapture; Some is a formation-time InitializedCapture.
+    pub initializer: Option<NormExpr>,
     pub origin: NormOrigin,
 }
 
@@ -1491,7 +1494,9 @@ impl HoleAlphaNormalizer {
             for capture in &mut head.captures {
                 let capture_holes =
                     self.normalize_slot(&mut capture.slot, &visible, root, &mut declared);
-                self.normalize_expr(&mut capture.initializer, &capture_holes, callable_owner.id);
+                if let Some(initializer) = &mut capture.initializer {
+                    self.normalize_expr(initializer, &capture_holes, callable_owner.id);
+                }
             }
             for param in &mut head.params {
                 self.normalize_pattern_element(param, &visible, root, &mut declared);
@@ -2612,6 +2617,16 @@ fn normalize_closure_head(head: &FnHeadPrefixAst) -> NormClosureHead {
 
 fn normalize_capture_item(item: &CaptureItemAst, holes: &[VisibleHole]) -> NormCapture {
     match item {
+        CaptureItemAst::Required { slot, span } => {
+            let mut slot = normalize_binding_slot(slot, holes);
+            slot.has_let = true;
+            slot.initializer = None;
+            NormCapture {
+                slot,
+                initializer: None,
+                origin: NormOrigin::Source(*span),
+            }
+        }
         CaptureItemAst::Explicit {
             slot,
             initializer,
@@ -2622,7 +2637,7 @@ fn normalize_capture_item(item: &CaptureItemAst, holes: &[VisibleHole]) -> NormC
             slot.initializer = None;
             NormCapture {
                 slot,
-                initializer: normalize_expr(initializer),
+                initializer: Some(normalize_expr(initializer)),
                 origin: NormOrigin::Source(*span),
             }
         }
@@ -2672,7 +2687,7 @@ fn normalize_capture_item(item: &CaptureItemAst, holes: &[VisibleHole]) -> NormC
                     initializer: None,
                     origin: origin.clone(),
                 },
-                initializer,
+                initializer: Some(initializer),
                 origin,
             }
         }
@@ -2755,10 +2770,12 @@ fn collect_free_non_call_names_closure(
 ) {
     let mut body_bound = outer_bound.clone();
     if let Some(head) = &closure.head {
-        // Capture initializers are simultaneous and therefore all see only the
-        // enclosing environment.
+        // Initialized captures share pre-capture scope, with ordinary effect
+        // order. Required slots have no enclosing source occurrence to collect.
         for capture in &head.captures {
-            collect_free_non_call_names_expr(&capture.initializer, outer_bound, false, names);
+            if let Some(initializer) = &capture.initializer {
+                collect_free_non_call_names_expr(initializer, outer_bound, false, names);
+            }
         }
         for capture in &head.captures {
             collect_pattern_binder_names(&capture.slot.value_pattern, &mut body_bound);
@@ -4449,8 +4466,12 @@ fn dump_closure_head(output: &mut String, head: &NormClosureHead, indent: usize)
             );
             line(output, indent + 3, "slot:");
             dump_binding_slot(output, &capture.slot, indent + 4);
-            line(output, indent + 3, "initializer:");
-            dump_norm_expr(output, &capture.initializer, indent + 4);
+            if let Some(initializer) = &capture.initializer {
+                line(output, indent + 3, "initializer:");
+                dump_norm_expr(output, initializer, indent + 4);
+            } else {
+                line(output, indent + 3, "required: call-context name");
+            }
         }
     }
     line(output, indent + 1, "params:");

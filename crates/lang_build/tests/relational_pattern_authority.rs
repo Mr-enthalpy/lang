@@ -317,6 +317,29 @@ fn hole_local_policy_cannot_be_silently_dropped_by_relation_entry() {
 }
 
 #[test]
+fn required_and_initialized_capture_inputs_cannot_be_ignored_by_relation_entry() {
+    for capture in [
+        "heap",
+        "heap:T",
+        "runtime let heap",
+        "let heap=globalheap",
+        "x x",
+    ] {
+        let closure = normalized_closure(&format!("let f = <T>[{capture}](self, x) => delete;"));
+        let result = PatternRelationContext::for_source_callable(&closure, callable_owner(), None);
+        assert!(
+            matches!(result,
+            Err(PatternRelationFailure::Unsupported(d))
+                if d.message.contains("capture inputs are unavailable")
+                    && d.provenance.is_some()),
+            "{capture}"
+        );
+    }
+    let closure = normalized_closure("let f = [](self, x) => delete;");
+    assert!(PatternRelationContext::for_source_callable(&closure, callable_owner(), None).is_ok());
+}
+
+#[test]
 fn external_universe_rank_pattern_is_not_an_anonymous_match() {
     let argument = typed_value(
         support::type_lookup_fixture("universe-rank/external"),

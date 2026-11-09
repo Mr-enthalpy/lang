@@ -1,0 +1,3 @@
+let f = [heap:]() => {};
+let g = [let _]() => {};
+let h = [let (a,b)]() => {};

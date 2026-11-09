@@ -9,7 +9,7 @@ The semantic coordinates are:
 ```text
 PolicyView = <PolicyPair, PolicyMode>
 PolicyMode = const | mut
-OpenPolicy = compile | close
+OpenPolicy = open | close
 ResultPolicyDemand = <P1Projection, PolicyMode, ...future dimensions>
 ```
 
@@ -24,5 +24,6 @@ parameter/return policies.
 
 Read `policy-visibility-symbols.md` for the focused model and the symbol-world
 owner for compile projection, PolicyLet, migration, reification, and invocation
-integration. Mechanical return normalization and lifetime validation remain in
-their own design blocks.
+integration. Optional explicit result adapters are ordinary library calls;
+Error-shaped data supplies no default propagation or additional Policy plane.
+Lifetime validation remains in its canonical owner.

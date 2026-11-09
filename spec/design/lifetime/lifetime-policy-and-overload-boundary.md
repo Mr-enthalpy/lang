@@ -459,11 +459,13 @@ provide the applicable name companion or lifecycle post. The general default
 therefore does not classify an ordinary non-borrow value as origin-free merely
 because no borrow-root rule applies to it.
 
-Function entry begins from a default universe and applies the written lifetime
-precondition as a finitely described correction:
+Genuinely new function-entry parameter names begin from a default universe and
+apply the written lifetime precondition as a finitely described correction.
+Existing names at an empty slice, including InPlace automatic captures, inherit
+the established state under §2.1.8; they are not default-generated again:
 
 ```text
-U_entry = U_default ⊕ Delta_pre
+U_entry_newnames = U_default ⊕ Delta_pre
 |Delta_pre| < infinity
 
 DefaultOriginUniverse:
@@ -733,7 +735,8 @@ without expanding private internal history.
 | Pre | check | admit |
 | Post | admit | check |
 
-Ordinary calls map actual parameters, formed captures, result positions and
+Ordinary calls map actual parameters, formed captures, call-bound RequiredCapture
+material, result positions and
 activation. Caller Pre check precedes the action; internal Pre admit cannot
 repair its failure. Internal Post check establishes the delivered guarantee;
 caller Post admit neither replays internal actions nor duplicates consumption.
@@ -751,8 +754,8 @@ For a Function Pattern LHS interface F and actual callable contract A,
 omission and compatibility have these meanings:
 
 ```text
-Entry(F) = U_default op_plus Delta_pre
-omitted pre  => Delta_pre = empty  // all U_default generators remain
+Entry_new_parameters(F) = U_default op_plus Delta_pre
+omitted pre  => Delta_pre = empty  // defaults for genuinely new input names
 omitted post => Post_F = NoDelta(S_before,S_after)
 NoDelta = unchanged state on every lifecycle observation of the contract
 
@@ -765,6 +768,9 @@ These implications use the ordinary symbols, Region/Color/name mapping and
 entry assumptions. Omitted Post is a strong guarantee: an actual postcondition
 that cannot imply NoDelta rejects the interface assignment/extraction immediately,
 before any invocation. Missing implication evidence remains unavailable.
+Interface input defaults do not reset actual existing InPlace captures, whose
+AutoPre inherits preceding Post under §2.1.8. Projected Function Pattern inputs
+are explicit new input material, not restored hidden closure sources.
 This does not inspect require/body or enumerate overloads by lifetime.
 The [Pattern owner](../patterns-overload/pattern-relations-observation-and-extraction.md#111-directional-function-pattern-consumers)
 defines LHS extraction and RHS requests. RHS cannot add pre/post, but after
@@ -823,6 +829,92 @@ that compilation. Extension may express broader memory-access models and
 computation-reordering constraints. Finite Color relations remain a bounded
 mechanical foundation; this does not restrict full contract programs to
 conjunctions of Color atoms or make Color an arbitrary proposition black box.
+
+#### 2.1.8 Empty slices, inherited AutoPre and atomic Move repair
+
+The identity action id on a lifecycle continuation preserves its complete
+established lifecycle observations. On the same material and name/generation
+vocabulary, its Pre and Post are equal, not merely compatible or related by a
+one-way implication:
+
+```text
+Sigma_s -- id --> Sigma_s
+Pre(id) = Post(id) = Sigma_s
+```
+
+This equality retains origin, generations, regions, Color, access, history and
+outstanding cleanup duties. It creates no fresh default state or missing fact.
+Unknown required observations remain unavailable. Empty slicing is this identity
+law applied between adjacent actions in the same lifecycle world:
+
+```text
+K = K_minus ; epsilon ; K_plus
+Slice_epsilon(Sigma_s) = Sigma_s
+Post(K_minus) = Pre(id) = Post(id) = Pre(K_plus) = Sigma_s
+```
+
+InPlace automatic captures already exist at this slice. With omitted explicit
+Pre their AutoPre is the preceding Post with legal name projection, retaining
+origin, region, Color, access and history. Thus the inherited capture material's
+identity interval has equal Pre/Post; this is not a fresh invocation-default
+calculation or a claim that the closure body is id. New input names formed at
+entry use the default rules of §2.1.2 only for those names. An explicit Pre constrains
+the actual inherited world; it cannot erase history. An Ordinary closure has a
+real formation/call boundary and cannot claim epsilon continuity by syntax.
+
+An actual handoff additionally proves the composite selected transaction:
+
+```text
+Pre_MoveRepair(Sigma_s, names, rho, destination)
+  = ordinary Move/cleanup/access/capability/resource premises
+    and legal execution of user repair rho in the mapped scratch world
+    and Valid(projected repaired successor)
+Sigma_s -- Move[rho] --> Sigma_prime
+commit publishes only Sigma_prime and its complete successor callable
+AutoPre(k) = RenameAndProject_(s->k)(Sigma_prime)
+rho omitted = id
+```
+
+The same identity law generates the lifecycle interface of the already
+established live handoff material, after the actual Move/repair and legal
+correspondence have been validated:
+
+```text
+H_k = RenameAndProject_(s->k)(Sigma_prime) on held handoff material
+Pre(id_H_k) = Post(id_H_k) = H_k
+AutoPre(k) restricted to held handoff material = H_k
+```
+
+id_H_k denotes the zero-action delivery interval for that material; recognizing
+it inserts no extra Move, binding, clone or repair. Handoff material keeps the
+actual successful Post rather than receiving new default origins or obligations.
+The equality compares observations in the successor vocabulary, not the original
+self and new k as identical Objects. It does not describe execution of k's body.
+New resume parameters still receive only their ordinary entry rules when formed;
+unfulfilled RequiredCapture slots remain specifications until their admitted call.
+
+The identity of an omitted repair is also local: Pre(rho=id) = Post(rho=id)
+in its actual repair-entry world. Move[id] still includes the selected Move and
+may change generations/regions or ownership under the ordinary rules. It is not
+id on the entire source world and is not evidence that destination Valid holds.
+The equality of these identity intervals does not extend to a nonidentity
+Move/repair, which retains its own validated state transformation.
+
+Trivial killing Move resets the first-level region (region_0, called Region_1
+in §2.1.3), retaining origin and deeper regions. In particular the destination
+must satisfy `region_0(n) < origin(n).region` wherever required. A repair such
+as `r rebind = v ref;` must supply the ordinary exclusive/valid/access premises;
+the suspending side supplies it and the language verifies it. No algorithm is
+invented automatically. Failed or unavailable repair exposes neither an illegal
+intermediate callable nor successful Post. Earlier unrelated committed effects
+are not rolled back. Resume receives an already legal concrete callable.
+
+This is the existing common transaction and four-way contract protocol, not a
+second lifecycle solver. Only actual retained handoff boundaries incur Move
+obligations. [Effect steps](../control-flow/effect-steps-and-continuation-handoff.md)
+own Wait/handler control; [heap protocols](heap-stack-and-storage-responsibility.md)
+own storage-support/release-duty transfer. Neither can rewrite old origin or
+Color to discharge a missing premise.
 
 ### 2.2 No implicit borrow formation
 
@@ -1034,9 +1126,9 @@ changing the relations defined above:
   move-origin/Region boundary, and selected share/rebind-plus-clone realization
   lifecycle-post boundary above are fixed lifetime semantics.
 
-This revision still defines none of the following: lifetime overloads as a
-second selection step, lifetime specificity ordering, multiple-callable handoff
-objects, ABI equivalence classes used for selection, or a lifetime-driven
+This revision defines none of the following: lifetime overloads as a
+second selection step, lifetime specificity ordering, ABI equivalence classes
+used for selection, or a lifetime-driven
 ordinary resolver.
 
 Related canonical contracts:
@@ -1064,8 +1156,9 @@ Eval(ClosureExpr_C) = tau_C
 D = Dependencies(tau_C)
 ```
 
-Closure formation fixes D's sources, Pattern/Policy observations, formation
-actions and absence of recapture. Lifetime implementation and refinement own:
+Closure formation fixes automatic/initialized sources and required capture
+specifications. New invocation fulfills the latter in its actual context;
+sealed calls retain their bound source. Lifetime implementation and refinement own:
 
 - the regions/generations in which D may persist;
 - Move with Kill/Preserve and ordinary clone-derived transport of tau_C and its members;
@@ -2048,20 +2141,21 @@ consumption counts, Color interval/history rules, cropping, actual exclusion,
 no-reopen, no implicit reborrow, or the single E. Bootstrap order and evidence
 tracking live in the [roadmap](../../planning/roadmap.md#9-lifetime-value-program-wiring).
 
-## 15. Scoped specification migration
+## 15. Current integration boundaries
 
-This design revises the baseline ac994bc semantics only at the following
-boundaries. This table records migration decisions, not alternative current laws.
+These rules share the ordinary language and one lifecycle world:
 
-| Baseline restriction / incomplete handoff | Current rule and minimal distinguishing case | Affected consumers |
+| Relation | Current rule and minimal distinguishing case | Affected consumers |
 |---|---|---|
-| §2.1.6 bounded a clause to an atomic conjunction | Complete ordinary compile expression. A local declaration followed by a branch/call can form the final self-root type | Clause E, associated formation, check/admit |
-| One omitted-Post convention could be read across all callable forms | Body omission forms automatic Post; handwritten Function Pattern omission remains NoDelta. select_one cannot be stored under an insufficient NoDelta interface | Body boundary, FnExtract/contract compatibility |
-| Finite NameView observations did not specify outward local elimination | Boundary traversal/compression, preserving unknown and explicit termination. Returning a borrow of a dying local still fails | Result/block/target exits |
-| Excluding Color/origin from Object could be read as excluding lifecycle content | No new business-Object coordinate; lifecycle fields have ordinary content/identity. Equal integers with different credentials stay distinct names | Value representation, names and trusted Post |
-| SCC handoff requested convergence without a computation domain | Per-name SCC collapse has fixed Ordinary/participating-InPlace boundaries and original regular companions; arbitrary program recursion and machine reuse remain separate | Companion formation, return boundaries, recursive/access consumers |
+| Contract computation | Complete ordinary compile expression; local declarations/branch/call can form the final self-root type | Clause E, associated formation, check/admit |
+| Post defaults | Body omission forms automatic Post; handwritten Function Pattern omission remains NoDelta. select_one needs a sufficient interface | Body boundary, FnExtract/contract compatibility |
+| Outward local elimination | Boundary traversal/compression preserves unknown and explicit termination; a borrow of a dying local still fails | Result/block/target exits |
+| Lifecycle content | Lifecycle fields have ordinary content/identity without another business-Object coordinate; equal integers with different credentials remain distinct names | Value representation, names and trusted Post |
+| Regular access | Per-name SCC collapse has fixed Ordinary/participating-InPlace boundaries and original companions; arbitrary program recursion and machine reuse remain separate | Companion formation, return boundaries, recursive/access consumers |
+| Slice/handoff | Existing InPlace captures inherit preceding Post; actual Move[repair] exposes only a valid complete successor | LC9/LC10 and effect steps |
+| Storage responsibility | Guaranteed pool submit preserves live Places/history and transfers support/duty/descriptors; stage migration is independent | LC11, host/library facilities |
 
-U_default, omitted interface Pre, interface NoDelta, Pre_F => Pre_A and
+U_default for new input names, omitted interface Pre, interface NoDelta, Pre_F => Pre_A and
 Post_A => Post_F, atomic complete identities, Pass/MoveEffect, self/Param,
 cleanup and same-cut order, return barriers and E-selected delivery remain.
 This revision supplies no independent lifecycle checker, SMT engine, source

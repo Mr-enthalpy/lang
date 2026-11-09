@@ -11,7 +11,7 @@ that mention `self..return(d)` reference this document rather than redefining
 the semantics:
 
 - Pattern-space consequences: `spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md` §5
-- Mechanical lowering consequences: `spec/design/mechanical-lowering/mechanical-return-normalization-and-error-policy.md` §6.1
+- Control-flow delivery: [targeted return](../control-flow/targeted-return-and-d-reduction.md) §2
 
 ## 1. Purpose
 
@@ -104,11 +104,14 @@ anchored replication creates a new matching instance and leaves the old owner
 unchanged; see [closure replication](closure-anchored-replication.md).
 
 The contextual self binder is not user-supplied call material. Its Param
-projection is an ordered CaptureProduct for a formed capture closure and
+projection is an ordered CaptureValueProduct for a formed capture closure and
 B_K(x) for an ordinary user receiver x:T. CallAnchor supports `(args) |> self`;
 Return independently identifies tag plus activation. No extra universal
 environment field or public capture layout follows. Actual dependency identities
 remain in ordinary canonical invocation inputs where required.
+Required positions bind in the admitted new call context; initialized sources
+remain fixed. Self, captures and args share ordinary call/lifecycle rules with
+no premise that a capture is an owned field child of the self Object.
 
 Movement uses the call owner's one coherent passing transaction: form exact
 implicit/explicit material, normalize terminal Move, check all affected Pre,
@@ -224,10 +227,11 @@ No synthetic trailing () is inserted as a completion or type-combination
 repair. An explicitly written ordinary unit remains an ordinary value; it
 does not grant a missing self capability or absorb arbitrary result Patterns.
 
-## 7. Relation to `Error.handle`
+## 7. Explicit ordinary result handlers
 
-The ordinary handler call `(e, self) |> handle::Error` may call `self..return(error)` as its default
-behavior. This is not an exception mechanism. It is an ordinary call through
+An explicitly selected library handler `(e, self) |> handle::Error` may execute
+its declared targeted return. No ambient handler is installed and Error-shaped
+data does not invoke it. This explicit ordinary call uses
 the callable frame's return capability, subject to the same lifetime
 postcondition: after the error handler invokes `self..return(error)`, the
 current branch has no normal contribution, and an internal target completion

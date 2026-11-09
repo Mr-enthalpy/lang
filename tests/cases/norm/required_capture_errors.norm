@@ -1,0 +1,120 @@
+NormProgram origin=Source@1:1[0..79]
+  forms:
+    Form Let
+      Decl Let origin=Source@1:1[0..23]
+        BindingSlot let=true origin=Generated(PatternNormalize)@1:5[4..23]
+          deduce:
+            None
+          value_pattern:
+            Binder "f" origin=Source@1:5[4..5]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Closure placement=Ordinary origin=Source@1:9[8..23]
+              head:
+                ClosureHead origin=Generated(ClosureNormalize)@1:9[8..20]
+                  deduce:
+                    None
+                  captures:
+                    Capture origin=Source@1:10[9..15]
+                      slot:
+                        BindingSlot let=true origin=Generated(PatternNormalize)@1:10[9..15]
+                          deduce:
+                            None
+                          value_pattern:
+                            Binder "heap" origin=Source@1:10[9..13]
+                          annotation:
+                            AnnotationPattern origin=Source@1:15[14..15]
+                              Pattern Error
+                                Error "expected binding annotation" origin=Source@1:15[14..15]
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                      required: call-context name
+                  params:
+                    None
+              body:
+                NormBody origin=Source@1:22[21..23]
+                  forms:
+                    (empty)
+    Form Let
+      Decl Let origin=Source@2:1[25..48]
+        BindingSlot let=true origin=Generated(PatternNormalize)@2:5[29..48]
+          deduce:
+            None
+          value_pattern:
+            Binder "g" origin=Source@2:5[29..30]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Closure placement=Ordinary origin=Source@2:9[33..48]
+              head:
+                ClosureHead origin=Generated(ClosureNormalize)@2:9[33..45]
+                  deduce:
+                    None
+                  captures:
+                    Capture origin=Source@2:10[34..39]
+                      slot:
+                        BindingSlot let=true origin=Generated(PatternNormalize)@2:10[34..39]
+                          deduce:
+                            None
+                          value_pattern:
+                            Pattern Error
+                              Error "required capture needs a name binder" origin=Source@2:10[34..39]
+                          annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                      required: call-context name
+                  params:
+                    None
+              body:
+                NormBody origin=Source@2:22[46..48]
+                  forms:
+                    (empty)
+    Form Let
+      Decl Let origin=Source@3:1[50..77]
+        BindingSlot let=true origin=Generated(PatternNormalize)@3:5[54..77]
+          deduce:
+            None
+          value_pattern:
+            Binder "h" origin=Source@3:5[54..55]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Closure placement=Ordinary origin=Source@3:9[58..77]
+              head:
+                ClosureHead origin=Generated(ClosureNormalize)@3:9[58..74]
+                  deduce:
+                    None
+                  captures:
+                    Capture origin=Source@3:10[59..68]
+                      slot:
+                        BindingSlot let=true origin=Generated(PatternNormalize)@3:10[59..68]
+                          deduce:
+                            None
+                          value_pattern:
+                            Pattern Error
+                              Error "required capture needs a name binder" origin=Source@3:10[59..68]
+                          annotation:
+                            None
+                          with_clause:
+                            None
+                          initializer:
+                            None
+                      required: call-context name
+                  params:
+                    None
+              body:
+                NormBody origin=Source@3:26[75..77]
+                  forms:
+                    (empty)

@@ -11,6 +11,7 @@ pub enum DiagnosticCode {
     ExpectedBindingAnnotation,
     ExpectedEqual,
     ExpectedPolicyLetOperand,
+    UnsupportedEffectRepair,
     EmptyPipeSegment,
     ExpectedNameAfterDot,
     ExpectedNameAfterDoubleDot,
