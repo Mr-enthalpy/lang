@@ -49,6 +49,19 @@ Val2 members keep their own owners or targets. Untransferred locals cannot escap
 These laws are owned by
 [compile invocation](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md).
 
+The [host cache handoff](e-host-architecture-and-incremental-revalidation.md#5-cacheable-material-and-current-state-premises)
+keeps parent-neutral computation/summary material, exact immutable tau snapshots
+and current instance/member resident state under different reuse premises.
+Only a lawful target-owner/input correspondence reuses neutral material; a
+required old snapshot cannot be reconstructed from today's resident/callspace.
+Key equality supplies no current OpenHere, generation, cleanup or dependency
+validity and cannot rerun initialization or restore consumed authority after
+Close. Consumed body/contract content changes are validity inputs, not another
+CompileInstance identity axis. Their real consumers revalidate through E,
+including Pre/Post checks despite unchanged ordinary interface/ABI shape.
+These are future cache consumers, not capabilities supplied by current interning
+or the coarse exact-key package artifact cache.
+
 A returned construction value does not implicitly install its outer binding.
 An explicit binding action creates the destination name and Place. Construction
 bodies perform value-side name formation and separately authorized ref/write

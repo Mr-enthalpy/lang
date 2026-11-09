@@ -46,6 +46,13 @@ an unknown root, or publishes a success permission. All affected Pre precede
 common commit; joint producer/lifecycle Post uses the same scratch publication.
 Already committed history/Color and earlier external effects are not erased.
 
+The [host preservation handoff](e-host-architecture-and-incremental-revalidation.md#11-connected-handoff-responsibilities)
+connects these inputs and publication boundaries to incremental reuse. Each
+connected consumer retains the observations it actually consumed and their
+identity/guard/mapping support. Host dependency records preserve that support;
+they supply neither source authority nor another evaluator. LC1–LC13 and the
+host's HA01–HA18 execution chains remain pending.
+
 ## Additional call, slice, resource and effect consumers
 
 These consumers use the shared eight-field template. LC1–LC8 remain pending;
@@ -235,6 +242,12 @@ actual Move/repair, Valid and the three separate transfer proofs remain required
   may have ordinary lifetime Pre/Post while retaining Automatic value capture.
   Its own result-dependent Post uses actual delivery at the matching target;
   merely crossed InPlace frames contribute no normal result to check or bind.
+  The [host call-site consumer](e-host-architecture-and-incremental-revalidation.md#71-required-response-to-a-changed-callee-contract)
+  records the consumed Pre/Post relation content and actual four-way mapping.
+  Changed content requires mapped caller Pre.check/Post.admit and dependent
+  successor checks even when signature/ABI shape is unchanged. Retain the
+  selected frame/Param/result/activation and current authority; cached success
+  cannot replay input transfer, admit stale state or reopen selection.
 
 ## LC5. Exit compression and automatic Post
 
@@ -301,6 +314,14 @@ actual Move/repair, Valid and the three separate transfer proofs remain required
   participation remains correctly derivable without dead-local reads or
   reconstruction. Mutually exclusive edge cases cannot create a false cycle.
   See the [select_one witness](../design/lifetime/lifetime-algebra-walkthroughs.md#advance-summary-and-actual-exit-witness).
+  For [host propagation](e-host-architecture-and-incremental-revalidation.md#73-three-distinct-stability-boundaries),
+  summary and actual-exit material keep separate dependencies and validity.
+  A changed consumed callee relation updates the affected formed descriptions
+  and ordinary summary computation, independently of actual-exit validation.
+  Stop only when the relevant consumed observations are proved stable: inside
+  a supported subcontinuation, at the function's outward summary, or farther
+  along its callers. Other effects and independent consumers still propagate.
+  An explicit Post remains a checked guarantee and is never silently weakened.
 
 ## LC6. Function Pattern and recursive interface consumption
 
@@ -339,6 +360,11 @@ actual Move/repair, Valid and the three separate transfer proofs remain required
 - **Fidelity/composition obligations:** Contract preservation after source
   authority erasure; recursive domain/operations/closure/termination or explicit
   rejection. Regular SCC finiteness proves no arbitrary recursion termination.
+  The [host dependency consumer](e-host-architecture-and-incremental-revalidation.md#71-required-response-to-a-changed-callee-contract)
+  also retains the actual contract content used by these implications. A change
+  revalidates them at extraction/assignment, even without a later invocation;
+  call-site Pre checking cannot replace interface compatibility. Reuse preserves
+  source erasure, mapped assumptions and actual resource disposition.
 
 ## LC7. Unsafe Post and trusted dynamic facilities
 
@@ -448,6 +474,10 @@ actual Move/repair, Valid and the three separate transfer proofs remain required
   Keep leaf-routing prefixes without whole-ancestor terminal permission.
   A second crop cannot restore that permission, and an exclusive demand through
   a share fails even if a separately admitted shared route exists.
+  [Host SCC bookkeeping](e-host-architecture-and-incremental-revalidation.md#8-recursivescc-and-termination-boundaries)
+  carries these original descriptors and contribution/incidence mappings across
+  revisions and earlier reductions. Incremental call-SCC scheduling chooses no
+  collapse point and proves neither recursive convergence nor machine slot reuse.
 
 ## Current implementation evidence
 
@@ -459,7 +489,7 @@ not semantic producers. `reify_value` still reports
 `LifecycleContinuationPending` after preliminary observations; a fixed cleanup
 table is insufficient to produce a complete LifetimeValue.
 
-No LC1–LC8 source chain, automatic Post/compression, trusted API, access
+No LC1–LC13 source chain, automatic Post/compression, trusted API, access
 algorithm or recursive contract consumer is connected by this documentation
 revision. These gaps require ordinary language consumers and a small justified
 bootstrap basis, not a parallel Rust interpreter, string-matching semantic

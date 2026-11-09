@@ -60,6 +60,15 @@ frontier; it does not authorize an alternate semantic relation. The
 [canonical conformance matrix](planning/canonical-semantic-conformance.md)
 links canonical acceptance scenarios to owners and pending consumers.
 
+For host implementation, read the [owner/namespace handoff](contracts/semantic-owner-namespace-graph.md),
+[compile construction/cache boundary](contracts/compile-construction-boundary.md),
+[LC1–LC13 consumers](contracts/lifetime-program-consumers.md) and
+[shared action publication](contracts/semantic-values-and-extraction-interfaces.md#shared-action-and-lifecycle-handoff)
+together with the [E host preservation chain](contracts/e-host-architecture-and-incremental-revalidation.md#11-connected-handoff-responsibilities).
+The latter connects their evidence and invalidation duties; it supplies no new
+semantic authority. [HA01–HA18](planning/canonical-semantic-conformance.md#e-host-preservation-and-incremental-revalidation-targets)
+remain architecture acceptance targets, separate from executed substrate tests.
+
 ## Contracts
 
 - [`raw-ast-contract.md`](contracts/raw-ast-contract.md)

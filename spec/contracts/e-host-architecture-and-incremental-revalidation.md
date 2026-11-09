@@ -43,6 +43,26 @@ Persistent graphs, arenas, sharing, hashes, Rust types, scheduling and cache
 granularity MAY vary within these obligations. No host type name in the current
 code is a required future API.
 
+### 1.1 Connected handoff responsibilities
+
+The existing contracts supply the material whose preservation this document
+requires. Their producers and requiring consumers form one handoff chain:
+
+| Existing handoff | Material passed to host revalidation | Requiring host boundary |
+|---|---|---|
+| [Owner/namespace identity](semantic-owner-namespace-graph.md#identity) and [compile construction](compile-construction-boundary.md) | Legal parent/selected-input identity, exact held snapshots and distinct current instance/member storage | §§4–5: lawful revision correspondence and state-sensitive cache reuse |
+| [LC2](lifetime-program-consumers.md#lc2-whole-continuation-projection-and-projection-complete-clauses) / [LC13](lifetime-program-consumers.md#lc13-whole-original-k-cps-correspondence-pending) | Common actions/guards, projection-complete provenance, actual delivery and pending caller suffixes | §§2 and 9: synchronized observations and new-position rewrite validation |
+| [LC4](lifetime-program-consumers.md#lc4-contract-expressions-and-four-way-boundary-consumption) / [LC6](lifetime-program-consumers.md#lc6-function-pattern-and-recursive-interface-consumption) | Pre/Post relation content, scoped four-way mappings and interface-compatibility assumptions | §§6–7: invalidate real call and interface consumers despite equal signature/ABI shape |
+| [LC5](lifetime-program-consumers.md#lc5-exit-compression-and-automatic-post) / [LC8](lifetime-program-consumers.md#lc8-regular-access-and-cropping-programs) | Formed guarded summary inputs, separate actual-exit history, original companions and contribution lineage | §§7.2–8: summary propagation, stable observations and prescribed boundary-local collapse |
+| [Shared action/lifecycle publication](semantic-values-and-extraction-interfaces.md#shared-action-and-lifecycle-handoff) and [migration delivery](policy-migration.md) | Actual cleanup/Pre evidence, selected frontier and successful joint producer/projection Post | §10: current-world validation without replay or partial publication |
+
+These links assign preservation responsibilities to existing consumers; they
+do not add an evaluator phase or imply that those consumers are connected.
+The [conformance index](../planning/canonical-semantic-conformance.md#e-host-preservation-and-incremental-revalidation-targets)
+maps HA groups to these handoffs; the [roadmap](../planning/roadmap.md#10-structured-e-host-and-incremental-revalidation-readiness)
+records their pending wiring. Missing upstream material uses §10 at its actual
+requiring boundary, rather than a host substitute.
+
 ## 2. Common K, LE and projection correspondence
 
 Basis: E §§2–3, 7.1 and 11, lifecycle §2.1.1, effect §§2–3 and LC2/LC13.
@@ -207,7 +227,7 @@ of changed or invalidated observations, including these associations:
 | Observed input | Dependent calculation/consumer |
 |---|---|
 | Receiver/call-entry, projection/frame, canonical arguments and bound RequiredCapture | Call validity, CompileInstance and result material |
-| Actual Pre/Post relation content and entry/result mapping | Caller Pre.check, caller Post.admit, subsequent action Pre and contract compatibility |
+| Actual Pre/Post relation content, entry/result mapping and exposed interface assumptions | Caller Pre.check, caller Post.admit, subsequent action Pre and Function Pattern contract compatibility |
 | Formed guarded body, bound roles, selected-operation descriptions or sufficient exposed contracts | Formation-time Post_summary and its support |
 | Current names/generations, residents, Region/Color/access, cleanup and Policy | Action legality, actual Post, delivery and resource responsibility |
 | Original regular companions, guarded item/edge contributions and boundary mappings | Supported SCC collapse, local compression and recursive/modular composition |
@@ -240,10 +260,11 @@ machine encoding. Machine shape equality is not contract equality.
 
 ### 7.1 Required response to a changed callee contract
 
-For a changed `Pre_B` or `Post_B`, the host MUST perform the following on every
-actual consumer of the changed observation, including an equivalent inlined
-local consumer. Valid evidence that its required observations are unchanged
-may discharge an individual check; old cached success alone cannot.
+For a changed `Pre_B` or `Post_B`, the host MUST identify every actual consumer
+of the changed observation. At affected call positions, including equivalent
+inlined local consumers, it MUST perform the following. Valid evidence that a
+consumer's required observations are unchanged may discharge an individual
+check; old cached success alone cannot.
 
 1. Recover the call position and its actual selected candidate/projection/frame,
    implicit Param/captures, bound required inputs, explicit arguments,
@@ -261,8 +282,17 @@ may discharge an individual check; old cached success alone cannot.
    still-valid evidence establishes the required outward observations stable,
    or reject/report unavailable at the actual requiring boundary (§10).
 
-This obligation concerns semantic call positions, not unconditional whole-program
-execution. Revalidation recomputes observations of represented actions and
+Other consumers MUST revalidate through their own existing checks, not invent a call frame.
+In particular LC6 interface extraction/assignment revalidates
+`Pre_F implies Pre_B` and `Post_B implies Post_F` under its ordinary binder,
+entry and resource mapping, even if no subsequent call has occurred. A changed
+contract can invalidate that extraction while the signature stays equal.
+Missing implication evidence is unavailable there; pure matching performs no
+Move/Drop, and known Val1 cannot restore erased implementation authority.
+This is lifecycle §2.1.6 / LC6 compatibility, not a new implication solver.
+
+These obligations concern actual semantic consumers, not unconditional
+whole-program execution. Revalidation recomputes observations of represented actions and
 history in a lawfully corresponding revision; it does not physically Move,
 Kill, acquire or Drop already committed material again. A genuinely new action
 still uses the common gate. Neither an incremental engine nor a cache can
@@ -401,11 +431,18 @@ or no-candidate failure supplies no such continuation.
 
 Revalidation MUST preserve once-only initializer/acquisition effects, actual
 Move/Kill/Drop counts, fixed cleanup and selected no-reopen. It cannot restore
-permissions, invent NoDelta/unknown/None, silently clone/reborrow, change
-MoveEffect/ABIKind or try another candidate after failure. An ordinary normal
-error/paused result keeps its own real guarded effects; it is distinct from
-semantic rejection. A required observation with no lawful reuse proof is
-recomputed by E, or reports its missing boundary, never filled by host guesses.
+permissions, invent NoDelta/unknown/None, silently clone/reborrow or try another
+candidate after failure. For a retained action with unchanged action/delivery
+premises, it MUST NOT switch the fixed MoveEffect/ABIKind as a repair or retry.
+A source revision or admitted rewrite genuinely changing those premises instead
+invalidates the old evidence and obtains the new action/delivery facts through
+the existing E/lifecycle laws; it cannot patch the old sealed invocation.
+For example, a changed FreshLet versus ExistingTarget consumer receives the
+E owner's corresponding ABIKind, not the previous revision's cached convention.
+An ordinary normal error/paused result keeps its own real guarded effects; it
+is distinct from semantic rejection. A required observation with no lawful
+reuse proof is recomputed by E, or reports its missing boundary, never filled
+by host guesses.
 
 ## 11. Acceptance and current connection status
 
@@ -438,6 +475,16 @@ effect-count and no-reopen evidence as relevant, not mock proof imports.
 | HA16 | Action/late component fails, earlier cleanup is outstanding, or cached execution contains Move/Drop | Apply cleanup/Pre/joint-publication gate and retain actual consumption/history | No partial success or duplicate effect/cleanup; previous independent commits remain, cache reuse replays none; §§5, 10 |
 | HA17 | Local alias/reordering query needs several guarded relations | Query the actual relevant subjects, ranges, guards and dependencies, with positive MustAlias/NoAlias evidence where required | Unknown does not prove NoAlias; storage cannot force all-function pairwise expansion for every local query; §4 |
 | HA18 | Contract program tries to use its own unformed check/admit/AutoPost/companion as its basis | Trace ordinary action justification to independently established semantics/observations | Unfounded cycle unavailable; founded ordinary programs still use E with their own premises; §3 |
+
+HA01/HA02 also cover a contract already consumed by LC6 interface extraction:
+changing B's Pre/Post can invalidate the mapped implications before any call.
+Revalidate at extraction/assignment, without waiting for a future invocation,
+replaying resources or recovering erased source authority (§7.1).
+For HA14/HA16's boundary contrast, changing actual delivery from FreshLet to
+ExistingTarget changes an E premise and requires its new ABI classification;
+it is not a pure machine-choice change. Keeping that delivery unchanged while
+switching ABIKind/MoveEffect to escape a failed check is forbidden (§10).
+These are design subcases of the existing rows, not executed tests.
 
 ### 11.2 Audited implementation evidence
 

@@ -109,13 +109,14 @@ before future common E source-body completion can consume it.
 ## Shared action and lifecycle handoff
 
 The [lifetime-program contract](lifetime-program-consumers.md) extends this
-handoff with LC1–LC8: real structure companions, whole-continuation Stage
+handoff with LC1–LC13: real structure companions, whole-continuation Stage
 forgetting, ordinary contract expressions, four-way boundary calls, origin
 compression/automatic Post, Function Pattern interfaces, trusted facilities and
-regular-access programs. It specifies future source consumers, not extra Rust
-evaluator phases. Existing supplied-fact and transaction tests cover only the
-slice below; they do not execute those ordinary source programs or certify a
-complete `@` value producer.
+regular-access programs, required captures, slice/repair, resource/effect handoff
+and complete original-K CPS correspondence. It specifies future source
+consumers, not extra Rust evaluator phases. Existing supplied-fact and
+transaction tests cover only the slice below; they do not execute those ordinary
+source programs or certify a complete `@` value producer.
 
 The common continuation owns action identity and position. `LifecycleState`
 is a projection, with no private continuation or action-commit API.
@@ -137,6 +138,15 @@ and external effect publication remain consumer gates.
 The evidence includes the fixed cleanup prefix and pending suffix; extending
 either changes the continuation snapshot. A different snapshot cannot reuse
 evidence merely because identity and action ordinal agree.
+
+The [host revalidation handoff](e-host-architecture-and-incremental-revalidation.md#10-failure-unavailable-and-transaction-discipline)
+consumes this exact current-world evidence, not a cached successful callback.
+Changed contract content, generation, cleanup snapshot or action/delivery
+mapping invalidates dependent checks; the requiring E consumer re-establishes
+them before its existing publication gate. Revalidation of represented history
+does not apply Post, Move/Kill/Drop or acquisition again. A genuinely new action
+uses its own ordinary premises. Missing correspondence remains unavailable;
+transaction tests with supplied material do not execute HA acceptance scenarios.
 
 Move carries its source, destination and already fixed `MoveEffect`.
 Supplied Movable, instance Killable and the narrow Preserve proof are distinct

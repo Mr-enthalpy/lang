@@ -35,6 +35,17 @@ source-erasing projection is not this same-Type migration. The general retained
 Path evidence consumer remains pending; current same-Type checks alone do not
 prove it.
 
+For [host reuse/revalidation](e-host-architecture-and-incremental-revalidation.md#5-cacheable-material-and-current-state-premises),
+that evidence retains the candidate-specific prospective-world Path premises,
+actual source identities/generations, destination mapping and required
+frontier/reify-boundary correspondence. Changed dependencies or destination observations invalidate
+consuming checks even if Type and endpoint/ABI shapes stay equal. Revalidation
+uses the existing hard-A, selected-legality and final-delivery consumers at their
+respective boundaries; it neither rebinds a sealed source nor fabricates a
+destination resident. A newly formed request selects at its own actual frontier.
+Successful final demanded projection still publishes jointly below. These source
+and host consumers remain pending; no new migration path or permission follows.
+
 Stage={compile,runtime}. Endpoints observe linked adjacent ranks. A direct
 migration preserves Type and rank-chain coherence; compile:runtime is invalid.
 Policy ranks obey absent* runtime* compile*; PolicyPair is their common

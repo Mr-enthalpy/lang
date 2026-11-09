@@ -125,6 +125,15 @@ targets before outward delivery. OpenPolicy={open,close} is independent of
 Mode={const,mut} and Stage={compile,runtime}; a compile invocation forms a
 CompileInstance. Current storage and immutable prior snapshots stay distinct.
 
+The [host identity/reuse handoff](e-host-architecture-and-incremental-revalidation.md#4-identity-provenance-and-guarded-relational-observations)
+consumes these owner/selected-input identities and the distinct snapshot/current
+storage observations. Cross-revision reuse requires lawful parent, action,
+name/generation and delivery correspondence; equal text, hashes or resident
+values cannot inherit authority. Contract revision/content affects dependent
+calculation validity, not the CompileInstance key above. Correspondence is a
+reuse premise, not proof that an old sealed action or stored authority can be
+retargeted to a new consumer.
+
 Source navigation remains inner-to-outer. A generated compile-call scope used as
 one outer component must group the complete call expression:
 
@@ -479,3 +488,8 @@ The owner-tree homomorphism proof and the persistent namespace consumer/routing
 migration are **P1 integration gates**. They do not reopen the semantic
 definitions of `SemanticOwner`, `PatternRoot`, namespace views, or overload
 uniqueness established by this contract.
+
+The [roadmap's host wiring](../planning/roadmap.md#10-structured-e-host-and-incremental-revalidation-readiness)
+consumes these gates before persistent reuse is claimed. Current exact owner
+qualification/interner tests do not prove revision correspondence, current-state
+cache validity or HA10–HA12 execution.

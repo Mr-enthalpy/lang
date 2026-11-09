@@ -16,6 +16,7 @@ Each row is an acceptance obligation, independently of executable coverage.
 | E01–E09 | [Evaluation](../design/static-evaluation/evaluation-residual-and-optimization.md), [compile invocation](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md), [build](../design/build-package/build-system-design.md) | Runtime entry, dominance and readiness |
 | L01–L08, W01–W08 | [Lifecycle](../design/lifetime/lifetime-policy-and-overload-boundary.md), [mechanical placement](../design/mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md) | Instance effects and cleanup |
 | LA01–LA30 | [Lifecycle value algebra](../design/lifetime/lifetime-policy-and-overload-boundary.md), [unsafe admission](../design/lifetime/unsafe-semantic-admission.md), [walkthroughs](../design/lifetime/lifetime-algebra-walkthroughs.md) | [LC1–LC8](../contracts/lifetime-program-consumers.md): ordinary programs, projection, boundary transforms, regular access and trusted facilities; source wiring pending |
+| HA01–HA18 (host preservation) | Existing [E](../design/static-evaluation/evaluation-residual-and-optimization.md), [lifecycle](../design/lifetime/lifetime-policy-and-overload-boundary.md), [invocation](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md) and [dependency](../design/symbol-world/dependency-observation-and-realization.md) owners | [Host handoff](../contracts/e-host-architecture-and-incremental-revalidation.md): preserve the same semantics across incremental reuse/rewrites; see the [handoff groups](#e-host-preservation-and-incremental-revalidation-targets); all executable HA coverage pending |
 | P01–P12 | [Residual/completion](../design/patterns-overload/static-pattern-spaces-and-extraction-chains.md), [target return](../design/control-flow/targeted-return-and-d-reduction.md), [compile state](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md) | Restricted Split, escape and current compile facts |
 | O01–O07 | [Operator families](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Operator roles and OG_s |
 | N01–N08 | [Names](../design/symbol-world/names-and-overload-groups.md), [construction](../design/symbol-world/structural-type-formation-and-composition.md), [source composition](../design/symbol-world/symbol-construction-units-and-namespace-origin.md) | Expression formation and conservative contributions |
@@ -744,6 +745,7 @@ feature. Canonical owner definitions above are authoritative for both statuses.
 | Current-position lifecycle and mandatory transaction cleanup gate | 规范已闭合、实现已连接 | lifecycle substrate tests over supplied continuation facts |
 | Source NamePosition, cleanup placement and reified continuation wiring | 规范已闭合、消费者待连接 | E-R05; ordinary source/control-flow facts |
 | AOT/JIT/cache/table optimization representations | 规范已闭合、消费者待连接 | E-R06; equivalent O rewrites with E revalidation |
+| Structured host dependencies, contract-content invalidation and stable propagation | 交接规范已确立、消费者待连接 | HA01–HA18; owner/LC/common-transaction handoffs below remain pending, independently of package-cache or supplied-fact test success |
 
 ## Reify P2 and bidirectional migration acceptance
 
@@ -1195,3 +1197,24 @@ positive/negative, identity/equality, non-derivability, authority-uniqueness and
 no-reopen tests at their connected boundary, with syntax goldens only for actual
 grammar changes. Passing repository tests or matching document strings is not
 execution coverage of these design scenarios.
+
+## E host preservation and incremental revalidation targets
+
+[HA01–HA18](../contracts/e-host-architecture-and-incremental-revalidation.md#111-distinguishing-architecture-targets)
+are host acceptance targets for preserving the existing owners' laws, not new
+language semantics or executed tests. The matrix there retains each row's
+input/change, trigger and stable/failed/unavailable boundary; this index connects
+its groups to the existing handoffs and semantic acceptance obligations.
+
+| HA group | Existing handoff / related acceptance | Required preservation and pending evidence |
+|---|---|---|
+| HA01–HA06 | [LC4–LC6](../contracts/lifetime-program-consumers.md#lc4-contract-expressions-and-four-way-boundary-consumption); LA05–LA08 | Changed contract content revalidates call-site Pre/Post and interface implications before use, even with equal ordinary/ABI shape. Keep explicit Post, separate summary/actual consumers and the HA06 inner / HA03 function / HA04 outward stability stops |
+| HA07–HA09, HA18 | [LC2/LC5/LC8/LC13](../contracts/lifetime-program-consumers.md); LA01–LA03, LA14–LA15, LA30 | Guarded descriptions and founded ordinary programs; separate call recursion, incremental scheduling and boundary-local name-item SCC collapse, preserving outer lineage and the full common-K correspondence |
+| HA10–HA12 | [Owner identities](../contracts/semantic-owner-namespace-graph.md), [compile cache boundary](../contracts/compile-construction-boundary.md) and [migration](../contracts/policy-migration.md); LA04, LA18, LA30 | Lawful owner/input/action/name/generation mapping, immutable snapshots versus current residents, and actual current-state/destination premises. Exact key/shape equality grants no authority |
+| HA13–HA14, HA17 | [Common action/projection handoff](../contracts/semantic-values-and-extraction-interfaces.md#shared-action-and-lifecycle-handoff); E-R06, LA29 | E revalidates at rewritten positions; guarded relation dependencies survive inlining. Semantic/materialization invalidation is distinct, and unknown alias evidence grants no reorder permission |
+| HA15–HA16 | [Shared LC failure boundary](../contracts/lifetime-program-consumers.md#shared-template-and-result-boundary) and [joint publication](../contracts/semantic-values-and-extraction-interfaces.md#shared-action-and-lifecycle-handoff); LA08, LA13, LA30 | Actual unavailable/Diagnostic or established remaining K only; all cleanup/Pre and joint Post, no replay or duplicate consumption. Supplied-fact transaction tests do not establish source integration |
+
+Current host evidence remains limited to the [audited substrate slices](../contracts/e-host-architecture-and-incremental-revalidation.md#112-audited-implementation-evidence).
+No group above has a connected HA execution chain. [Roadmap §10](roadmap.md#10-structured-e-host-and-incremental-revalidation-readiness)
+tracks the linked consumer work; passing documentation/link checks or repository
+tests is neither a lifecycle-source test nor a summary/recursion proof.
