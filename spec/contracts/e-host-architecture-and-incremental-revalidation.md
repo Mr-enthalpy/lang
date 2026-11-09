@@ -50,8 +50,8 @@ requires. Their producers and requiring consumers form one handoff chain:
 
 | Existing handoff | Material passed to host revalidation | Requiring host boundary |
 |---|---|---|
-| [Owner/namespace identity](semantic-owner-namespace-graph.md#identity) and [compile construction](compile-construction-boundary.md) | Legal parent/selected-input identity, exact held snapshots and distinct current instance/member storage | §§4–5: lawful revision correspondence and state-sensitive cache reuse |
-| [LC2](lifetime-program-consumers.md#lc2-whole-continuation-projection-and-projection-complete-clauses) / [LC13](lifetime-program-consumers.md#lc13-whole-original-k-cps-correspondence-pending) | Common actions/guards, projection-complete provenance, actual delivery and pending caller suffixes | §§2 and 9: synchronized observations and new-position rewrite validation |
+| [Owner/namespace identity](semantic-owner-namespace-graph.md#identity) and [compile construction](compile-construction-boundary.md) | Legal parent/selected-input identity, observed selection domains, exact held snapshots and distinct current storage/effect context | §§4–6: lawful revision correspondence, selection and state-sensitive cache validity |
+| [LC2](lifetime-program-consumers.md#lc2-whole-continuation-projection-and-projection-complete-clauses) / [LC13](lifetime-program-consumers.md#lc13-whole-original-k-cps-correspondence-pending) | Common actions/guards, projection-complete provenance, actual delivery and pending caller suffixes | §§2 and 9: synchronized observations, E-grounded equivalence and independent new-position validation |
 | [LC4](lifetime-program-consumers.md#lc4-contract-expressions-and-four-way-boundary-consumption) / [LC6](lifetime-program-consumers.md#lc6-function-pattern-and-recursive-interface-consumption) | Pre/Post relation content, scoped four-way mappings and interface-compatibility assumptions | §§6–7: invalidate real call and interface consumers despite equal signature/ABI shape |
 | [LC5](lifetime-program-consumers.md#lc5-exit-compression-and-automatic-post) / [LC8](lifetime-program-consumers.md#lc8-regular-access-and-cropping-programs) | Formed guarded summary inputs, separate actual-exit history, original companions and contribution lineage | §§7.2–8: summary propagation, stable observations and prescribed boundary-local collapse |
 | [Shared action/lifecycle publication](semantic-values-and-extraction-interfaces.md#shared-action-and-lifecycle-handoff) and [migration delivery](policy-migration.md) | Actual cleanup/Pre evidence, selected frontier and successful joint producer/projection Post | §10: current-world validation without replay or partial publication |
@@ -151,6 +151,20 @@ Missing correspondence excludes reuse; a requiring consumer stops under §10.
 The owner contract's pending parent-homomorphism proof is not supplied by an
 exact frontend-owner lookup.
 
+Cross-K structural correspondence MAY be partial, many-to-one, one-to-many or
+another structured relation where the existing E rewrite/fidelity laws justify
+it (§9). The host MUST NOT require a global bijection between old and new action
+IDs. Eliminated, fused, expanded and retained material still needs its actual
+observation/obligation correspondence; a partial relation cannot simply omit
+required effects or responsibilities. This flexibility concerns continuation
+structure, not merging semantic identities or weakening owner-parent,
+CompileInstance, handoff-occurrence or ordinary transfer laws. Within each K,
+synchronized projections still identify the same action at the same position.
+Missing required correspondence blocks the requiring reuse/rewrite under §10.
+An arbitrary source edit need not preserve the previous program's behavior;
+reuse claims still require their own observations and premises to remain valid
+in the new revision. The equivalence gate in §9 applies to proposed O rewrites.
+
 Relational observations MUST retain sufficient subject/target, K position or
 interval, name/generation, scope, guard, selected operation, supporting premises
 and availability to justify their actual consumer. Same name, same Place, same
@@ -181,7 +195,7 @@ cache stores all three classes:
 |---|---|---|
 | Immutable complete snapshot | The exact held complete tau/callspace and the Core projection of that same snapshot | Current registry/resident cannot reconstruct a missing old snapshot; required missing snapshot is unavailable |
 | Current-world fact | Actual K/action/cut, Name/Place/resident generation, Region/Color/access, current OpenHere/Writable, Move and cleanup obligations | Old success grants no present read/write/transfer permission; changed or unknown premises require E revalidation or §10 failure |
-| Replayable computation/summary material | Established parent-neutral material, ordinary source/selection provenance, observed inputs, dependencies and validity conditions | Cache hit does not replay one-time initialization, source acquisition, external effects, Kill/Drop or sealed selection; missing correspondence prevents reuse |
+| Replayable computation/summary material | Established parent-neutral material, ordinary source/selection provenance, observed inputs, dependencies and validity conditions | Same-history reuse does not replay committed initialization, acquisition, external effects, Kill/Drop or selection; fresh-compilation reuse retains its required actions/effects under §5.1; missing correspondence prevents reuse |
 
 CompileInstance identity MUST remain the owner's parent × selected partner ×
 canonical inputs relation. Contract/body revision information is validity
@@ -207,6 +221,30 @@ a digest or matching signature cannot be the final identity, equivalence or
 permission proof. Conservative recomputation is permitted when finer evidence
 is absent. It still observes §10's no-replay/publication boundary.
 
+### 5.1 Same-history revalidation and fresh-compilation reuse
+
+Basis: [host acquisition §1.1](../design/static-evaluation/host-capabilities-and-machine-objects.md#11-link-specific-effect-law)
+and build §§4–5. Revalidating an already committed action in the represented
+history MUST NOT commit it again. Reusing material in a fresh compilation MUST
+instead preserve the actions and effect records required in that compilation's
+E state, with actual identity, dependencies, current premises and ordinary
+Pre/commit/Post. Avoiding physical work is not permission to delete semantic
+events, skip conflicts or import the old compilation's registry/history.
+
+Cached material MAY avoid repeated physical computation only where the actual
+ordinary operation's semantics and current validity permit that realization.
+It cannot supply otherwise missing external/resource truth, ownership or
+acquisition authority, or authorize repeating an external physical effect.
+For link, a fresh compilation has its own single LinkRegistry. The first
+authorized acquisition still reserves Active and reaches Done only on success,
+retaining its acquisition effect and normal checks even if cached material
+realizes the work. Active reentry remains a cycle; Done remains a duplicate,
+not a second cached source-level link. Nested/sibling acquisitions share that
+registry and cannot coalesce duplicate effects. The build DependencyGraph
+continues to project those actual evaluation effects. Missing required reuse
+or acquisition evidence stops at the existing boundary; it creates no Done
+entry or successful Post. These source consumers remain pending.
+
 ## 6. Fine-grained dependencies and change propagation
 
 Basis: E §§3–5, lifecycle §§2.1.6, 8.5 and 10, dependency §§2–5,
@@ -227,6 +265,7 @@ of changed or invalidated observations, including these associations:
 | Observed input | Dependent calculation/consumer |
 |---|---|
 | Receiver/call-entry, projection/frame, canonical arguments and bound RequiredCapture | Call validity, CompileInstance and result material |
+| Resolved binding/shadowing/exposure, exact observed callspace, candidate domain and consumed rejection/fallback/preference evidence | Reuse of resolution, applicability, exclusions and the unique selection, not only the selected tuple (§6.1) |
 | Actual Pre/Post relation content, entry/result mapping and exposed interface assumptions | Caller Pre.check, caller Post.admit, subsequent action Pre and Function Pattern contract compatibility |
 | Formed guarded body, bound roles, selected-operation descriptions or sufficient exposed contracts | Formation-time Post_summary and its support |
 | Current names/generations, residents, Region/Color/access, cleanup and Policy | Action legality, actual Post, delivery and resource responsibility |
@@ -250,6 +289,32 @@ E observation relation under valid identity/guard mappings, not textual or
 hash equality and not an arbitrary program-equivalence oracle. If unchanged
 observations cannot yet be proved, continue required revalidation; if a needed
 consumer/evidence is unavailable, stop at that boundary under §10.
+
+### 6.1 Selection domains and negative observations
+
+Basis: [ordinary overload §§1–5](../design/patterns-overload/overload-resolution-design.md)
+and the call/invocation owners' exact immutable snapshot rules. For conclusions
+depending on set completeness, absence, exclusion, uniqueness or preference,
+the host MUST retain the observed domain and sufficient validity evidence.
+Call reuse therefore accounts for resolved binding/shadowing and exposure,
+the exact held complete-type/callspace observations, candidate/projection
+enumeration, R_vis/C_sigma and hard-A inputs, proved Pattern mismatches,
+fallback suppression and the comparisons establishing a unique winner. Merely
+retaining Selected=(candidate,projection,frame) does not establish that no
+other relevant candidate can change the result. Unknown/unavailable evidence
+cannot be cached as absence, rejection, NoAlias or an established maximum.
+
+This requires sufficient evidence, not an eager full-family ledger, fixed
+query API or future-path/candidate-body execution. A conservative dependency
+range MAY invalidate more work when finer support is absent. A changed current
+lookup domain or newly read snapshot invalidates conclusions that consumed it;
+it cannot modify an earlier held immutable tau/callspace. Old K's sealed call
+retains its origin and never reselects. If reuse for a new revision cannot
+establish the required selection-environment correspondence, its call MUST be
+formed through ordinary E selection in the new K; the old seal is not patched
+or reopened. Missing required observations remain unavailable at their normal
+resolution/Pattern/selection boundary. Lifecycle/Pre failure remains terminal
+after selection, not another exclusion or preference rule.
 
 ## 7. Call-site revalidation and automatic Post propagation
 
@@ -375,12 +440,38 @@ and physical tail-call/slot reuse have separate proof obligations.
 Basis: E §§4–6, 7.1 and 10–11, lifecycle §7, mechanical passing and effect §2.
 These are preservation requirements for future consumers, not their APIs.
 
-For a proposed O rewrite the host MUST retain lawful original/new K mappings
-for actions, names/generations, calls, guards, cuts and delivery, and subject
-affected conclusions to `E_affected` at their new positions. Old facts can guide
-a candidate but cannot authorize it. Inlining, fusion/splitting or moving work
-between functions cannot erase dependencies because an old call edge disappears.
-Missing correspondence prevents acceptance of that candidate.
+For a proposed O rewrite the host MUST retain two independent obligations and
+their supporting E observations:
+
+1. The E owner's existing `Facts_E proves R equivalent_to R'` obligation:
+   original/proposed K have equivalent admitted observations, including values,
+   effect traces and lifecycle/cleanup/resource observations where applicable.
+   Both continuations being legal does not prove this equivalence.
+2. `E_affected` validation on the proposed K: every affected synchronized
+   projection rechecks its actual new-position Pre/commit/Post, call/Policy,
+   dependency, cleanup and delivery premises, with newly ready work returning
+   to E saturation. An old-position equivalence argument does not supply these
+   current premises.
+
+Both MUST hold before a candidate becomes an accepted rewrite. A legal candidate
+with different observable results/effects still fails the first obligation.
+This retains existing E facts and transform justification; it introduces no
+proof-Object type, universal equivalence decider or optimizer-private premise.
+False or unavailable evidence for either obligation prevents acceptance and
+leaves the previous accepted revision intact.
+
+The host MUST retain lawful original/new K correspondence for actions,
+names/generations, calls, guards, cuts and delivery. Under §4 it need not be a
+global one-to-one ID map: admitted elimination, fusion, duplication, inlining
+or reordering can use partial or structured many-to-one/one-to-many relations.
+The transform's justification accounts for changed/removed occurrences and
+observable repair, ownership and cleanup duties; correspondence alone grants
+no duplication of effects or consumable authority. No mandatory physical
+Object per semantic cut follows. Same-K projection synchronization and specific
+canonical identity/transfer relations retain their own laws. Inlining or moving
+work between functions cannot erase dependencies when an old call edge
+disappears. Missing correspondence blocks acceptance just like either failed
+obligation above. CPS representation fidelity is not E performing an O rewrite.
 
 Planner organization MAY follow actual functions/SCCs and nested subcontinuations.
 No global pass order, per-function planner instance or optimizer-specific alias,
@@ -444,6 +535,11 @@ is distinct from semantic rejection. A required observation with no lawful
 reuse proof is recomputed by E, or reports its missing boundary, never filled
 by host guesses.
 
+The no-replay rule is relative to that represented history. A fresh compilation
+using cached material still accounts for its own required actions/effects and
+registry checks under §5.1; it neither replays the old history nor omits the
+new history's semantic events merely because physical computation was reused.
+
 ## 11. Acceptance and current connection status
 
 ### 11.1 Distinguishing architecture targets
@@ -468,11 +564,11 @@ effect-count and no-reopen evidence as relevant, not mock proof imports.
 | HA09 | One name-item SCC crosses inner participating InPlace, transit-only InPlace, outer participant and Ordinary boundary | Use original companions, compatible guards and actual item/edge contribution provenance at each real cut | Collapse only required local contributions; preserve outer fine material/incidence for later cuts; missing lineage unavailable at that cut; §8 |
 | HA10 | Cached lifecycle success meets a changed Name/generation | Revalidate actual identity, Region/access/Color and action/delivery mapping | Old name spelling/value cannot inherit old authority; stale/unknown evidence rejects/is unavailable; §§4–5 |
 | HA11 | A held complete type snapshot differs from the current mutable resident | Keep the exact immutable snapshot and current storage observations distinct | Never reconstruct the old tau from current registry/resident; missing snapshot unavailable; §5 |
-| HA12 | Compile material/key hits while OpenHere or input dependencies change | Recheck actual current requirements; canonicalize newly observed inputs without rebinding a sealed call | Close/spent authority or invalid dependencies defeat reuse, never restore resident/write power; missing evidence unavailable; §5 |
-| HA13 | Future O inlines a call, removing its graph edge while preserving semantic dependencies | Carry lawful original/new K mappings and the inlined contract/source dependencies; run affected E | Accept only after new-position validation; missing mapping blocks the candidate, preserving accepted K; §§6, 9 |
+| HA12 | Compile material/key hits while OpenHere, input dependencies or the consumed selection domain change | Recheck current requirements and the selection domain's completeness/negative/preference evidence; form new-K calls ordinarily when old-seal correspondence is not established | No restored authority or patched old seal; old immutable snapshots stay unchanged; required unknown observations remain unavailable; §§5–6.1 |
+| HA13 | Future O inlines a call, removing its graph edge while preserving semantic dependencies | Retain E-grounded observational equivalence justification, lawful structural correspondence and inlined dependencies; independently run affected E on new K | Accept only when equivalence and new-position validation both hold; missing/false evidence for either or required correspondence blocks the candidate, preserving accepted K; §§4, 6, 9 |
 | HA14 | Only machine materialization decisions change, with E observations unchanged | Invalidate machine consumers of those decisions by their actual dependencies | Independent semantic material can remain valid; a semantic effect of the decision still requires E; §9 |
 | HA15 | Lifecycle consumer, source/origin, formed description or automatic Post evidence is absent | Report the actual requiring unavailable Diagnostic | No synthetic Residual, None/unknown, NoDelta or successful contract; §§3, 7.2, 10 |
-| HA16 | Action/late component fails, earlier cleanup is outstanding, or cached execution contains Move/Drop | Apply cleanup/Pre/joint-publication gate and retain actual consumption/history | No partial success or duplicate effect/cleanup; previous independent commits remain, cache reuse replays none; §§5, 10 |
+| HA16 | Action/late component fails, cleanup is outstanding, or cache reuse crosses a history/compilation boundary | Apply cleanup/Pre/joint publication; distinguish same-history no replay from a fresh compilation's required action/effect records | No partial success or duplicate consumption; retain earlier commits and new compilation registry/conflict checks, without gratuitous physical replay; §§5.1, 10 |
 | HA17 | Local alias/reordering query needs several guarded relations | Query the actual relevant subjects, ranges, guards and dependencies, with positive MustAlias/NoAlias evidence where required | Unknown does not prove NoAlias; storage cannot force all-function pairwise expansion for every local query; §4 |
 | HA18 | Contract program tries to use its own unformed check/admit/AutoPost/companion as its basis | Trace ordinary action justification to independently established semantics/observations | Unfounded cycle unavailable; founded ordinary programs still use E with their own premises; §3 |
 
@@ -485,6 +581,29 @@ ExistingTarget changes an E premise and requires its new ABI classification;
 it is not a pure machine-choice change. Keeping that delivery unchanged while
 switching ABIKind/MoveEffect to escape a failed check is forbidden (§10).
 These are design subcases of the existing rows, not executed tests.
+
+Further design subcases refine the same IDs:
+
+- **HA12:** A new current read supplies a candidate domain containing c2 that
+  outranks or ties the unchanged c1. The new K cannot reuse the old c1 seal
+  without valid selection support: ordinary selection chooses its actual
+  winner or reports ambiguity/unavailable evidence. A call still consuming the
+  original immutable tau keeps that snapshot's family. Changed shadowing,
+  fallback suppression, or a formerly proved mismatch now becoming unavailable
+  likewise cannot inherit the old exclusion/uniqueness conclusion (§6.1).
+- **HA13:** Two K candidates can both satisfy E legality while delivering
+  different observed results/effects; this supplies no equivalence. Conversely,
+  an E-justified nonbijective structural transform may be accepted after both
+  obligations hold. Unaccounted owned occurrences, effects or cleanup, or a
+  dropped required correspondence, prevent acceptance (§9).
+- **HA16:** Revalidating a committed acquisition in one history submits no
+  second action. In a fresh compilation, lawful cached realization of the first
+  link still records its authorized acquisition in the new shared LinkRegistry.
+  A second source-level/sibling acquisition remains a duplicate and Active
+  reentry remains a cycle, even if all physical material is cached (§5.1).
+
+These additions specify preservation/acceptance boundaries only; they execute
+no source program or optimization test.
 
 ### 11.2 Audited implementation evidence
 
@@ -510,10 +629,10 @@ does not establish HA01–HA18 execution or prove general summary fidelity.
 The existing [open questions](../planning/open-questions.md) already cover the
 concrete choices needed here; no closed semantic question is reopened:
 
-- [Identity/persistence](../planning/open-questions.md#identity-and-canonical-representation): serialization and lawful cross-revision owner/action/name/generation correspondence, collision-safe lookup and parent-homomorphism evidence.
+- [Identity/persistence](../planning/open-questions.md#identity-and-canonical-representation): serialization and lawful cross-revision owner/action/name/generation correspondence, including supported nonbijective structural relations without changing identity laws, collision-safe lookup and parent-homomorphism evidence.
 - [Continuation representation](../planning/open-questions.md#residual-and-serial-evaluation): structured K/residual frames, full CPS/delivery/control correspondence and effect/overlay storage, without prescribing physical CPS layout.
 - [Lifecycle algorithms](../planning/open-questions.md#lifetime-color-and-access): regular companions and contribution/incidence retention, supported boundary/summary equivalence and recursive-family evidence/rejection, scoped authority and current Open-sensitive cache requirements.
-- [Infrastructure persistence](../planning/open-questions.md#owner-namespace-and-infrastructure-persistence): storing dependency observations/validity and maintaining fine-grained reverse-consumer lookup, state-sensitive reuse and separate machine-artifact dependencies.
+- [Infrastructure persistence](../planning/open-questions.md#owner-namespace-and-infrastructure-persistence): storing observed selection domains/completeness and other dependency validity, fine-grained reverse-consumer lookup, history-relative effect accounting, E-grounded rewrite support and separate machine-artifact dependencies.
 
 Chosen representations still need the corresponding owners' fidelity,
 composition and termination evidence. A future implementation reports each

@@ -425,11 +425,17 @@ assigns the existing contracts these linked responsibilities:
 
 | Existing handoff | Pending host consumer |
 |---|---|
-| Owner/namespace and compile construction | Lawful identity/parent/input correspondence, separate immutable snapshots and current-state/material cache validity |
-| LC2/LC13 and shared action publication | Full common-K/control/caller correspondence, current cleanup/Pre support and joint Post without replay |
+| Owner/namespace and compile construction | Lawful identity/parent/input correspondence, observed selection-domain completeness/exclusion/preference, immutable snapshots versus current state, and fresh-compilation action/effect accounting |
+| LC2/LC13 and shared action publication | Structured common-K/control/caller correspondence without a global ID bijection; separate E-grounded rewrite equivalence and affected new-position validation; current cleanup/Pre and history-relative joint publication |
 | LC4/LC6 | Actual contract-content dependencies and mapped call/interface revalidation even when ordinary/ABI shape is unchanged |
 | LC5/LC8 | Separate summary/actual validity, guarded propagation/stability and retained original SCC companions/contributions |
-| Policy migration | Candidate-specific destination/Path/frontier validity with existing hard-A, selected and final-delivery boundaries preserved |
+| Policy migration | Existing-view/candidate-domain validity plus destination/Path/frontier evidence, with existing hard-A, selected and final-delivery boundaries preserved |
+
+The HA12/HA13/HA16 subcases require changed-selection-domain checks without
+mutating old snapshots/seals; equivalence and legality before accepting an O
+candidate, with supported nonbijective correspondence; and new-compilation
+LinkRegistry/effect checks despite physical cache reuse. These clarify existing
+owners' duties and add no selection stage, proof API or executable coverage.
 
 Recursive families require their own
 domain/termination or rejection/unavailable evidence; name-item SCC collapse

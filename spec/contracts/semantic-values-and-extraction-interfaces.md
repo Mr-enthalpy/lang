@@ -148,6 +148,14 @@ does not apply Post, Move/Kill/Drop or acquisition again. A genuinely new action
 uses its own ordinary premises. Missing correspondence remains unavailable;
 transaction tests with supplied material do not execute HA acceptance scenarios.
 
+For a fresh compilation, [authorized cache realization](e-host-architecture-and-incremental-revalidation.md#51-same-history-revalidation-and-fresh-compilation-reuse)
+still accounts for required actions/effects in that compilation's E state;
+same-history no replay cannot erase new registry entries or effect conflicts.
+For O candidates, this publication/legality gate is independently required
+alongside [E-grounded observational equivalence](e-host-architecture-and-incremental-revalidation.md#9-future-oplannerm-readiness).
+A structural cross-K relation may be nonbijective, but proves neither that
+equivalence nor authority to duplicate owned occurrences, effects or cleanup.
+
 Move carries its source, destination and already fixed `MoveEffect`.
 Supplied Movable, instance Killable and the narrow Preserve proof are distinct
 facts, never inferred from Alive, Type or Policy. Failure cannot change the

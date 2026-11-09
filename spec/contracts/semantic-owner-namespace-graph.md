@@ -134,6 +134,14 @@ calculation validity, not the CompileInstance key above. Correspondence is a
 reuse premise, not proof that an old sealed action or stored authority can be
 retargeted to a new consumer.
 
+For [selection reuse](e-host-architecture-and-incremental-revalidation.md#61-selection-domains-and-negative-observations),
+the resolved binding/shadowing/exposure and complete observed candidate domain
+are validity inputs alongside the winner. A changed current read may supply a
+new snapshot/domain; it cannot add candidates to a held immutable tau or reopen
+its seal. Cross-K structural correspondence can be nonbijective under proved
+transforms, while the owner-parent and semantic identity laws above remain
+unchanged. Host representation sharing is not an identity quotient.
+
 Source navigation remains inner-to-outer. A generated compile-call scope used as
 one outer component must group the complete call expression:
 

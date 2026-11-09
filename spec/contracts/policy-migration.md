@@ -46,6 +46,13 @@ destination resident. A newly formed request selects at its own actual frontier.
 Successful final demanded projection still publishes jointly below. These source
 and host consumers remain pending; no new migration path or permission follows.
 
+The [selection-domain requirement](e-host-architecture-and-incremental-revalidation.md#61-selection-domains-and-negative-observations)
+also applies to consumed existing-view absence, candidate applicability,
+fallback and preference observations. Retaining only the selected migration
+does not validate reuse after those observations change. It does not move a
+post-seal failure into hard A, reopen that invocation, or replace an immutable
+observed callspace with the current registry.
+
 Stage={compile,runtime}. Endpoints observe linked adjacent ranks. A direct
 migration preserves Type and rank-chain coherence; compile:runtime is invalid.
 Policy ranks obey absent* runtime* compile*; PolicyPair is their common

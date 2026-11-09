@@ -109,6 +109,11 @@ actual Move/repair, Valid and the three separate transfer proofs remain required
   context, across stages and reify. Retain target-return barriers and exact Drop
   once. Cover ordinary no-wait work too; no mandatory Box/state machine or future
   path/object enumeration. O generation-grain equivalence is a separate proof.
+  [Host rewrite acceptance](e-host-architecture-and-incremental-revalidation.md#9-future-oplannerm-readiness)
+  retains E-grounded observational equivalence separately from affected new-K
+  validation. Its structural correspondence need not be globally bijective;
+  that flexibility does not weaken this handoff's separate name, ownership and
+  exact cleanup obligations or same-K action/projection synchronization.
 
 ## LC1. Pattern and structure companion formation
 
@@ -167,6 +172,13 @@ actual Move/repair, Valid and the three separate transfer proofs remain required
   The [expanded transcription](../design/lifetime/lifetime-algebra-walkthroughs.md#lifetime-transcription)
   must retain real Ordinary/InPlace scopes, recursive calls and exits. Its own
   ordinary lifecycle premises still terminate in the bootstrap basis.
+  [Host selection reuse](e-host-architecture-and-incremental-revalidation.md#61-selection-domains-and-negative-observations)
+  additionally retains the observed resolution/candidate domain and consumed
+  exclusion/preference support. The old seal remains fixed; a new revision
+  lacking valid correspondence forms its own call through ordinary E. This
+  preserves prior selection, not a lifecycle-specific selector or a second
+  runtime lookup. LC4 starts from the actual selected frame, not this proof's
+  acquisition or a retry of failed selection.
 
 ## LC3. Internal actions and public transaction
 

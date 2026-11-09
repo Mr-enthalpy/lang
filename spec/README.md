@@ -66,7 +66,9 @@ For host implementation, read the [owner/namespace handoff](contracts/semantic-o
 [shared action publication](contracts/semantic-values-and-extraction-interfaces.md#shared-action-and-lifecycle-handoff)
 together with the [E host preservation chain](contracts/e-host-architecture-and-incremental-revalidation.md#11-connected-handoff-responsibilities).
 The latter connects their evidence and invalidation duties; it supplies no new
-semantic authority. [HA01–HA18](planning/canonical-semantic-conformance.md#e-host-preservation-and-incremental-revalidation-targets)
+semantic authority. This includes complete selection observations, fresh-compilation
+effect accounting and separate rewrite-equivalence/new-position validation.
+[HA01–HA18](planning/canonical-semantic-conformance.md#e-host-preservation-and-incremental-revalidation-targets)
 remain architecture acceptance targets, separate from executed substrate tests.
 
 ## Contracts

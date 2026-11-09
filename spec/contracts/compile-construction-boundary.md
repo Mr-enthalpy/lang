@@ -55,12 +55,22 @@ and current instance/member resident state under different reuse premises.
 Only a lawful target-owner/input correspondence reuses neutral material; a
 required old snapshot cannot be reconstructed from today's resident/callspace.
 Key equality supplies no current OpenHere, generation, cleanup or dependency
-validity and cannot rerun initialization or restore consumed authority after
+validity and cannot replay committed initialization or restore consumed authority after
 Close. Consumed body/contract content changes are validity inputs, not another
 CompileInstance identity axis. Their real consumers revalidate through E,
 including Pre/Post checks despite unchanged ordinary interface/ABI shape.
 These are future cache consumers, not capabilities supplied by current interning
 or the coarse exact-key package artifact cache.
+
+[Selection-domain validity](e-host-architecture-and-incremental-revalidation.md#61-selection-domains-and-negative-observations)
+includes consumed completeness, rejection, fallback and unique-preference
+observations, not only the selected pair. A changed new read can invalidate
+reuse without changing an old snapshot. For [fresh-compilation cache reuse](e-host-architecture-and-incremental-revalidation.md#51-same-history-revalidation-and-fresh-compilation-reuse),
+avoiding physical computation does not omit the new E state's required actions,
+acquisition effects or registry/conflict checks. The host owner's per-compilation
+LinkRegistry still permits only the first authorized acquisition; cached
+material neither imports an old Done state nor excuses a second source link.
+This is distinct from not replaying actions in an already represented history.
 
 A returned construction value does not implicitly install its outer binding.
 An explicit binding action creates the destination name and Place. Construction
