@@ -712,10 +712,14 @@ Automatic formation alone creates none of those permissions.
 For one selected action the semantic realization is unique up to observational
 equivalence; distinct candidates use ordinary preference or report ambiguity.
 
-After formation, invocation consumes the established dependencies. It does not
-resolve external names again by spelling or create a separate embedding
-environment. Deferred formation retains its actual obligations; deferral is
-not permission to recapture at a later invocation site.
+For these InPlace automatic captures, invocation consumes the sources already
+established at formation; it does not resolve those sources again by spelling
+or create a separate embedding environment. Initialized captures likewise retain
+their formed sources. This is not a global ban on RequiredCapture fulfillment:
+an admitted new structured call binds its declared required slots in the actual
+call context under dependency §3. Already sealed bindings never re-resolve.
+Deferred automatic/initialized formation retains its actual obligations and
+cannot turn into invocation-site recapture.
 
 For InPlace automatic existing captures, omitted Pre inherits the formation
 slice's preceding Post, as specified by the lifecycle owner's empty-slice law.

@@ -87,10 +87,14 @@ preserving live Places/history. The
 [effect owner](spec/design/control-flow/effect-steps-and-continuation-handoff.md)
 defines concrete Wait successors, atomic user repair, transparent propagation,
 throw and ordinary Drop cleanup. Effects carry no implicit runtime Stage or Box;
-global IO/heap are ordinary capability contexts. Function Pattern projection
-exposes former captures as explicit inputs. Projection consumes capture
-specifications, not projection-site capture
-values; absent heap does not prevent a proved parameterized interface. Future
+global IO/heap are ordinary capability contexts. Standard globalheap supplies a
+terminal root compatible with single-linked HeapStack construction; other user
+Heap/IO shapes remain unconstrained.
+Live captured output maps to successor call context under separately checked
+name, ownership and cleanup obligations, not default self-field ownership.
+Function Pattern projection exposes former captures as explicit inputs. It
+consumes capture specifications, not projection-site capture values; absent
+heap does not prevent a proved parameterized interface. Future
 explicit inputs require mapped contracts and original resources keep exactly one
 ordinary owner/cleanup disposition. Error-shaped data alone has no effect;
 Result/Error adapters are explicitly selected ordinary library calls.

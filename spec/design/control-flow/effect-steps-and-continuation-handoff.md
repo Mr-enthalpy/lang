@@ -43,6 +43,42 @@ continuation material, resume Pattern, ordinary dependencies and user repair.
 The [lifecycle owner](../lifetime/lifetime-policy-and-overload-boundary.md#218-empty-slices-inherited-autopre-and-atomic-move-repair)
 owns Valid, empty-slice continuity and Move[rho].
 
+The live captured material delivered across the cut is ordinary continuation
+output material. Its call-context projection need not be an owned field subtree
+of the new self Object. Physical environment fields can represent it only while
+preserving the actual semantic source/ownership relations. Formally:
+
+```text
+LiveContext_s -- Move[rho] --> CallContext_k
+mu_s : transferred live name/generation occurrences -> successor occurrences
+```
+
+LiveContext_s includes the actual held callee/caller suffix material selected
+for transfer. CallContext_k observes that material in the complete successor's
+ordinary call/dependency context; it is not an additional Wait payload, Object
+axis or hidden registry. Unfulfilled RequiredCapture and resume requirements
+remain specifications, not values bound early by this projection. Resume's new
+argument names are introduced only by its ordinary invocation.
+
+Three obligations are checked separately before successful handoff publication:
+
+- **Name correspondence:** mu_s accounts for every transferred occurrence and
+  its validated post-repair name/generation, origin, region, Color and access.
+  Distinct occurrences cannot merge by spelling/value equality; ref handles
+  retain their real target identity, including legal shared targets.
+- **Ownership transfer:** each actual owned occurrence has one lawful custody
+  disposition under the selected MoveEffect/repair. There is no extra self/capture
+  Move, cloned owner or referent transfer inferred from a handle or layout field.
+- **Cleanup responsibility:** every transferred outstanding destruction duty is
+  represented by the successor's ordinary held material/contract exactly once.
+  Dropping it follows actual ownership and fixed cleanup order, without duplicate
+  source-generation Drop, stranded caller resources or replayed committed work.
+
+A proved name map alone supplies neither ownership nor cleanup evidence. Failed
+or unavailable evidence for any obligation exposes no partial successor or
+successful Post. All three consume the existing common transaction/lifecycle
+rules; none adds a separate continuation type system or changes Wait(y,k).
+
 ```text
 caller Pre.check -> callee Pre.admit
   -> selected Move[rho] in common scratch state

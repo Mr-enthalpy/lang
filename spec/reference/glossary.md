@@ -680,6 +680,9 @@ Global IO is available at compile/runtime across the broad host-Object boundary.
 Compile globalheap has legal runtime migration. Local names may shadow either;
 IO need not have a HeapStack shape and neither capability implies an effect.
 Individual external Objects still need their own migration evidence.
+Standard globalheap additionally exposes the heap owner's single-linked-compatible
+terminal root and terminating forwarding protocol. Concrete pools/protocols remain
+library choices; other user Heap/IO are not forced to share that structure.
 
 ### With Path relation
 

@@ -326,6 +326,11 @@ existing storage support/release duty with guaranteed completion under Pre,
 preserves live Places/history and restores the shadowed heap binding. Object
 relocate really obtains/moves storage. Compile globalheap has legal runtime
 migration; global IO is available at both stages without universal object migration.
+Standard globalheap owes a single-linked HeapStack-compatible terminal root and
+terminating outward-forwarding protocol; concrete pools/resource implementations
+remain free, and other user Heap/IO need no isomorphism. Live capture output
+crosses Move[repair] to successor CallContext with separately checked name,
+ownership and cleanup maps, never default ownership as new-self fields.
 IO/heap are ordinary capabilities and need not produce effects or share shape.
 Effect Function Patterns use || and nearest-unit postfix ~ for possible steps,
 never input copying. Async uses ordinary ABI1/ABI2 with explicit optional Box.

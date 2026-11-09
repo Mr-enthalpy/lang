@@ -141,6 +141,11 @@ external storage and observation; file IO is not a universal interface for them.
 Compile globalheap exists with an actual legal compile-to-runtime ordinary
 migration facility. These are minimal bootstrap requirements, not a guarantee
 that every compile-acquired external Object is migratable.
+The standard globalheap provider also owes the single-linked-compatible root
+and terminating outward-forwarding protocol fixed by the
+[heap owner](../lifetime/heap-stack-and-storage-responsibility.md#1-ordinary-single-linked-context).
+Concrete pools/protocol implementations remain library choices; other user Heap
+and IO providers have no mandatory isomorphism to this standard root.
 
 Local io/heap are ordinary capability Objects and shadowable names. The
 [dependency owner](../symbol-world/dependency-observation-and-realization.md#3-required-and-initialized-captures)

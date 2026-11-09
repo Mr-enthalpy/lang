@@ -64,6 +64,14 @@ these handoffs supply no standalone evaluator or executable success claim.
 
 ## LC13. Whole-original-K CPS correspondence (pending)
 
+LC10/LC12 actual handoff and LC13 correspondence consume effect §2's
+`LiveContext_s -- Move[repair] --> CallContext_k`. Transferred live capture
+material is ordinary continuation output, not a default owned subtree of new
+self. Name/generation mapping, unique ownership disposition and exact ordinary
+cleanup responsibility require separate evidence. Proving one grants neither
+of the others; failure/unknown in any prevents successful handoff publication.
+Required/resume specifications do not become input values through this mapping.
+
 - **Input material:** Actual common K and outward delivery, pending caller
   contexts, selected actions/frames, guards, dependencies, name/cut mapping,
   active targets, handlers, fixed cleanup and compile/runtime/reify projections.

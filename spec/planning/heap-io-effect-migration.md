@@ -35,7 +35,7 @@ proof-search requirements. Unknown evidence is unavailable, not permission.
 | ID | Obligation | Canonical judgment and evidence |
 |---|---|---|
 | F01 | Unique declared capture resolution, no second selector or reopen | dependency §3 Bound/Mismatch/Unavailable, overload §4 seal |
-| F02 | Equal self/capture/args, initialized once, no duplicate Move/Kill | call §6.2–6.3 coherent projection/transaction |
+| F02 | Equal self/capture/args; LiveContext_s to CallContext_k has separately proved name correspondence, ownership and cleanup duties, with no default self-field ownership or duplicate Move/Kill | call §6.2–6.3 and effect §2 |
 | F03 | Spec/value separation, universal binder substitution, source erasure, original-resource disposition and optional Env authority | Pattern §11.1–11.2; dependency §4.1; FP01–FP08 |
 | F04 | Empty Post=Pre, inherited old names/new input defaults | lifecycle §2.1.8 Slice_epsilon and AutoPre |
 | F05 | First-layer Move locality and valid atomic repair | lifecycle §2.1.3/§2.1.8 Pre_MoveRepair/Valid |
@@ -47,7 +47,7 @@ proof-search requirements. Unknown evidence is unavailable, not permission.
 | F11 | Dropped concrete continuation cleans exactly once ordinarily | effect §4 plus lifecycle fixed cleanup/destructors |
 | F12 | Yield no instance NameExpr; compile-closed reify public shape | unified §§3,20 self-root and ClosedInterface |
 | F13 | Host/resource protocols compose without mandatory effect or IO stack | host §6, heap §6 and independent migration |
-| F14 | Complete original-K CPS preserves caller suffixes, all contexts/stages, selected origin, delivery/targets and exact cleanup | E §7.1 CPS/Plug/Compose; LC13 and K01–K08. Added whole-continuation obligation, not implemented conversion |
+| F14 | Complete original-K CPS preserves caller suffixes, all contexts/stages, selected origin, delivery/targets and exact cleanup; LiveContext_s -- Move[repair] --> CallContext_k proves name map, custody and cleanup separately | E §7.1, effect §2, LC13 and K01–K08; execution pending |
 
 ## Dependency order and unavailable boundaries
 
@@ -128,3 +128,12 @@ rejection tests do not execute projection, resource disposition, result adapters
 Heap/Async/Effect or CPS. Earlier audit passes did not cover these omitted
 questions. Scout runs for this correction terminated at an external quota limit;
 decisive locations and final changes were verified directly by the primary agent.
+
+The follow-up interface/proof clarification fixes standard globalheap's
+single-linked-compatible terminal root obligation while leaving other user Heap
+and IO shapes unconstrained. Effect §2 gives the LiveContext/CallContext map with
+separate name, ownership and cleanup evidence; F02/F14 and LC12/LC13 consume it.
+The call owner's no-relookup rule is scoped to formed automatic/initialized
+sources, and terminal forced extraction means no reselection/reconversion,
+without excluding a legally handled actual PatternMiss. These are specification
+clarifications only; standard providers and handoff execution remain pending.

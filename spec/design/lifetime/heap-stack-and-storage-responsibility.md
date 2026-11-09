@@ -9,8 +9,14 @@ separate heap evaluator or resource type system.
 
 The [host owner](../static-evaluation/host-capabilities-and-machine-objects.md#6-global-io-and-heap-capabilities)
 requires compile globalheap with a legal compile-to-runtime migration capability.
-PoolInterface, HeapStack, malloc/free and descriptor organization are library
-choices. A representative structural shape is:
+The standard globalheap provider must expose a root structure compatible with
+the ordinary single-linked HeapStack construction below: a pool role and a
+terminal outward-link role (None), with a declared root protocol that terminates
+outward HeapStack forwarding. Standard globalheap's interface obligation is
+fixed, including after its admitted runtime migration; it is not left to an
+arbitrary provider shape. The type/helper spellings, concrete pools, resource
+protocol implementations and descriptor representation remain library choices.
+The compatible structural notation is:
 
 ```lang
 ((PoolInterface pool, (HeapStack ref next_pool) | None) HeapStack)
@@ -25,6 +31,11 @@ to locate a layer. Pools may legally subborrow/match next_pool and locally bind
 heap to it when requesting replenishment. Results return through ordinary calls;
 None uses the root pool's declared intercept/termination protocol. A `copy` of a
 permitted handle is governed by ordinary subborrowing/clone, not pool duplication.
+The standard root may perform declared host/resource work or report its declared
+ordinary failure; termination grants neither infinite capacity nor guaranteed
+allocation. This is a standard-provider interface contract, not a new kernel
+primitive. Other user-defined Heap providers and IO Objects need not be
+isomorphic to this standard root or forced into a HeapStack shape.
 
 ## 2. Allocation and release routing
 

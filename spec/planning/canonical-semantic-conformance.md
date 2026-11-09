@@ -88,11 +88,11 @@ they do not run RequiredCapture fulfillment or an initializer.
 | C03 | [let heap=globalheap] retains initialized source | Later local shadow cannot rebind it or replay initializer | D dependency §3 | P realization | S source distinction only |
 | C04 | Raw/Norm [x] has required slot, no initializer | Never synthesize =x; malformed required annotation diagnoses | D syntax contract | P source fulfillment | S |
 | C05 | Candidate-local evidence and unique seal precede selected binding | Post-seal capture failure never selects runner-up | D overload §4 | P LC9 | S pre-install/prepare gate only |
-| C06 | Self/captures/args transfer coherently once | No duplicate Kill or field-ownership-derived source | D call §6 | P LC3/LC9 | None |
+| C06 | Self/captures/args transfer coherently once; live output maps to successor context with separate name, custody and cleanup proofs | No duplicate Kill, implicit self-field ownership or permission from name mapping alone | D call §6/effect §2 | P LC3/LC9/LC12 | None |
 | C07 | Fn value exposes capture specifications as explicit formals even without same-name context at projection | No projection-site value witness or hidden source recovery proves future calls | D Pattern §11 | P FnExtract | None |
 | C08 | Env Object forwards heap/IO fields normally | Wrapper grants no new access/lifetime or mandatory Box | D Pattern §11.2 | P ordinary forwarding | None |
 | H01 | Locate reads old heap then installs shadowing node | No self-resolving new binding or special push | D heap §1 | P LC11 | None |
-| H02 | Subborrow next_pool, replenish outward, terminate at None protocol | No reverse prev pointer required or pool copy inferred | D heap §1 | P library | None |
+| H02 | Subborrow next_pool, replenish outward and terminate at None; standard globalheap exposes the compatible terminal root and terminating root protocol | No reverse prev pointer or pool copy inferred; an incompatible standard root fails its contract, other user Heap/IO need no isomorphism, and root capacity is not infinite | D heap §1 | P standard provider/library | None |
 | H03 | Default starts at top; preference may skip participating layers | Top need not supply physical storage; no magical search | D heap §2 | P library | None |
 | H04 | Free follows real allocation responsibility after heap rebinding | No preference arg or forced historical pool path | D heap §2 | P credentials | None |
 | H05 | Guaranteed submit preserves live Places and reveals old heap | Name deletion/history rewrite cannot substitute for transfer | D heap §4 | P LC11 | None |
@@ -119,7 +119,7 @@ they do not run RequiredCapture fulfillment or an initializer.
 | E05 | Compile actual check success supplies names once; handler may recover | Unhandled effect diagnoses externally; syntax errors remain static | D effect §5 | P compile handler | None |
 | S01 | Formal self-root return alone classifies instance NameExpr | Direct/hidden self-root yield rejects; ordinary prior names gain no new identity | D unified §3 | P reach/yield | None |
 | S02 | Broad global IO capability at both stages | No universal file interface or automatic external migration | D host §6 | P provider | None |
-| S03 | Compile globalheap legally migrates | Migration does not submit local pool duties | D host/heap | P provider/LC11 | None |
+| S03 | Compile globalheap legally migrates with its standard terminal-root interface retained | Migration neither submits local pool duties nor imposes standard-root shape on other user Heap/IO | D host/heap | P provider/LC11 | None |
 | S04 | Handler closes runtime-dependent effect shape before reify exposure | Unsettled public shape cannot depend on runtime reverse flow | D unified §20 | P ClosedInterface | None |
 | S05 | Runtime chooses within compile-fixed A \|\| B | ClosedReturn/ordinary Pre still required | D unified §20 | P ClosedInterface | None |
 | S06 | Ordinary IO/heap calls need no Wait | Capability use adds no default async/effect marker | D host §6 | P library | None |
@@ -128,7 +128,7 @@ they do not run RequiredCapture fulfillment or an initializer.
 | K03 | Guarded branches, successive waits and admitted recursion/iteration retain actual continuation structure | No execution of unselected branch, future-path enumeration or all-partition object generation | D E §7.1/§11 | P LC13/control | None |
 | K04 | Ordinary no-wait work has a complete CPS correspondence; O can prove an equivalent direct-style machine path | Effect-marked-body-only conversion, effect-blind serial fallback or mandatory physical CPS frames rejects | D E §7.1 | P LC13 | None |
 | K05 | Composed return payload preserves root demand, actual target/activation and Ordinary/InPlace boundary evidence | No target-return barrier crossing, stale/foreign activation authority or reopened seal | D E §7.1/return | P LC13/return delivery | None |
-| K06 | Drop a successor holding both callee and caller material with fixed cleanup obligations | Exactly ordinary cleanup once; no stranded caller resource, duplicate Kill/Drop or exception unwind | D E §7.1/effect §4 | P LC13/LC12/Drop | None |
+| K06 | Drop a successor holding callee/caller live output, with separately validated name map, unique custody and fixed cleanup duties | No stranded resource, duplicate Kill/Drop, default ownership by self layout or exception unwind; name proof alone is insufficient | D E §7.1/effect §2/§4 | P LC13/LC12/Drop | None |
 | K07 | Compile handler and reify dependent cone share full CPS mapping with closed outward shape | No runtime-to-past flow, lost name/cut identity, projection re-selection or escaped active-boundary authority | D E §7.1/§8 | P LC13/reify | None |
 | K08 | Missing CPS context/control/delivery correspondence reports spanned unavailable at the requiring boundary | No claimed async success, invented Residual or new semantic facts from description conversion | D E §7.1 | P LC13 | None |
 | FP01 | Project a required-only [heap:T] entry where no heap exists, with available interface/substitution proof | No ResolveRequired at projection; absent local name alone cannot reject | D Pattern §11/dependency §4.1 | P LC6 | None |
