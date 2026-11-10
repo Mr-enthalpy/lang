@@ -1225,6 +1225,15 @@ finish through its terminating default route when optional search stops;
 semantically legal unsupported residue still reports its actual unavailable
 handoff. These are pending design cases, not executable/Planner test results.
 
+The [A–C counterexamples](../contracts/e-host-architecture-and-incremental-revalidation.md#111-distinguishing-architecture-targets)
+add three distinguishing checks within those existing IDs: refuse a disposable
+search branch's new irreversible external effect without lawful isolation/reuse
+(HA13/HA16); invalidate consumed Pre support in an unexecuted formed guarded
+arm without executing/pruning it (HA01/HA07); and separately invalidate E/O
+evidence and machine artifacts consuming changed target/external validity
+premises despite unchanged source/signature/key (HA12/HA14). Old snapshots and
+committed history remain intact. These checks have no executed HA coverage.
+
 No group above has a connected HA execution chain. [Roadmap §10](roadmap.md#10-structured-e-host-and-incremental-revalidation-readiness)
 tracks the linked consumer work; passing documentation/link checks or repository
 tests is neither a lifecycle-source test nor a summary/recursion proof.

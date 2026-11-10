@@ -165,6 +165,19 @@ switching cannot bypass E saturation or actual cross-region dependencies;
 transaction storage must not require a global objective phase barrier.
 These are future host capabilities, not tests of checkpoint execution.
 
+HA13/HA16 also distinguish a new irreversible compile-host effect exposed by
+an O1 candidate that is later discarded. Description snapshots alone cannot
+isolate real execution: without lawful isolation/reuse support, decline that
+exploration before the effect. No shared mutable branch history, cloned authority
+or claimed rollback may fabricate sibling legality; an actual prior commit
+retains its history. Acceptance still requires complete E saturation.
+
+Consumed E-known target facts and admitted external observations retain their
+actual source/context, validity interval and truth/maintenance premises as host
+dependencies (HA12/HA14). Their change invalidates dependent E/O evidence and
+machine artifacts separately. Source-key equality, machine shape or O/M-private
+constants cannot replace current evidence or alter historical admission facts.
+
 Move carries its source, destination and already fixed `MoveEffect`.
 Supplied Movable, instance Killable and the narrow Preserve proof are distinct
 facts, never inferred from Alive, Type or Policy. Failure cannot change the

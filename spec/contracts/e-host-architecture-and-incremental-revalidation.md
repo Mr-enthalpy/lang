@@ -236,6 +236,18 @@ a digest or matching signature cannot be the final identity, equivalence or
 permission proof. Conservative recomputation is permitted when finer evidence
 is absent. It still observes §10's no-replay/publication boundary.
 
+Under [host target/external facts §§4–5](../design/static-evaluation/host-capabilities-and-machine-objects.md#4-target-machine-facts)
+and [unsafe admission §§3/5](../design/lifetime/unsafe-semantic-admission.md#3-post-directed-axiom-admission),
+reuse MUST retain consumed target arithmetic/trap, representation, alignment
+and semantic ABI observations and the validity support of admitted external
+observations. Their sources, world/identity mapping, required intervals and
+truth/maintenance premises are dependencies even when source text, signatures
+and ordinary lookup keys stay equal. They enter through ordinary E facts, not
+target flags or O/M-private constants. Missing/expired support blocks current
+reuse; this neither mutates old immutable snapshots nor retracts committed
+history. A false admitted unsafe axiom remains the unsafe owner's truth/UB
+boundary, not something cache invalidation retrospectively repairs.
+
 ### 5.1 Same-history revalidation and fresh-compilation reuse
 
 Basis: [host acquisition §1.1](../design/static-evaluation/host-capabilities-and-machine-objects.md#11-link-specific-effect-law)
@@ -285,6 +297,7 @@ of changed or invalidated observations, including these associations:
 | Formed guarded body, bound roles, selected-operation descriptions or sufficient exposed contracts | Formation-time Post_summary and its support |
 | Current names/generations, residents, Region/Color/access, cleanup and Policy | Action legality, actual Post, delivery and resource responsibility |
 | Original regular companions, guarded item/edge contributions and boundary mappings | Supported SCC collapse, local compression and recursive/modular composition |
+| E-known target arithmetic/trap, representation, alignment and semantic ABI facts; admitted external observations and their validity/truth support | Dependent E computations and O equivalence evidence, and separately the machine plans/artifacts that consumed them; unchanged source hashes/ordinary keys prove no independence |
 | E/machine observations actually consumed by a future materialization decision | That machine plan/artifact, independently of unrelated semantic material |
 
 Dependencies MAY be tracked by observation, call position, local subcontinuation,
@@ -345,6 +358,16 @@ of the changed observation. At affected call positions, including equivalent
 inlined local consumers, it MUST perform the following. Valid evidence that a
 consumer's required observations are unchanged may discharge an individual
 check; old cached success alone cannot.
+
+An actual consumer includes already formed semantic descriptions under unknown
+guards, not only calls that have executed. If such material consumed B's Pre,
+changed content MUST invalidate its dependent formation/validation support
+before that support is exposed or reused. Revalidate available conditional
+descriptions through their ordinary consumers; the concrete call checks below
+use actual mappings when that action occurs. This neither executes/prunes a
+future arm nor invents its activation, names or a successful Pre. Missing
+required description/contract evidence is unavailable at its formation consumer;
+unchanged outward observations can still stop propagation under §7.3.
 
 1. Recover the call position and its actual selected candidate/projection/frame,
    implicit Param/captures, bound required inputs, explicit arguments,
@@ -510,6 +533,15 @@ Forking, selecting or discarding descriptions itself commits no business action,
 clones no owner/resource and rolls back no external history. Any real action
 needed during exploration retains its ordinary E/transaction premises; missing
 legal observation or isolation/reuse evidence cannot be silently speculated.
+In particular, a disposable O1 candidate may expose a new compile-host action
+whose irreversible external effect would be needed for E saturation. Without
+lawful isolation or reuse evidence for that effect and actual history, the host
+MUST stop that exploration before performing it, rather than claim saturation
+from a description snapshot. It cannot fake a legal sibling via shared mutable
+execution history/authority, cloned rights or later rollback. If an independently
+legal effect has actually committed, it persists; sibling reuse checks the real
+resulting history. Declining such exploration does not waive E saturation for
+any candidate the host does accept.
 Candidate failure leaves retained accepted versions intact, with no successful
 Post fabricated for the failed branch. This requires neither parallel search
 nor a particular checkpoint, versioned IR or Planner interface.
@@ -700,6 +732,33 @@ Further design subcases refine the same IDs:
   acceptance that loses this route. Contrast a semantically legal LE whose
   materializer/input evidence is unconnected or outside the claim: report its
   unavailable boundary, with no support claim or invented artifact (§9.3).
+
+- **HA13/HA16 irreversible search effect (A):** O1 exploration of K1 needs a
+  new compile-host external action to complete saturation, but K1 is then
+  rejected and sibling K2 continues. With lawful isolation/reuse support, retain
+  each description's real effect dependencies. Without it, refuse exploration
+  before the irreversible action; never claim the candidate saturated or that
+  discarding K1 undid an effect. K2 cannot inherit copied authority or a fictitious
+  unchanged execution history (§9.1).
+- **HA01/HA07 unexecuted guarded Pre consumer (B):** A's already formed unknown
+  runtime-guarded arm describes a B call through an established operation
+  description or sufficient exposed contract. B's Pre changes before the arm
+  executes. Invalidate/revalidate the dependent formed material, summary support
+  and other actual consumers before reuse, despite equal signature/key. Retain
+  the guard; execute/prune neither future arm, invent no activation and select
+  no future candidate. Proven stable outward observations may stop further
+  propagation; source AST mentioning B alone supplies no such semantic input
+  (§§6–7).
+- **HA12/HA14 target/external premise change (C):** The source, signature and
+  ordinary cache key stay equal while a consumed E-known arithmetic/trap,
+  representation, alignment or semantic ABI fact changes in a new observation
+  context, or external evidence expires/loses required validity support.
+  Invalidate dependent E conclusions and O equivalence evidence, and separately
+  affected machine plans/artifacts by their own dependencies. This is not HA14's
+  pure machine-choice case with unchanged E facts. No source-hash shortcut or
+  private target constant permits reuse; missing current evidence is unavailable.
+  Historical snapshots/commits remain recorded; a false unsafe admission is not
+  repaired by replacing its cached fact (§§5–6, 9–10).
 
 These additions specify preservation/acceptance boundaries only; they execute
 no source program or optimization test.

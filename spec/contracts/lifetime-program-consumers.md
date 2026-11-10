@@ -340,6 +340,12 @@ actual Move/repair, Valid and the three separate transfer proofs remain required
   a supported subcontinuation, at the function's outward summary, or farther
   along its callers. Other effects and independent consumers still propagate.
   An explicit Post remains a checked guarantee and is never silently weakened.
+  An unknown-guard arm's already formed operation/contract description can
+  consume a callee Pre before any call executes. Such consumed content remains
+  a host dependency: changes invalidate its formation/summary support without
+  executing or pruning the arm, inventing a future activation or selecting a
+  future candidate. Propagation still stops at proven stable consumed observations
+  (HA01/HA07); AST shape alone supplies no dependency/summary evidence.
 
 ## LC6. Function Pattern and recursive interface consumption
 

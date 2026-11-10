@@ -447,6 +447,14 @@ alone supplies no materializer coverage; today's unconnected consumers remain
 unavailable. No persistent IR, Planner instances, global O1/O2 schedule, FMP
 format or actual executable-generation capability is implemented here.
 
+The A–C counterexamples in the host's HA13/HA16, HA01/HA07 and HA12/HA14
+subcases require pending effect-aware candidate isolation/reuse boundaries,
+dependency tracking for unexecuted formed guarded Pre consumers, and explicit
+E-known target/external-observation validity dependencies. The latter separately
+invalidate E/O justification and machine artifacts even with equal source/key.
+These are design acceptance targets; no source execution, speculative-effect
+sandbox or target/external-fact consumer is implemented by the added text.
+
 Recursive families require their own
 domain/termination or rejection/unavailable evidence; name-item SCC collapse
 keeps its independently fixed boundaries. Future O rewrites retain these
