@@ -98,6 +98,14 @@ basis, not a requirement to evaluate twice or choose a physical CPS layout.
 Shared views or persistent revisions MAY carry it. Local wait splitting cannot
 stand in for the missing common-K consumer.
 
+The host MUST support branching continuation/revision descriptions from an
+accepted checkpoint, exploring multiple proposed K revisions independently,
+and retaining or verifiably recovering earlier accepted checkpoints with their
+supporting observations (§9.1). A destructive single chain that loses every
+alternative is insufficient. This concerns semantic description preservation;
+branching does not copy ordinary program Objects, authority or committed
+effects. No persistent IR, simultaneous execution or Planner API is prescribed.
+
 ## 3. Hosted ordinary lifecycle programs and bootstrap
 
 Basis: lifecycle §§2.1.6, 9–9.4 and 14, invocation §§1–4, and LC1–LC4/LC7.
@@ -164,6 +172,13 @@ Missing required correspondence blocks the requiring reuse/rewrite under §10.
 An arbitrary source edit need not preserve the previous program's behavior;
 reuse claims still require their own observations and premises to remain valid
 in the new revision. The equivalence gate in §9 applies to proposed O rewrites.
+
+Shared observations MUST retain the revision, K position, history and premises
+to which they apply. Updating one candidate branch cannot silently mutate
+another retained accepted checkpoint's facts or authority. Cross-branch reuse
+requires the same lawful correspondence and current-premise validation as
+other reuse. Host checkpoint handles are storage/search coordinates, not new
+SemanticOwner, CompileInstance or language identity axes.
 
 Relational observations MUST retain sufficient subject/target, K position or
 interval, name/generation, scope, guard, selected operation, supporting premises
@@ -473,21 +488,88 @@ work between functions cannot erase dependencies when an old call edge
 disappears. Missing correspondence blocks acceptance just like either failed
 obligation above. CPS representation fidelity is not E performing an O rewrite.
 
-Planner organization MAY follow actual functions/SCCs and nested subcontinuations.
-No global pass order, per-function planner instance or optimizer-specific alias,
-effect, lifecycle or Stage truth system follows. Every semantic premise comes
-from E. The host MUST distinguish an accepted legal revision from an unvalidated
-candidate, so stopping future search preserves a legal continuation. Candidate
-failure leaves the accepted revision intact, with no fabricated successful Post.
+### 9.1 Branchable accepted checkpoints
 
-The host MUST preserve the semantic material needed for a legal default
-materialization path from accepted residue: common-K/CPS correspondence, selected
-calls, normalized terminal Move and actual repair, delivery target/E-selected
-ABIKind, lifetime/cleanup/resource obligations and machine facts. If that path
-requires strategy choices, they belong to a future default O2, not hidden E
-rewrites. M executes an upstream-decided target-machine plan; this contract
-freezes neither that plan's structure nor O/Planner/M entry points. Required
-unavailable material blocks the relevant future handoff, not an invented plan.
+Here a checkpoint denotes a retained accepted K revision and its supporting
+observations after the required E validation/saturation, not a new semantic
+result kind. The host MUST distinguish these accepted checkpoints from pending
+candidates and support multiple independently explored descendants of the same
+checkpoint. Accepting, rejecting or abandoning one branch MUST NOT require
+destructively overwriting every other retained accepted version. Earlier
+checkpoints retained as exploration bases and retained accepted siblings must
+remain available or verifiably recoverable, with their actual dependency/
+correspondence evidence. Retention policy MAY deliberately release unneeded
+historical versions; this does not require unbounded retention of every
+candidate. Exploring one branch cannot force loss of retained bases/alternatives.
+
+Recovery MAY use sharing, snapshots, journals, retained descriptions or another
+representation. It cannot rely on replaying committed source actions, effects
+or consumptions to reconstruct lost support. Recovered material still checks
+its current premises before reuse; an old checkpoint supplies no stale authority.
+Forking, selecting or discarding descriptions itself commits no business action,
+clones no owner/resource and rolls back no external history. Any real action
+needed during exploration retains its ordinary E/transaction premises; missing
+legal observation or isolation/reuse evidence cannot be silently speculated.
+Candidate failure leaves retained accepted versions intact, with no successful
+Post fabricated for the failed branch. This requires neither parallel search
+nor a particular checkpoint, versioned IR or Planner interface.
+
+### 9.2 Objective switching without global phase barriers
+
+The host representation and update machinery MUST permit future search to use
+and switch O1/O2 objectives at actual function, SCC or subcontinuation dependency
+boundaries without requiring global completion of one objective first or an
+irreversible O1-to-O2 phase transition. The E owner's idealized objective
+separation is not a mandatory global pass schedule; a transform may contain
+both components. Each transform still meets both acceptance obligations above,
+and newly ready work returns to complete E saturation.
+
+Local search can require wider validation through real dependencies, fixed
+cleanup or effects; objective labels cannot override those constraints or
+defer mandatory ready E work. Scheduling MAY be serial or coordinated for those
+dependencies or an implementation policy, but its representation cannot require
+all regions to share a global objective phase. No per-function Planner instance,
+parallelism or independent optimizer alias/effect/lifecycle/Stage truth system
+is required. O1/O2 are search objectives, not new Policy or language stages.
+
+### 9.3 Complete default route within declared materialization support
+
+A future materialization support claim MUST identify its continuation family,
+target, required semantic/machine inputs and unsupported boundaries. For every
+accepted checkpoint covered by that claim and its established input conditions,
+the host MUST preserve a complete terminating default route through the needed
+O2 decisions, affected E validation/saturation and M to a complete executable
+target artifact. Completion cannot depend on further optional budgeted,
+heuristic or AI search succeeding. The default strategy may make choices and
+run its guaranteed algorithms/checks; this does not require a unique layout,
+zero lowering work or an optimal artifact.
+
+Accepted rewrites within that claimed support domain MUST preserve this
+default-route property or establish it before acceptance. A semantically legal
+candidate that loses the route cannot replace an accepted supported checkpoint
+under the unchanged claim. Stopping optional search at any covered accepted
+checkpoint can therefore take the default route, including after local O2 work;
+it need not resume heuristic exploration to discover how to finish. A partial
+plan or promise that AI may complete it is insufficient. Failure of the route
+for an already admitted covered checkpoint is a failure of the support claim,
+not an optional search miss or permission to narrow the claim retroactively.
+
+Required material includes common-K/CPS correspondence, selected calls,
+normalized terminal Move and actual repair, delivery target/E-selected ABIKind,
+lifetime/cleanup/resource obligations and target facts. Strategy choices belong
+to future default O2, not hidden E rewrites. M executes an upstream-decided
+target-machine plan; no plan structure, lowering algorithm or O/Planner/M
+entry point is frozen here.
+
+This guarantee is conditional on the declared supported family/target and
+inputs; semantic legality alone does not establish materialization coverage.
+It concerns termination/completeness of that compilation route, not termination
+of arbitrary source evaluation or the represented runtime program, universal
+equivalence checking, or support for all legal LE. Today's unconnected
+materialization consumers remain unavailable at their actual boundaries;
+this PR declares no such family/target implemented. Required unavailable inputs
+outside a claim supply neither a successful handoff nor an invented plan, and
+cannot be used to advertise a covered checkpoint as completely supported.
 
 Semantic and machine-artifact invalidation MUST follow their own actual
 dependencies. Pure machine materialization choices with no changed E observation
@@ -602,6 +684,23 @@ Further design subcases refine the same IDs:
   A second source-level/sibling acquisition remains a duplicate and Active
   reentry remains a cycle, even if all physical material is cached (§5.1).
 
+- **HA13 checkpoint branching:** From accepted K0, explore K1 and K2 and retain
+  every accepted sibling with its support. Rejecting/abandoning another candidate
+  cannot destroy K0 or those accepted versions. Recover them without replaying
+  actions or copying consumable ownership, and recheck current premises on use
+  (§§2, 4 and 9.1).
+- **HA13/HA14 objective scheduling:** Different function/SCC/subcontinuation regions
+  can use or switch O1/O2 objectives without a representation-imposed global
+  phase barrier. Real cross-region dependencies still force their E work and
+  complete saturation; no per-function Planner or parallel search is presumed
+  (§9.2).
+- **HA15/HA16 default completion:** For a future declared family/target support
+  domain, stop optional search at any accepted checkpoint and complete its
+  guaranteed default O2/E/M route to an executable artifact. Reject in-domain
+  acceptance that loses this route. Contrast a semantically legal LE whose
+  materializer/input evidence is unconnected or outside the claim: report its
+  unavailable boundary, with no support claim or invented artifact (§9.3).
+
 These additions specify preservation/acceptance boundaries only; they execute
 no source program or optimization test.
 
@@ -630,7 +729,7 @@ The existing [open questions](../planning/open-questions.md) already cover the
 concrete choices needed here; no closed semantic question is reopened:
 
 - [Identity/persistence](../planning/open-questions.md#identity-and-canonical-representation): serialization and lawful cross-revision owner/action/name/generation correspondence, including supported nonbijective structural relations without changing identity laws, collision-safe lookup and parent-homomorphism evidence.
-- [Continuation representation](../planning/open-questions.md#residual-and-serial-evaluation): structured K/residual frames, full CPS/delivery/control correspondence and effect/overlay storage, without prescribing physical CPS layout.
+- [Continuation representation](../planning/open-questions.md#residual-and-serial-evaluation): structured K/residual frames, branchable/recoverable checkpoints, full CPS/delivery/control correspondence and effect/overlay storage, without prescribing physical CPS layout; supported default-route domains and complete terminating materialization algorithms remain future representation/implementation work.
 - [Lifecycle algorithms](../planning/open-questions.md#lifetime-color-and-access): regular companions and contribution/incidence retention, supported boundary/summary equivalence and recursive-family evidence/rejection, scoped authority and current Open-sensitive cache requirements.
 - [Infrastructure persistence](../planning/open-questions.md#owner-namespace-and-infrastructure-persistence): storing observed selection domains/completeness and other dependency validity, fine-grained reverse-consumer lookup, history-relative effect accounting, E-grounded rewrite support and separate machine-artifact dependencies.
 

@@ -142,6 +142,14 @@ its seal. Cross-K structural correspondence can be nonbijective under proved
 transforms, while the owner-parent and semantic identity laws above remain
 unchanged. Host representation sharing is not an identity quotient.
 
+[Checkpoint branching/recovery](e-host-architecture-and-incremental-revalidation.md#91-branchable-accepted-checkpoints)
+preserves each revision's owner/input and observation correspondence. Candidate
+updates cannot mutate another retained accepted revision's support. A host
+checkpoint handle indexes search/storage material, not a new owner or
+CompileInstance key coordinate; retaining multiple K descriptions duplicates
+no semantic identity, ownership or permission. Current qualification/interner
+tests do not implement this version-preservation capability.
+
 Source navigation remains inner-to-outer. A generated compile-call scope used as
 one outer component must group the complete call expression:
 

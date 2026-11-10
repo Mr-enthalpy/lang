@@ -156,6 +156,15 @@ alongside [E-grounded observational equivalence](e-host-architecture-and-increme
 A structural cross-K relation may be nonbijective, but proves neither that
 equivalence nor authority to duplicate owned occurrences, effects or cleanup.
 
+The [checkpoint consumer](e-host-architecture-and-incremental-revalidation.md#91-branchable-accepted-checkpoints)
+retains or recovers multiple accepted descriptions and their support without
+destructively replacing all siblings. Forking/selecting/discarding those
+descriptions performs no common business commit or external rollback. Real
+actions still use this gate with current evidence. Local O1/O2 objective
+switching cannot bypass E saturation or actual cross-region dependencies;
+transaction storage must not require a global objective phase barrier.
+These are future host capabilities, not tests of checkpoint execution.
+
 Move carries its source, destination and already fixed `MoveEffect`.
 Supplied Movable, instance Killable and the narrow Preserve proof are distinct
 facts, never inferred from Alive, Type or Policy. Failure cannot change the

@@ -1215,6 +1215,16 @@ its groups to the existing handoffs and semantic acceptance obligations.
 | HA15–HA16 | [Shared LC failure boundary](../contracts/lifetime-program-consumers.md#shared-template-and-result-boundary) and [joint publication](../contracts/semantic-values-and-extraction-interfaces.md#shared-action-and-lifecycle-handoff); LA08, LA13, LA30 | Actual unavailable/Diagnostic or established K only; all cleanup/Pre and joint Post, no same-history replay or duplicate consumption. A fresh compilation retains its own required acquisition effects and shared LinkRegistry cycle/duplicate checks despite lawful cached realization. Supplied-fact tests do not establish these source consumers |
 
 Current host evidence remains limited to the [audited substrate slices](../contracts/e-host-architecture-and-incremental-revalidation.md#112-audited-implementation-evidence).
+
+The HA13–HA16 readiness subcases also require [branchable accepted checkpoints](../contracts/e-host-architecture-and-incremental-revalidation.md#91-branchable-accepted-checkpoints),
+[objective switching without global phase barriers](../contracts/e-host-architecture-and-incremental-revalidation.md#92-objective-switching-without-global-phase-barriers),
+and [a complete default route within declared support](../contracts/e-host-architecture-and-incremental-revalidation.md#93-complete-default-route-within-declared-materialization-support).
+Forking descriptions cannot duplicate real ownership/effects. For each future
+supported continuation family/target, every covered accepted checkpoint must
+finish through its terminating default route when optional search stops;
+semantically legal unsupported residue still reports its actual unavailable
+handoff. These are pending design cases, not executable/Planner test results.
+
 No group above has a connected HA execution chain. [Roadmap §10](roadmap.md#10-structured-e-host-and-incremental-revalidation-readiness)
 tracks the linked consumer work; passing documentation/link checks or repository
 tests is neither a lifecycle-source test nor a summary/recursion proof.

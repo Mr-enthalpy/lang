@@ -430,12 +430,22 @@ assigns the existing contracts these linked responsibilities:
 | LC4/LC6 | Actual contract-content dependencies and mapped call/interface revalidation even when ordinary/ABI shape is unchanged |
 | LC5/LC8 | Separate summary/actual validity, guarded propagation/stability and retained original SCC companions/contributions |
 | Policy migration | Existing-view/candidate-domain validity plus destination/Path/frontier evidence, with existing hard-A, selected and final-delivery boundaries preserved |
+| Checkpoint/search/materialization handoff | Retain/recover multiple accepted branches without copying real resources, permit local O1/O2 objective switching without representation-imposed global barriers, and preserve a complete terminating default route for every checkpoint covered by a declared family/target support claim |
 
 The HA12/HA13/HA16 subcases require changed-selection-domain checks without
 mutating old snapshots/seals; equivalence and legality before accepting an O
 candidate, with supported nonbijective correspondence; and new-compilation
 LinkRegistry/effect checks despite physical cache reuse. These clarify existing
 owners' duties and add no selection stage, proof API or executable coverage.
+
+[Host §§9.1–9.3](../contracts/e-host-architecture-and-incremental-revalidation.md#91-branchable-accepted-checkpoints)
+add pending branch/recovery, objective-switch and default-completion capability
+obligations. Support admission/accepted rewrites must keep the declared domain
+closed under its guaranteed default O2/E/M route, so stopping optional search at
+any covered checkpoint can finish an executable artifact. Semantic legality
+alone supplies no materializer coverage; today's unconnected consumers remain
+unavailable. No persistent IR, Planner instances, global O1/O2 schedule, FMP
+format or actual executable-generation capability is implemented here.
 
 Recursive families require their own
 domain/termination or rejection/unavailable evidence; name-item SCC collapse

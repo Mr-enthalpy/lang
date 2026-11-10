@@ -72,6 +72,13 @@ LinkRegistry still permits only the first authorized acquisition; cached
 material neither imports an old Done state nor excuses a second source link.
 This is distinct from not replaying actions in an already represented history.
 
+Constructed semantic results and cached material alone establish no machine
+coverage. A future [materialization support claim](e-host-architecture-and-incremental-revalidation.md#93-complete-default-route-within-declared-materialization-support)
+identifies its continuation family/target and inputs; every accepted checkpoint
+in that domain requires a complete terminating default route, independently of
+further optional heuristic/AI search. This consumes the actual result/ABI and
+dependency facts above; no such materializer is connected by this contract.
+
 A returned construction value does not implicitly install its outer binding.
 An explicit binding action creates the destination name and Place. Construction
 bodies perform value-side name formation and separately authorized ref/write

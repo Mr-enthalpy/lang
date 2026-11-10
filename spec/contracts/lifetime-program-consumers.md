@@ -114,6 +114,12 @@ actual Move/repair, Valid and the three separate transfer proofs remain required
   validation. Its structural correspondence need not be globally bijective;
   that flexibility does not weaken this handoff's separate name, ownership and
   exact cleanup obligations or same-K action/projection synchronization.
+  [Branchable checkpoints](e-host-architecture-and-incremental-revalidation.md#91-branchable-accepted-checkpoints)
+  retain this full correspondence independently for each explored revision;
+  sharing descriptions duplicates no held Object or destruction duty. Future
+  [materialization support](e-host-architecture-and-incremental-revalidation.md#93-complete-default-route-within-declared-materialization-support)
+  consumes these facts for a complete default route from every covered accepted
+  checkpoint. Complete-K/CPS and materialization remain unconnected here.
 
 ## LC1. Pattern and structure companion formation
 

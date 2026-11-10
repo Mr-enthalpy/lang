@@ -68,6 +68,9 @@ together with the [E host preservation chain](contracts/e-host-architecture-and-
 The latter connects their evidence and invalidation duties; it supplies no new
 semantic authority. This includes complete selection observations, fresh-compilation
 effect accounting and separate rewrite-equivalence/new-position validation.
+The host also preserves recoverable search branches, local O1/O2 objective
+switching and a complete default route for each accepted checkpoint within a
+future declared materialization family/target support domain.
 [HA01–HA18](planning/canonical-semantic-conformance.md#e-host-preservation-and-incremental-revalidation-targets)
 remain architecture acceptance targets, separate from executed substrate tests.
 
