@@ -467,6 +467,14 @@ legality (compile construction; HA13/HA14). The complete default route includes
 any required terminating packaging/linking after M output under settled policy
 (HA15/HA16). None of these obligations has connected HA execution coverage.
 
+Stable propagation stops still require the new revision's dependency provenance,
+guards, scope/completeness and invalidation lookup before reuse (LC5; HA03/HA06).
+An equal result with X-to-Y support replacement must invalidate on later Y change.
+Local K revisions must permit valid unaffected structure, observations and
+dependency support to survive without storage-forced full-K/projection/index
+reconstruction (shared action; HA13/HA17). Real crossing dependencies may require
+wider validation; no specific representation or complexity bound is prescribed.
+
 The A–C counterexamples in the host's HA13/HA16, HA01/HA07 and HA12/HA14
 subcases require pending effect-aware candidate isolation/reuse boundaries,
 dependency tracking for unexecuted formed guarded Pre consumers, and explicit

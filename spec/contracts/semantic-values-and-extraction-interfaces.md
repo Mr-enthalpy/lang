@@ -179,6 +179,14 @@ validation and retained-checkpoint correspondence (§9.2 of that handoff).
 Partition identity supplies no semantic ownership or lifecycle SCC collapse law.
 These are future host capabilities, not tests of checkpoint execution.
 
+Lawful local K revisions must be able to retain unaffected structure, observations
+and valid dependency evidence without storage forcing full continuation,
+projection or index reconstruction (§4 of the host handoff). Actual crossing
+dependencies still propagate and revalidate. A stable result also requires the
+new revision's dependency support and invalidation lookup before reuse (§7.3);
+equal output alone cannot preserve an obsolete source association. Neither
+capability grants a commit witness, changes history or weakens E saturation.
+
 HA13/HA16 also distinguish a new irreversible compile-host effect exposed by
 an O1 candidate that is later discarded. Description snapshots alone cannot
 isolate real execution: without lawful isolation/reuse support, decline that

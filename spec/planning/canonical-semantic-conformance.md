@@ -1242,6 +1242,14 @@ before-action observations for changed Pre, without consuming material again
 cleanup queries, invalidated by newly relevant actions (HA12/HA17).
 These are pending normative cases, not executed machine or incremental tests.
 
+HA03/HA06 additionally require new-revision dependency support and invalidation
+lookup after a stable stop: X-to-Y source replacement with equal output must
+still invalidate on a later Y change. HA13/HA17 require lawful local K updates
+to preserve valid unaffected structure/projections/dependencies without
+representation-forced global reconstruction; actual crossing dependencies still
+receive full affected validation. These are pending cases, not complexity or
+executed incremental-update claims.
+
 The [A–C counterexamples](../contracts/e-host-architecture-and-incremental-revalidation.md#111-distinguishing-architecture-targets)
 add three distinguishing checks within those existing IDs: refuse a disposable
 search branch's new irreversible external effect without lawful isolation/reuse

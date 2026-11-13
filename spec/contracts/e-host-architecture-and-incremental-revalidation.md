@@ -208,6 +208,16 @@ may still require substantial real dependency work; this is no constant-time
 complexity promise. Every accelerated answer remains justified by E, with
 unavailable required evidence handled under §10.
 
+The host MUST permit lawful local K revisions to retain unaffected structure,
+semantic observations and dependency evidence under valid revision/position
+correspondence. Its storage representation MUST NOT make whole-K expansion,
+regeneration of every action/projection correspondence or rebuilding all
+dependency indexes the only route for a supported local change. Retained
+evidence still needs its current validity; textual locality proves no semantic
+independence. Actual dependencies crossing the changed region require all
+affected propagation/validation, potentially throughout K. This capability
+prescribes no persistent IR, update algorithm or worst-case complexity bound.
+
 ## 5. Cacheable material and current-state premises
 
 Basis: invocation §§1–2 and 4–6, dependency §§2–5 and 7, build §5,
@@ -342,6 +352,10 @@ hash equality and not an arbitrary program-equivalence oracle. If unchanged
 observations cannot yet be proved, continue required revalidation; if a needed
 consumer/evidence is unavailable, stop at that boundary under §10.
 
+A stable-observation stop still requires valid dependency support and invalidation
+lookup for the new revision (§7.3). Result equivalence alone does not establish
+that the prior revision's dependency sources or lookup entries remain sufficient.
+
 ### 6.1 Selection domains and negative observations
 
 Basis: [ordinary overload §§1–5](../design/patterns-overload/overload-resolution-design.md)
@@ -465,6 +479,17 @@ behavior cannot satisfy it, its ordinary check rejects; the host MUST NOT
 silently weaken or replace it with an automatic contract (HA05). Missing proof
 is unavailable, not equivalence or successful delivery.
 
+Before exposing/reusing a result at a stable stop, the host MUST establish or
+validate the new revision's actual dependency provenance, guards, scope and
+domain/range completeness support, including sufficient lookup to invalidate
+its consumers on subsequent changes. Equal outward observations do not prove
+equal dependencies or validate the old invalidation index. If A now consumes Y
+instead of X while its outward Post stays equivalent, record Y's support and
+consumer association even when C needs no recomputation now. Conservative extra
+dependencies MAY remain, but cannot substitute for Y; retained old checkpoints
+keep their own revision's support. Missing new support prevents reuse there
+under §10. Stopping downstream recalculation does not skip this bookkeeping.
+
 ## 8. Recursive/SCC and termination boundaries
 
 Basis: lifecycle §§8.5, 10 and 14; LC5/LC6/LC8; E's no-future-execution rule.
@@ -536,6 +561,8 @@ canonical identity/transfer relations retain their own laws. Inlining or moving
 work between functions cannot erase dependencies when an old call edge
 disappears. Missing correspondence blocks acceptance just like either failed
 obligation above. CPS representation fidelity is not E performing an O rewrite.
+The local-update capability in §4 preserves unaffected material under lawful
+correspondence; it waives neither acceptance obligation nor required E saturation.
 
 ### 9.1 Branchable accepted checkpoints
 
@@ -876,6 +903,21 @@ Further design subcases refine the same IDs:
   additional effects or pending cleanup; missing completeness is unavailable,
   not an empty relation. This requires neither a whole-function pairwise table
   nor execution of unknown future branches (§§4 and 6).
+
+- **HA03/HA06 stable result with changed support:** A's summary or local result
+  formerly consumed X and now consumes Y with equivalent outward observations.
+  Establish the new revision's Y dependency, guard/scope/completeness support
+  and invalidation lookup before reuse, while permitting the appropriate stable
+  stop without recalculating C. A later Y change must find and invalidate A's
+  affected material and propagate any newly changed outward observation. Keeping
+  only X because the earlier outputs were equal fails this case (§§6–7.3).
+- **HA13/HA17 local revision preservation:** A justified swap of independent
+  local subcontinuations retains valid unaffected K structure, projection
+  correspondence and dependency support without representation-forced full-K
+  expansion or all-index reconstruction. Contrast a swap whose actual effect,
+  cleanup or other dependency crosses the region: validate every affected part,
+  however far it reaches. Neither case transplants invalid old-position facts,
+  mutates retained sibling checkpoints or promises a complexity bound (§§4, 9).
 
 These additions specify preservation/acceptance boundaries only; they execute
 no source program or optimization test.

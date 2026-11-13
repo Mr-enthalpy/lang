@@ -344,6 +344,11 @@ actual Move/repair, Valid and the three separate transfer proofs remain required
   Stop only when the relevant consumed observations are proved stable: inside
   a supported subcontinuation, at the function's outward summary, or farther
   along its callers. Other effects and independent consumers still propagate.
+  Before stable-result reuse, establish or validate the new revision's actual
+  dependency sources, guards, scope/completeness support and invalidation lookup.
+  Equal Post can stop downstream recalculation but cannot omit a newly consumed
+  source: changing that source later must still invalidate this summary/material
+  (HA03/HA06). Old checkpoints retain their own support.
   An explicit Post remains a checked guarantee and is never silently weakened.
   An unknown-guard arm's already formed operation/contract description can
   consume a callee Pre before any call executes. Such consumed content remains
