@@ -187,6 +187,12 @@ new revision's dependency support and invalidation lookup before reuse (§7.3);
 equal output alone cannot preserve an obsolete source association. Neither
 capability grants a commit witness, changes history or weakens E saturation.
 
+Common K also retains Seq/Unordered composition, common snapshots and scoped
+sibling contribution/merge/conflict support. Scheduling, diagnostics and cache
+realization cannot expose sibling writes or establish new semantic precedence.
+Ordinary contribution algebra and shared acquisition-registry conflict checks
+remain in force; host dependencies track their actual consumers (§§2/6).
+
 HA13/HA16 also distinguish a new irreversible compile-host effect exposed by
 an O1 candidate that is later discarded. Description snapshots alone cannot
 isolate real execution: without lawful isolation/reuse support, decline that

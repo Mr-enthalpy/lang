@@ -69,6 +69,16 @@ world receives runtime information. InputAdmissible, concrete readiness and
 endpoint capability remain independent. Bootstrap implementations provide candidate bodies and
 realization data; they do not decide the migration relation.
 
+Host reuse retains the established ClosedReturn/ClosedInterface observations,
+actual boundary/activation and reverse-dependency support. Changed support
+invalidates consuming admission/interface/materialization checks; a cached
+interface shape alone proves neither closure nor active-boundary authority.
+Outward input/output, regular effect shape, necessary capture and lifecycle
+requirements remain compile-determined independently of reverse runtime flow.
+Runtime choice within a fixed regular sum is legal; runtime-dependent public
+shape requires the ordinary handler/wrapper before exposure, not repair by M.
+These are the unified owner's existing §20 premises, not new reify APIs.
+
 Migration publication includes the final demanded projection. Candidate
 execution, complete result formation and project_p1 are evaluated in one
 enclosing scratch transaction; only a nonempty valid final demanded view may

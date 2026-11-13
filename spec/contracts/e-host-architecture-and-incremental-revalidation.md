@@ -65,7 +65,8 @@ requiring boundary, rather than a host substitute.
 
 ## 2. Common K, LE and projection correspondence
 
-Basis: E §§2–3, 7.1 and 11, lifecycle §2.1.1, effect §§2–3 and LC2/LC13.
+Basis: E §§2–3, 7.1 and 11, lifecycle §2.1.1, effect §§2–3, LC2/LC13,
+physical-source §§2–3 and unified §20.
 Here LE abbreviates the legally remaining common continuation together with
 its corresponding E observations. It is not another result envelope or a list
 of machine instructions awaiting a reconstructed lifecycle interpretation.
@@ -79,6 +80,25 @@ remain conditional descriptions; they MUST NOT be recorded as committed
 history or supplied with invented concrete names, generations or activations.
 Missing required control, origin, delivery or cleanup correspondence is
 unavailable at its requiring consumer, including unsupported CPS contexts.
+
+Structured K MUST preserve ordered Seq versus Unordered composition, common
+entry snapshots, scopes, sibling overlays and ordinary effect-join/conflict
+provenance. Files retain source order; unordered siblings observe their common
+snapshot, not another sibling's newly written binding. Host scheduling, diagnostic
+sorting and cache-realization order supply no semantic precedence. Lawful
+contributions still combine under their ordinary algebra, including once-only
+first residency; shared acquisition-registry checks remain required (§5.1) and
+grant neither sibling namespace visibility nor a scheduling winner.
+
+At reify boundaries the host MUST retain established ClosedReturn/ClosedInterface
+observations, the actual boundary/activation and their dependency support.
+ClosedInterface_K(B) requires compile-determined outward input/output, regular
+effect shape, necessary captures and lifecycle requirements independently of
+RevDeps(B). Changed support invalidates its actual consumers; cached interface
+shape alone supplies no current E proof or active-boundary authority. Runtime
+choice within a fixed regular sum remains legal; runtime-dependent public shape
+requires the existing ordinary handler/wrapper before exposure. Missing closure
+evidence stops at its requiring E boundary, never deferred to M to repair.
 
 Machine, type, Policy, lifecycle and effect/control observations MUST identify
 the same action at the same K position. Lifecycle projection forgets business
@@ -333,6 +353,9 @@ of changed or invalidated observations, including these associations:
 | E-known target arithmetic/trap, representation, alignment and semantic ABI facts; admitted external observations and their validity/truth support | Dependent E computations and O equivalence evidence, and separately the machine plans/artifacts that consumed them; unchanged source hashes/ordinary keys prove no independence |
 | Observed relation domain/range, guards and completeness support, including absent access/effect/cleanup observations | Dependent negative conclusions and their consumers; newly relevant material invalidates absence even when old positive rows stay equal; §4 |
 | Target-definition identity and E/machine observations actually consumed by a future materialization decision | That frozen machine plan's validity and dependent artifacts, independently of unrelated semantic material; §9.3 |
+| Seq/Unordered composition, common snapshot/scope, sibling contributions and join/conflict support | Dependent overlay observations, legal merged results and conflicts; scheduling/cache order cannot become source visibility or precedence |
+| Reify ClosedReturn/ClosedInterface observations, actual boundary/activation and reverse-dependency support | Consuming reverse-work admission, exposed interface and affected materialization; cached shape alone proves no closed/current boundary |
+| Actual frozen plan/output contract, target definition, M implementation/capability/options and downstream toolchain inputs | Exact M-validation results and emitted/final artifacts according to their own consumed environment; §9.3 |
 
 Dependencies MAY be tracked by observation, call position, local subcontinuation,
 function or a supported SCC; functions are valid coarse boundaries, not a
@@ -695,6 +718,22 @@ choice returns upstream with its E/fidelity obligations, rather than becoming
 implicit M or linker discretion. M success alone proves neither route completion
 nor semantic fidelity. No particular container or linker interface is fixed.
 
+The host MUST distinguish these validity claims and retain the full environment
+actually consumed by each result, rather than treating one cache hit as all three:
+
+| Claim | Required consumed support |
+|---|---|
+| Upstream machine-plan semantic validity | Accepted LE correspondence, E/machine facts, target-definition identity and semantic-fidelity justification |
+| Final M validation validity | Frozen plan, output contract, target definition, actual M implementation/version or sufficient established capability conditions, and relevant validation options |
+| M output and final artifact validity | Actual plan/output contract/definition, M implementation/version or sufficient established capability conditions, output-affecting options and required packaging/link inputs, tool versions/options and dependencies |
+
+Changed consumed environment invalidates dependent validation/output/artifact
+reuse unless sufficient current validity is established. An unchanged target
+definition alone is insufficient. Independent plan-semantic or E evidence MAY
+remain valid under its own premises; materializer/tool options supply no second
+channel of meaning. Meaning-affecting facts still enter through ordinary E.
+No cache-key encoding, toolchain interface or MonAsm format is prescribed.
+
 This guarantee is conditional on the declared supported family/target and
 inputs; semantic legality alone does not establish materialization coverage.
 It concerns termination/completeness of that compilation route, not termination
@@ -918,6 +957,28 @@ Further design subcases refine the same IDs:
   cleanup or other dependency crosses the region: validate every affected part,
   however far it reaches. Neither case transplants invalid old-position facts,
   mutates retained sibling checkpoints or promises a complexity bound (§§4, 9).
+
+- **HA07/HA12/HA16 unordered siblings:** Siblings A and B start from one snapshot;
+  A installs a new ordinary binding. B cannot read that binding just because
+  the host evaluates or restores A first. File-local Seq still observes its own
+  preceding actions. Established compatible contributions from siblings can join
+  by ordinary algebra with first residency once; replacements and duplicate
+  acquisitions retain their ordinary conflicts. Changing a contribution or join
+  premise invalidates actual merged-result/conflict consumers, never creating
+  filename/worker/cache ordering authority (§§2, 5.1 and 6).
+- **HA07/HA12/HA15 reify closure support:** A cached ClosedInterface observation
+  meets changed support that makes public capture/effect/lifecycle shape depend
+  on reverse runtime flow. Invalidate admission/interface consumers and require
+  current E closure evidence or the ordinary handler/wrapper before exposure;
+  old cached shape and M cannot repair it. Contrast runtime choice within an
+  already compile-determined regular sum, which remains legal (§§2 and 6).
+- **HA12/HA14/HA16 materialization environment:** Keep source, frozen plan and
+  target definition equal while M capabilities/version, output options or a
+  consumed downstream toolchain input changes. Revalidate/rebuild only results
+  whose consumed support no longer establishes validity: M validation, emitted
+  output and final packaging/link artifacts have separate premises. Prior M
+  success or matching target identity alone cannot authorize reuse; unchanged
+  independent E/plan-semantic evidence need not be discarded (§9.3).
 
 These additions specify preservation/acceptance boundaries only; they execute
 no source program or optimization test.

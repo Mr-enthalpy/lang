@@ -1250,6 +1250,15 @@ representation-forced global reconstruction; actual crossing dependencies still
 receive full affected validation. These are pending cases, not complexity or
 executed incremental-update claims.
 
+The unordered-sibling subcase (HA07/HA12/HA16) preserves Seq/Unordered, common
+snapshot visibility and lawful contribution/conflict joins despite scheduling
+or cache order. Reify closure support (HA07/HA12/HA15) invalidates affected
+ClosedInterface consumers while retaining legal fixed-sum runtime choice.
+Materialization-environment changes (HA12/HA14/HA16) separately validate the
+upstream plan, M checks and emitted/final artifacts against their actual
+consumed plan/output contract/definition, M version/capability/options and
+downstream toolchain dependencies. All three subcases remain pending.
+
 The [A–C counterexamples](../contracts/e-host-architecture-and-incremental-revalidation.md#111-distinguishing-architecture-targets)
 add three distinguishing checks within those existing IDs: refuse a disposable
 search branch's new irreversible external effect without lawful isolation/reuse

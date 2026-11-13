@@ -93,6 +93,14 @@ The complete default route includes any required terminating packaging/linking
 beyond M's bytes/records output, under upstream-settled policies and supporting
 facts. M success alone establishes neither semantic fidelity nor an executable
 container; downstream work cannot silently select or repair machine policy.
+Plan-semantic validity, M-validation validity and emitted/final-artifact validity
+retain their separate consumed environments: actual plan/output contract,
+definition, M implementation/version or sufficient capability support, relevant
+options and downstream packaging/link tools/inputs/dependencies under the linked
+host handoff.
+An unchanged target definition or prior M success is insufficient for output
+reuse; changes invalidate actual consumers without blanket invalidation of
+independent E facts. Physical options cannot supply language meaning.
 
 A returned construction value does not implicitly install its outer binding.
 An explicit binding action creates the destination name and Place. Construction

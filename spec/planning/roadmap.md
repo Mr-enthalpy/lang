@@ -475,6 +475,15 @@ dependency support to survive without storage-forced full-K/projection/index
 reconstruction (shared action; HA13/HA17). Real crossing dependencies may require
 wider validation; no specific representation or complexity bound is prescribed.
 
+Preserve Seq/Unordered common-snapshot sibling overlays and contribution/join/
+conflict dependencies; scheduling or cache order grants no visibility (shared
+action; HA07/HA12/HA16). Retain ClosedReturn/ClosedInterface admission support
+and invalidate actual reify consumers when it changes, independently of cached
+shape (migration; HA07/HA12/HA15). Track plan-semantic, M-validation and final
+artifact validity separately, including actual output contracts, M version/
+capability/options and downstream toolchain dependencies (compile construction;
+HA12/HA14/HA16). These are pending host duties, not connected execution coverage.
+
 The A–C counterexamples in the host's HA13/HA16, HA01/HA07 and HA12/HA14
 subcases require pending effect-aware candidate isolation/reuse boundaries,
 dependency tracking for unexecuted formed guarded Pre consumers, and explicit
