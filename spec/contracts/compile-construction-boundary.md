@@ -72,35 +72,12 @@ LinkRegistry still permits only the first authorized acquisition; cached
 material neither imports an old Done state nor excuses a second source link.
 This is distinct from not replaying actions in an already represented history.
 
-Constructed semantic results and cached material alone establish no machine
-coverage. A future [materialization support claim](e-host-architecture-and-incremental-revalidation.md#93-complete-default-route-within-declared-materialization-support)
-identifies its continuation family/target and inputs; every accepted checkpoint
-in that domain requires a complete terminating default route, independently of
-further optional heuristic/AI search. This consumes the actual result/ABI and
-dependency facts above; no such materializer is connected by this contract.
-At that future handoff, upstream machine planning settles instruction selection,
-operand legalization, encoding form, layout and fixup policy before final M
-validates/executes the frozen plan. Missing choices or invalid plans are rejected,
-not repaired by M. Plan validity retains consumed target-definition identity and
-E/machine support; a change invalidates actual dependent plans/artifacts before
-reuse. A valid semantic result or matching cache key alone supplies neither a
-settled plan nor its current validity. This leaves equivalent layout planning,
-plan representation and algorithms open while E continues to fix ABIKind.
-Upstream also retains E-grounded LE-to-plan semantic fidelity: an encodable,
-complete plan can still implement the wrong operation, effects or delivery.
-Final M's exact materialization checks do not discharge that responsibility.
-The complete default route includes any required terminating packaging/linking
-beyond M's bytes/records output, under upstream-settled policies and supporting
-facts. M success alone establishes neither semantic fidelity nor an executable
-container; downstream work cannot silently select or repair machine policy.
-Plan-semantic validity, M-validation validity and emitted/final-artifact validity
-retain their separate consumed environments: actual plan/output contract,
-definition, M implementation/version or sufficient capability support, relevant
-options and downstream packaging/link tools/inputs/dependencies under the linked
-host handoff.
-An unchanged target definition or prior M success is insufficient for output
-reuse; changes invalidate actual consumers without blanket invalidation of
-independent E facts. Physical options cannot supply language meaning.
+Compile construction supplies complete declared results, selected frame/input
+identity, exact held snapshots, current-state/dependency support and E-selected
+delivery/ABIKind to the future [materialization handoff](e-host-architecture-and-incremental-revalidation.md#93-complete-default-route-within-declared-materialization-support).
+Its consumers establish plan fidelity/current validity, exact M validation and
+complete executable-artifact validity under that contract. Semantic success or
+cache-key equality establishes none of them. No materializer is connected here.
 
 A returned construction value does not implicitly install its outer binding.
 An explicit binding action creates the destination name and Place. Construction

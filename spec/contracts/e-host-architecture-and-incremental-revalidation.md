@@ -58,6 +58,8 @@ requires. Their producers and requiring consumers form one handoff chain:
 
 These links assign preservation responsibilities to existing consumers; they
 do not add an evaluator phase or imply that those consumers are connected.
+Detailed host architecture requirements live here; linked contracts identify
+their supplied/consumed evidence, while planning documents track wiring/status.
 The [conformance index](../planning/canonical-semantic-conformance.md#e-host-preservation-and-incremental-revalidation-targets)
 maps HA groups to these handoffs; the [roadmap](../planning/roadmap.md#10-structured-e-host-and-incremental-revalidation-readiness)
 records their pending wiring. Missing upstream material uses §10 at its actual
@@ -200,6 +202,13 @@ requires the same lawful correspondence and current-premise validation as
 other reuse. Host checkpoint handles are storage/search coordinates, not new
 SemanticOwner, CompileInstance or language identity axes.
 
+E observations combined for one judgment MUST form a coherent semantic
+revision/context. Individually valid facts from different K revisions or
+checkpoints cannot be conjoined without lawful correspondence and current
+validity sufficient for that combination. This permits §9's explicit old/new-K
+comparison; it does not transplant an old-position premise into the new K.
+No query transaction API or version-storage format is prescribed.
+
 Relational observations MUST retain sufficient subject/target, K position or
 interval, name/generation, scope, guard, selected operation, supporting premises
 and availability to justify their actual consumer. Same name, same Place, same
@@ -269,6 +278,15 @@ it cannot restore an initial resident, reverse Close, revive a generation,
 retarget a saved reference or extend a dependency lifetime. Cached Post is not
 a license to consume input again. Required missing inputs or OpenHere are
 unavailable, not successful empty observations.
+
+Cached Diagnostic results, failed judgments and unavailable observations MUST
+retain their actual inputs and absence/availability support with valid consumer
+dependencies. Changed Pre, relation content or newly available required evidence
+invalidates dependent failures even when source/signature/lookup keys stay equal.
+The new or revalidated revision can then use its existing requiring E consumer;
+an unchanged failure is reusable only with current support and invalidation
+lookup. This neither retries/reopens the old sealed invocation nor replays its
+represented actions, and it fabricates no success or Residual (§§6 and 10).
 
 Fingerprints/versions MAY locate reuse candidates. The host MUST account for
 collisions and changes of compiler/semantic environment in cache validation;
@@ -378,6 +396,9 @@ consumer/evidence is unavailable, stop at that boundary under §10.
 A stable-observation stop still requires valid dependency support and invalidation
 lookup for the new revision (§7.3). Result equivalence alone does not establish
 that the prior revision's dependency sources or lookup entries remain sufficient.
+
+These dependency rules cover cached failure/Diagnostic/unavailable observations
+as well as successful calculations (§5).
 
 ### 6.1 Selection domains and negative observations
 
@@ -979,6 +1000,21 @@ Further design subcases refine the same IDs:
   output and final packaging/link artifacts have separate premises. Prior M
   success or matching target identity alone cannot authorize reuse; unchanged
   independent E/plan-semantic evidence need not be discarded (§9.3).
+
+- **HA01/HA12/HA15 cached failure invalidation:** A's unchanged source previously
+  failed B's Pre, or lacked required consumer/evidence. Relaxed Pre or newly
+  available evidence invalidates that dependent cached failure. Check the new
+  revision through the existing requiring E consumer; other false/missing
+  premises can still reject/be unavailable. A key hit cannot make the old
+  Diagnostic permanent; revalidation reopens no old selected invocation and
+  replays no represented effect (§§5–6 and 10).
+- **HA13/HA17 coherent combined queries:** A rewrite judgment obtains a
+  no-conflict observation for K1, then Move/cleanup observations for changed K2.
+  Individual validity does not authorize their combination: require a coherent
+  judgment context or established correspondence/current support for the facts
+  used. A new intervening conflict defeats the old premise. Lawful mapped reuse
+  and explicit old/new equivalence comparison remain possible; affected new-K
+  validation is still independent (§§4 and 9).
 
 These additions specify preservation/acceptance boundaries only; they execute
 no source program or optimization test.

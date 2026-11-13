@@ -402,103 +402,53 @@ obligations separately visible in each implementation PR.
 ## 10. Structured E host and incremental revalidation readiness
 
 The [host handoff](../contracts/e-host-architecture-and-incremental-revalidation.md)
-establishes document requirements for structured common K/LE, synchronized
-projections, provenance-bearing relations, separate snapshot/current-world/
-replayable caches and fine-grained dependency revalidation. Lifecycle Pre/Post
-content changes invalidate actual consumers even when ordinary interfaces and
-machine ABI shape stay equal. Automatic Post propagates through ordinary E
-calculations until required outward observations are proved stable, including
-supported stops within a function, or a real check fails/is unavailable.
+contains the complete architecture requirements. This section tracks consumer
+prerequisites, implementation slices and evidence; it does not restate the
+future O/Planner/M contract.
 
 Status: **document constraints established; execution consumers pending;
 HA01–HA18 executable acceptance not yet passed**. Existing common transactions,
-owner/instance interning, sealed-frame and exact-key package-cache tests cover
-only their substrate slices. They do not implement contract-content dependency
-tracking, automatic-summary propagation or complete common-K/CPS correspondence.
+owner/instance interning, sealed-frame and package-cache tests cover only the
+[audited substrate slices](../contracts/e-host-architecture-and-incremental-revalidation.md#112-audited-implementation-evidence).
+Complete common K/CPS, contract-content dependencies and automatic-summary
+propagation remain unconnected.
 
 As each LC1–LC13/common-E consumer connects, preserve its lawful revision
 mappings and consumed semantic observations at that boundary; do not defer
-dependency capture until the whole source chain is implemented. Revalidate
-affected call positions, interface extraction/assignment and subcontinuations
-through the same E. The [connected handoff map](../contracts/e-host-architecture-and-incremental-revalidation.md#11-connected-handoff-responsibilities)
-assigns the existing contracts these linked responsibilities:
+dependency capture until the whole source chain is implemented. The
+[connected handoff map](../contracts/e-host-architecture-and-incremental-revalidation.md#11-connected-handoff-responsibilities)
+assigns producer/consumer responsibilities:
 
-| Existing handoff | Pending host consumer |
+| Existing handoff | Prerequisite material / pending connection |
 |---|---|
-| Owner/namespace and compile construction | Lawful identity/parent/input correspondence, observed selection-domain completeness/exclusion/preference, immutable snapshots versus current state, and fresh-compilation action/effect accounting |
-| LC2/LC13 and shared action publication | Structured common-K/control/caller correspondence without a global ID bijection; separate E-grounded rewrite equivalence and affected new-position validation; current cleanup/Pre and history-relative joint publication |
-| LC4/LC6 | Actual contract-content dependencies and mapped call/interface revalidation even when ordinary/ABI shape is unchanged |
-| LC5/LC8 | Separate summary/actual validity, guarded propagation/stability and retained original SCC companions/contributions |
-| Policy migration | Existing-view/candidate-domain validity plus destination/Path/frontier evidence, with existing hard-A, selected and final-delivery boundaries preserved |
-| Checkpoint/search/materialization handoff | Retain/recover multiple accepted branches without copying real resources, permit local O1/O2 objective switching without representation-imposed global barriers, and preserve a complete terminating default route for every checkpoint covered by a declared family/target support claim |
+| Owner/namespace and compile construction | Identity/selected-input correspondence, exact snapshots, current storage and compilation-effect context |
+| LC2/LC13 and shared action publication | Structured common K/CPS, Seq/Unordered overlays, caller/control/delivery correspondence, before-action observations and joint publication |
+| LC4/LC6 | Contract-content dependencies and mapped call/interface consumers |
+| LC5/LC8 | Separate summary/actual inputs, stable-stop dependency updates, original regular companions and contribution lineage |
+| Policy migration | Existing-view/candidate and destination/Path premises, active reify/closed-interface support |
+| Future search/materialization | Validated K/LE, selected Move/delivery/ABIKind, lifecycle/cleanup and target/environment inputs from the connected producers above |
 
-The HA12/HA13/HA16 subcases require changed-selection-domain checks without
-mutating old snapshots/seals; equivalence and legality before accepting an O
-candidate, with supported nonbijective correspondence; and new-compilation
-LinkRegistry/effect checks despite physical cache reuse. These clarify existing
-owners' duties and add no selection stage, proof API or executable coverage.
+Suggested engineering slices, not semantic evaluation passes:
 
-[Host §§9.1–9.3](../contracts/e-host-architecture-and-incremental-revalidation.md#91-branchable-accepted-checkpoints)
-add pending branch/recovery, objective-switch and default-completion capability
-obligations. Support admission/accepted rewrites must keep the declared domain
-closed under its guaranteed default O2/E/M route, so stopping optional search at
-any covered checkpoint can finish an executable artifact. Semantic legality
-alone supplies no materializer coverage; today's unconnected consumers remain
-unavailable. No persistent IR, Planner instances, global O1/O2 schedule, FMP
-format or actual executable-generation capability is implemented here.
+1. Connect each supported common-K/LC producer with its scoped identity,
+   projection and dependency records, including positive, negative and
+   availability observations. Missing upstream material stays unavailable.
+2. Wire reverse-consumer invalidation and mapped call/interface/summary checks
+   over that support. Verify changed failed results, stable-stop source updates
+   and coherent combined queries along with ordinary successful reuse.
+3. Exercise local-update and accepted-checkpoint/search consumers over the validated
+   revision evidence, including contribution/conflict invalidation and changed
+   planning partitions. Recursive consumers require their supported-family
+   evidence; lifecycle name-item collapse and call planning remain distinct.
+4. Connect declared materialization support domains only with their required
+   common-K, delivery, lifecycle and machine inputs. Validate each handoff under
+   [host §9.3](../contracts/e-host-architecture-and-incremental-revalidation.md#93-complete-default-route-within-declared-materialization-support),
+   including upstream fidelity, M validation and complete final-artifact validity.
+   No supported family/target or executable generation is implemented here.
 
-Future function/call-SCC planning partitions must be rederivable views of the
-current accepted K: accepted call rewrites may split/merge work and reassign it,
-while retaining semantic dependencies, affected validation and checkpoint
-correspondence. Final M must receive settled instruction/legalization/encoding,
-layout and fixup policy; it validates/executes the frozen plan instead of resolving
-choices or silently repairing it. Plan validity retains consumed target-definition
-identity and E/machine support. The host's HA08/HA13 and HA12/HA14/HA15/HA16
-subcases specify these pending boundaries; no scheduler or M consumer is added.
-
-Pending reuse must recover each represented action's lawful before-state
-observations in the corresponding revision, or abandon that local reuse;
-post-action storage is no substitute and historical observations grant no
-present execution authority (LC4/shared-action; HA01/HA10/HA16). General negative
-E queries retain observed domain/range completeness so new conflicting actions,
-effects or cleanup invalidate absence conclusions (HA12/HA17). Upstream machine
-planning must retain E-grounded LE-to-plan fidelity separately from encoding
-legality (compile construction; HA13/HA14). The complete default route includes
-any required terminating packaging/linking after M output under settled policy
-(HA15/HA16). None of these obligations has connected HA execution coverage.
-
-Stable propagation stops still require the new revision's dependency provenance,
-guards, scope/completeness and invalidation lookup before reuse (LC5; HA03/HA06).
-An equal result with X-to-Y support replacement must invalidate on later Y change.
-Local K revisions must permit valid unaffected structure, observations and
-dependency support to survive without storage-forced full-K/projection/index
-reconstruction (shared action; HA13/HA17). Real crossing dependencies may require
-wider validation; no specific representation or complexity bound is prescribed.
-
-Preserve Seq/Unordered common-snapshot sibling overlays and contribution/join/
-conflict dependencies; scheduling or cache order grants no visibility (shared
-action; HA07/HA12/HA16). Retain ClosedReturn/ClosedInterface admission support
-and invalidate actual reify consumers when it changes, independently of cached
-shape (migration; HA07/HA12/HA15). Track plan-semantic, M-validation and final
-artifact validity separately, including actual output contracts, M version/
-capability/options and downstream toolchain dependencies (compile construction;
-HA12/HA14/HA16). These are pending host duties, not connected execution coverage.
-
-The A–C counterexamples in the host's HA13/HA16, HA01/HA07 and HA12/HA14
-subcases require pending effect-aware candidate isolation/reuse boundaries,
-dependency tracking for unexecuted formed guarded Pre consumers, and explicit
-E-known target/external-observation validity dependencies. The latter separately
-invalidate E/O justification and machine artifacts even with equal source/key.
-These are design acceptance targets; no source execution, speculative-effect
-sandbox or target/external-fact consumer is implemented by the added text.
-
-Recursive families require their own
-domain/termination or rejection/unavailable evidence; name-item SCC collapse
-keeps its independently fixed boundaries. Future O rewrites retain these
-dependencies at new positions; machine-artifact validity follows its own actual
-dependencies. No independent checker, universal solver or O/Planner/M API is
-introduced. [HA01–HA18](../contracts/e-host-architecture-and-incremental-revalidation.md#111-distinguishing-architecture-targets)
-are normative input-change/trigger/stop-or-failure targets, not executed source
-tests. The [conformance index](canonical-semantic-conformance.md#e-host-preservation-and-incremental-revalidation-targets)
-links those groups back to existing acceptance obligations; future implementation
-PRs must report their real connected coverage.
+[HA01–HA18 and their subcases](../contracts/e-host-architecture-and-incremental-revalidation.md#111-distinguishing-architecture-targets)
+remain normative acceptance targets. The
+[conformance index](canonical-semantic-conformance.md#e-host-preservation-and-incremental-revalidation-targets)
+routes them to existing consumers. Future implementation PRs must report actual
+connected coverage and failure/unavailable boundaries; document/link checks and
+substrate tests do not establish HA execution.

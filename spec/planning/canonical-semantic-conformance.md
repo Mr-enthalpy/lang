@@ -1259,6 +1259,10 @@ upstream plan, M checks and emitted/final artifacts against their actual
 consumed plan/output contract/definition, M version/capability/options and
 downstream toolchain dependencies. All three subcases remain pending.
 
+HA01/HA12/HA15 also cover invalidation of cached failures and unavailable
+observations; HA13/HA17 cover coherent combined observations across queries.
+Their full cases and acceptance conditions remain in the host matrix's subcases.
+
 The [A–C counterexamples](../contracts/e-host-architecture-and-incremental-revalidation.md#111-distinguishing-architecture-targets)
 add three distinguishing checks within those existing IDs: refuse a disposable
 search branch's new irreversible external effect without lawful isolation/reuse
