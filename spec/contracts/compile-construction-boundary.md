@@ -78,6 +78,14 @@ identifies its continuation family/target and inputs; every accepted checkpoint
 in that domain requires a complete terminating default route, independently of
 further optional heuristic/AI search. This consumes the actual result/ABI and
 dependency facts above; no such materializer is connected by this contract.
+At that future handoff, upstream machine planning settles instruction selection,
+operand legalization, encoding form, layout and fixup policy before final M
+validates/executes the frozen plan. Missing choices or invalid plans are rejected,
+not repaired by M. Plan validity retains consumed target-definition identity and
+E/machine support; a change invalidates actual dependent plans/artifacts before
+reuse. A valid semantic result or matching cache key alone supplies neither a
+settled plan nor its current validity. This leaves equivalent layout planning,
+plan representation and algorithms open while E continues to fix ABIKind.
 
 A returned construction value does not implicitly install its outer binding.
 An explicit binding action creates the destination name and Place. Construction

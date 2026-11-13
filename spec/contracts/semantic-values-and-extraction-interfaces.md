@@ -163,6 +163,11 @@ descriptions performs no common business commit or external rollback. Real
 actions still use this gate with current evidence. Local O1/O2 objective
 switching cannot bypass E saturation or actual cross-region dependencies;
 transaction storage must not require a global objective phase barrier.
+Function/call-SCC planning partitions are views derived from the current accepted
+K. After accepted call rewrites, the host permits their lawful rederivation and
+future-work reassignment, preserving actual inlined dependencies, affected
+validation and retained-checkpoint correspondence (§9.2 of that handoff).
+Partition identity supplies no semantic ownership or lifecycle SCC collapse law.
 These are future host capabilities, not tests of checkpoint execution.
 
 HA13/HA16 also distinguish a new irreversible compile-host effect exposed by

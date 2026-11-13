@@ -1225,6 +1225,15 @@ finish through its terminating default route when optional search stops;
 semantically legal unsupported residue still reports its actual unavailable
 handoff. These are pending design cases, not executable/Planner test results.
 
+The HA08/HA13 repartition subcase requires current-K-derived function/call-SCC
+planning views to change after accepted call rewrites, preserving semantic
+dependencies, affected validation and retained-checkpoint correspondence.
+The HA12/HA14/HA15/HA16 frozen-plan subcase requires upstream-settled machine
+choices and validation/execution-only final M: an incomplete plan is rejected,
+not repaired. Consumed target-definition identity and E/machine support remain
+plan-validity dependencies. These add no lifecycle SCC rule, task/plan API or
+executed materialization coverage.
+
 The [A–C counterexamples](../contracts/e-host-architecture-and-incremental-revalidation.md#111-distinguishing-architecture-targets)
 add three distinguishing checks within those existing IDs: refuse a disposable
 search branch's new irreversible external effect without lawful isolation/reuse

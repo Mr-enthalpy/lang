@@ -298,7 +298,7 @@ of changed or invalidated observations, including these associations:
 | Current names/generations, residents, Region/Color/access, cleanup and Policy | Action legality, actual Post, delivery and resource responsibility |
 | Original regular companions, guarded item/edge contributions and boundary mappings | Supported SCC collapse, local compression and recursive/modular composition |
 | E-known target arithmetic/trap, representation, alignment and semantic ABI facts; admitted external observations and their validity/truth support | Dependent E computations and O equivalence evidence, and separately the machine plans/artifacts that consumed them; unchanged source hashes/ordinary keys prove no independence |
-| E/machine observations actually consumed by a future materialization decision | That machine plan/artifact, independently of unrelated semantic material |
+| Target-definition identity and E/machine observations actually consumed by a future materialization decision | That frozen machine plan's validity and dependent artifacts, independently of unrelated semantic material; §9.3 |
 
 Dependencies MAY be tracked by observation, call position, local subcontinuation,
 function or a supported SCC; functions are valid coarse boundaries, not a
@@ -564,6 +564,17 @@ all regions to share a global objective phase. No per-function Planner instance,
 parallelism or independent optimizer alias/effect/lifecycle/Stage truth system
 is required. O1/O2 are search objectives, not new Policy or language stages.
 
+Function and call-SCC planning partitions are derived organization views of the
+current accepted K, not immutable semantic identities. When an accepted rewrite
+changes actual call dependencies, the host MUST permit lawful rederivation of
+those views, including splitting/merging partitions and reassigning future
+planning work. Inlining B into A may remove A's call edge while retaining B's
+semantic dependencies inside A. Repartitioning MUST preserve those dependencies,
+affected E validation/saturation and retained accepted-checkpoint correspondence;
+it cannot keep stale validation merely because a task name survives. Reorganizing
+planning work proves neither recursive convergence nor a lifecycle name-item SCC
+collapse, and changes no semantic owner or sealed invocation (§§4, 6 and 8).
+
 ### 9.3 Complete default route within declared materialization support
 
 A future materialization support claim MUST identify its continuation family,
@@ -590,8 +601,26 @@ Required material includes common-K/CPS correspondence, selected calls,
 normalized terminal Move and actual repair, delivery target/E-selected ABIKind,
 lifetime/cleanup/resource obligations and target facts. Strategy choices belong
 to future default O2, not hidden E rewrites. M executes an upstream-decided
-target-machine plan; no plan structure, lowering algorithm or O/Planner/M
-entry point is frozen here.
+target-machine plan.
+
+The host MUST preserve a boundary at which all machine-policy choices needed
+for deterministic materialization are settled upstream: instruction selection,
+operand legalization, encoding-form selection, layout and fixup policy. Final M
+MUST validate the frozen plan before executing it, including its prescribed
+deterministic encoding/fixup calculations, and MUST NOT fill undecided choices,
+silently repair the plan or search for a different form/layout. Incomplete,
+invalid or unsupported
+plans stop at their actual handoff under §10. Such rejection does not satisfy the
+complete default-route promise for an already covered accepted checkpoint.
+
+Plan validity MUST retain the consumed target-definition identity and supporting
+E/machine observations with their dependency/current-validity premises (§§5–6).
+Freezing choices for one handoff does not make that support permanently valid;
+changed definition/support invalidates actual plan/artifact consumers before
+reuse. This boundary divides future O/materialization planning from final M
+execution, without relocating E's ABIKind decision or forbidding equivalent
+layout planning upstream. It fixes no plan structure, target-definition encoding,
+lowering algorithm, FMP serialization or O/Planner/M entry point.
 
 This guarantee is conditional on the declared supported family/target and
 inputs; semantic legality alone does not establish materialization coverage.
@@ -732,6 +761,23 @@ Further design subcases refine the same IDs:
   acceptance that loses this route. Contrast a semantically legal LE whose
   materializer/input evidence is unconnected or outside the claim: report its
   unavailable boundary, with no support claim or invented artifact (§9.3).
+
+- **HA08/HA13 planning repartition:** An accepted inlining or other call rewrite
+  changes call edges and splits/merges a call SCC. Rederive the planning views
+  and reassign future work while preserving inlined semantic dependencies,
+  actual affected validation and retained-checkpoint correspondence. Retaining
+  the initial task graph as immutable identity, dropping checks with a removed
+  edge or applying lifecycle name-item collapse to planning partitions fails
+  this case; no particular task graph algorithm is required (§§6, 8 and 9.2).
+- **HA12/HA14/HA15/HA16 frozen-plan handoff:** A plan leaves encoding form,
+  legalization, layout or fixup policy undecided. Final M rejects it instead of
+  selecting, relaxing or silently repairing it; upstream must supply the settled
+  plan through the declared complete default route. A complete plan can execute
+  its prescribed calculations without planning discretion. Changing a consumed
+  target definition or supporting observation invalidates its dependent validity
+  and artifacts before reuse even with equal source/key; independent E material
+  remains reusable only under its own unchanged observations. No implemented M
+  or passed materialization test is asserted (§§5–6 and 9.3).
 
 - **HA13/HA16 irreversible search effect (A):** O1 exploration of K1 needs a
   new compile-host external action to complete saturation, but K1 is then

@@ -447,6 +447,15 @@ alone supplies no materializer coverage; today's unconnected consumers remain
 unavailable. No persistent IR, Planner instances, global O1/O2 schedule, FMP
 format or actual executable-generation capability is implemented here.
 
+Future function/call-SCC planning partitions must be rederivable views of the
+current accepted K: accepted call rewrites may split/merge work and reassign it,
+while retaining semantic dependencies, affected validation and checkpoint
+correspondence. Final M must receive settled instruction/legalization/encoding,
+layout and fixup policy; it validates/executes the frozen plan instead of resolving
+choices or silently repairing it. Plan validity retains consumed target-definition
+identity and E/machine support. The host's HA08/HA13 and HA12/HA14/HA15/HA16
+subcases specify these pending boundaries; no scheduler or M consumer is added.
+
 The A–C counterexamples in the host's HA13/HA16, HA01/HA07 and HA12/HA14
 subcases require pending effect-aware candidate isolation/reuse boundaries,
 dependency tracking for unexecuted formed guarded Pre consumers, and explicit
