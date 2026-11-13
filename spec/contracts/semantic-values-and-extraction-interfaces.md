@@ -148,6 +148,15 @@ does not apply Post, Move/Kill/Drop or acquisition again. A genuinely new action
 uses its own ordinary premises. Missing correspondence remains unavailable;
 transaction tests with supplied material do not execute HA acceptance scenarios.
 
+For represented history, the [before-action observation rule](e-host-architecture-and-incremental-revalidation.md#51-same-history-revalidation-and-fresh-compilation-reuse)
+locates changed Pre checks in the corresponding revision's lawful pre-state,
+not a cached post-state or an unrelated latest resident. Recovered historical
+observations establish no present commit witness or authority; new actions
+still require the actual gate above. For negative access/effect/cleanup queries,
+the host retains observed range/domain completeness support as well as positive
+rows. Newly relevant actions invalidate dependent absence conclusions, even
+when old rows remain equal; missing support is unavailable (§4 of the handoff).
+
 For a fresh compilation, [authorized cache realization](e-host-architecture-and-incremental-revalidation.md#51-same-history-revalidation-and-fresh-compilation-reuse)
 still accounts for required actions/effects in that compilation's E state;
 same-history no replay cannot erase new registry entries or effect conflicts.

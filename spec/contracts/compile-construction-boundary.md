@@ -86,6 +86,13 @@ E/machine support; a change invalidates actual dependent plans/artifacts before
 reuse. A valid semantic result or matching cache key alone supplies neither a
 settled plan nor its current validity. This leaves equivalent layout planning,
 plan representation and algorithms open while E continues to fix ABIKind.
+Upstream also retains E-grounded LE-to-plan semantic fidelity: an encodable,
+complete plan can still implement the wrong operation, effects or delivery.
+Final M's exact materialization checks do not discharge that responsibility.
+The complete default route includes any required terminating packaging/linking
+beyond M's bytes/records output, under upstream-settled policies and supporting
+facts. M success alone establishes neither semantic fidelity nor an executable
+container; downstream work cannot silently select or repair machine policy.
 
 A returned construction value does not implicitly install its outer binding.
 An explicit binding action creates the destination name and Place. Construction

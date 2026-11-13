@@ -1234,6 +1234,14 @@ not repaired. Consumed target-definition identity and E/machine support remain
 plan-validity dependencies. These add no lifecycle SCC rule, task/plan API or
 executed materialization coverage.
 
+Further subcases preserve four cross-boundary obligations: E-grounded LE-to-plan
+fidelity distinct from encoding legality (HA13/HA14); revision-corresponding
+before-action observations for changed Pre, without consuming material again
+(HA01/HA10/HA16); complete default packaging/linking beyond M output when required
+(HA15/HA16); and range/domain completeness for general negative access/effect/
+cleanup queries, invalidated by newly relevant actions (HA12/HA17).
+These are pending normative cases, not executed machine or incremental tests.
+
 The [A–C counterexamples](../contracts/e-host-architecture-and-incremental-revalidation.md#111-distinguishing-architecture-targets)
 add three distinguishing checks within those existing IDs: refuse a disposable
 search branch's new irreversible external effect without lawful isolation/reuse

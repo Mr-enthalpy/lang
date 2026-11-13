@@ -190,6 +190,16 @@ directed relations and source-choice correlations. No universal alias query
 API or decision algorithm is introduced. Missing relation/guard evidence grants
 no local reorder permission.
 
+Negative/absence conclusions from any E relation query MUST retain sufficient
+support for the completeness of their observed domain/range, K interval, guards
+and relevant inputs. This includes no conflicting access, no additional effect
+and no outstanding cleanup, not only overload exclusions (§6.1). A newly relevant
+action, expanded range or changed guard/completeness premise invalidates dependent
+conclusions even if all previously observed positive rows remain unchanged.
+Unknown support is not absence. Local summaries or conservative dependency
+ranges MAY supply this support; neither whole-world enumeration nor execution
+of unknown future arms is required or authorized.
+
 The host MUST support queries over the real affected relation/dependency range
 without requiring every local query to expand a flat table of all pairwise
 relations in the function merely because of its storage model. Shared structure,
@@ -258,6 +268,19 @@ E state, with actual identity, dependencies, current premises and ordinary
 Pre/commit/Post. Avoiding physical work is not permission to delete semantic
 events, skip conflicts or import the old compilation's registry/history.
 
+For an already represented action a, revalidation MUST obtain the required
+observations of its lawful before-action state in the corresponding revision,
+with valid input/name/generation/guard mappings and dependencies. A changed Pre
+is checked against that revision's before(a), not the cached after(a), the latest
+resident state or an old before-state whose correspondence is unproved. For
+example, consumption ending x's generation after a cannot itself falsify x's
+availability before a. The host MAY retain event material, shared state, local
+summaries or recompute observations from an earlier lawful frontier; no full
+snapshot per action is required. If this support cannot be established, abandon
+that local reuse and perform supported wider E revalidation or report the actual
+unavailable boundary. Recovering observations neither rolls back committed
+history nor grants present transfer/update authority or replays an action.
+
 Cached material MAY avoid repeated physical computation only where the actual
 ordinary operation's semantics and current validity permit that realization.
 It cannot supply otherwise missing external/resource truth, ownership or
@@ -298,6 +321,7 @@ of changed or invalidated observations, including these associations:
 | Current names/generations, residents, Region/Color/access, cleanup and Policy | Action legality, actual Post, delivery and resource responsibility |
 | Original regular companions, guarded item/edge contributions and boundary mappings | Supported SCC collapse, local compression and recursive/modular composition |
 | E-known target arithmetic/trap, representation, alignment and semantic ABI facts; admitted external observations and their validity/truth support | Dependent E computations and O equivalence evidence, and separately the machine plans/artifacts that consumed them; unchanged source hashes/ordinary keys prove no independence |
+| Observed relation domain/range, guards and completeness support, including absent access/effect/cleanup observations | Dependent negative conclusions and their consumers; newly relevant material invalidates absence even when old positive rows stay equal; §4 |
 | Target-definition identity and E/machine observations actually consumed by a future materialization decision | That frozen machine plan's validity and dependent artifacts, independently of unrelated semantic material; §9.3 |
 
 Dependencies MAY be tracked by observation, call position, local subcontinuation,
@@ -371,10 +395,12 @@ unchanged outward observations can still stop propagation under §7.3.
 
 1. Recover the call position and its actual selected candidate/projection/frame,
    implicit Param/captures, bound required inputs, explicit arguments,
-   result/activation mapping and current premises.
-2. Revalidate caller `Pre.check` under that mapping in current E/K. Failure
+   result/activation mapping and corresponding before-action observations (§5.1).
+2. Revalidate caller `Pre.check` under that mapping in the lawful before-action
+   state of the current semantic revision, not a cached post-call state. Failure
    prevents the action; body `Pre.admit` supplies no repair and selection does
-   not reopen.
+   not reopen. For represented history this blocks the new revision's reuse,
+   without undoing the old commit or its external history.
 3. Recompute the mapped guarantee of legal success and its caller `Post.admit`;
    implementation `Pre.admit`/`Post.check` remain their ordinary counterparts.
    Preserve actual history and one transfer, with no cached replay of the body.
@@ -603,15 +629,25 @@ lifetime/cleanup/resource obligations and target facts. Strategy choices belong
 to future default O2, not hidden E rewrites. M executes an upstream-decided
 target-machine plan.
 
+Upstream plan construction MUST retain E-grounded justification that the plan
+implements the accepted LE's admitted observations under the consumed target
+facts, including values, effects, delivery/ABI and lifecycle/cleanup/resource
+obligations as applicable. Plan completeness, encoding legality and this semantic
+fidelity are distinct obligations: a valid subtract instruction does not implement
+an E-required addition merely because it encodes. Final M checks precise
+materializability of the plan, not whether it implements the original LE. This
+retains E §§5/10/11's fidelity responsibility without another evaluator, mandatory
+proof-Object format or universal equivalence algorithm.
+
 The host MUST preserve a boundary at which all machine-policy choices needed
 for deterministic materialization are settled upstream: instruction selection,
 operand legalization, encoding-form selection, layout and fixup policy. Final M
 MUST validate the frozen plan before executing it, including its prescribed
 deterministic encoding/fixup calculations, and MUST NOT fill undecided choices,
 silently repair the plan or search for a different form/layout. Incomplete,
-invalid or unsupported
-plans stop at their actual handoff under §10. Such rejection does not satisfy the
-complete default-route promise for an already covered accepted checkpoint.
+invalid or unsupported plans stop at their actual handoff under §10. Such
+rejection does not satisfy the complete default-route promise for an already
+covered accepted checkpoint.
 
 Plan validity MUST retain the consumed target-definition identity and supporting
 E/machine observations with their dependency/current-validity premises (§§5–6).
@@ -621,6 +657,16 @@ reuse. This boundary divides future O/materialization planning from final M
 execution, without relocating E's ABIKind decision or forbidding equivalent
 layout planning upstream. It fixes no plan structure, target-definition encoding,
 lowering algorithm, FMP serialization or O/Planner/M entry point.
+
+The complete default route MAY extend beyond M's output: prescribed bytes,
+sections, symbols or fixup records need not themselves be an executable container.
+The declared route MUST include any required terminating packaging/linking steps
+and their inputs through the complete executable artifact. Those steps execute
+upstream-settled policies; they cannot conceal instruction/form selection,
+relaxation, layout/fixup repair or semantic ABI choices. A required new planning
+choice returns upstream with its E/fidelity obligations, rather than becoming
+implicit M or linker discretion. M success alone proves neither route completion
+nor semantic fidelity. No particular container or linker interface is fixed.
 
 This guarantee is conditional on the declared supported family/target and
 inputs; semantic legality alone does not establish materialization coverage.
@@ -806,6 +852,31 @@ Further design subcases refine the same IDs:
   Historical snapshots/commits remain recorded; a false unsafe admission is not
   repaired by replacing its cached fact (§§5–6, 9–10).
 
+- **HA13/HA14 plan fidelity:** Accepted LE requires runtime addition; a complete,
+  encodable plan instead subtracts on inputs where results differ. M's exact
+  encoding success supplies no LE-to-plan fidelity. Upstream must justify the
+  E-observation correspondence, including effects/delivery/resource obligations,
+  or reject the plan; no new M semantic checker is introduced (§9.3).
+- **HA01/HA10/HA16 before-action revalidation:** A legal call consumes x and
+  ends its generation. B's Pre then changes. Check the new Pre on that revision's
+  corresponding before-call observations and input mapping, not the cached dead-x
+  after-state. Missing before-state support prevents local reuse; a real failed
+  new Pre still rejects. Observing the historical frontier revives nothing,
+  reapplies no Post and performs no second Move/Kill (§§5.1, 7.1 and 10).
+- **HA15/HA16 output completion:** M succeeds with the prescribed bytes/records,
+  but the declared target still requires packaging/linking. Complete those
+  guaranteed steps under settled policies before claiming an executable artifact;
+  M success alone is insufficient. Missing completion in the supported domain
+  fails the support claim, and a downstream choice/relaxation cannot silently
+  repair the plan (§9.3).
+- **HA12/HA17 negative-query scope:** A supported local E query proves no
+  conflicting write in an observed interval. A rewrite inserts a relevant write
+  while old action rows stay unchanged. Invalidate the absence/reorder conclusion
+  through changed domain/range completeness support. Apply the same duty to
+  additional effects or pending cleanup; missing completeness is unavailable,
+  not an empty relation. This requires neither a whole-function pairwise table
+  nor execution of unknown future branches (§§4 and 6).
+
 These additions specify preservation/acceptance boundaries only; they execute
 no source program or optimization test.
 
@@ -834,9 +905,9 @@ The existing [open questions](../planning/open-questions.md) already cover the
 concrete choices needed here; no closed semantic question is reopened:
 
 - [Identity/persistence](../planning/open-questions.md#identity-and-canonical-representation): serialization and lawful cross-revision owner/action/name/generation correspondence, including supported nonbijective structural relations without changing identity laws, collision-safe lookup and parent-homomorphism evidence.
-- [Continuation representation](../planning/open-questions.md#residual-and-serial-evaluation): structured K/residual frames, branchable/recoverable checkpoints, full CPS/delivery/control correspondence and effect/overlay storage, without prescribing physical CPS layout; supported default-route domains and complete terminating materialization algorithms remain future representation/implementation work.
+- [Continuation representation](../planning/open-questions.md#residual-and-serial-evaluation): structured K/residual frames, branchable/recoverable checkpoints, full CPS/delivery/control correspondence, before-action observation recovery and effect/overlay storage, without prescribing physical CPS layout; supported default-route domains, LE-to-plan fidelity support and complete terminating materialization/packaging algorithms remain future representation/implementation work.
 - [Lifecycle algorithms](../planning/open-questions.md#lifetime-color-and-access): regular companions and contribution/incidence retention, supported boundary/summary equivalence and recursive-family evidence/rejection, scoped authority and current Open-sensitive cache requirements.
-- [Infrastructure persistence](../planning/open-questions.md#owner-namespace-and-infrastructure-persistence): storing observed selection domains/completeness and other dependency validity, fine-grained reverse-consumer lookup, history-relative effect accounting, E-grounded rewrite support and separate machine-artifact dependencies.
+- [Infrastructure persistence](../planning/open-questions.md#owner-namespace-and-infrastructure-persistence): storing selection and general relation-domain/range completeness support and other dependency validity, fine-grained reverse-consumer lookup, history-relative effect accounting, E-grounded rewrite support and separate machine-artifact dependencies.
 
 Chosen representations still need the corresponding owners' fidelity,
 composition and termination evidence. A future implementation reports each

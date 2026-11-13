@@ -456,6 +456,17 @@ choices or silently repairing it. Plan validity retains consumed target-definiti
 identity and E/machine support. The host's HA08/HA13 and HA12/HA14/HA15/HA16
 subcases specify these pending boundaries; no scheduler or M consumer is added.
 
+Pending reuse must recover each represented action's lawful before-state
+observations in the corresponding revision, or abandon that local reuse;
+post-action storage is no substitute and historical observations grant no
+present execution authority (LC4/shared-action; HA01/HA10/HA16). General negative
+E queries retain observed domain/range completeness so new conflicting actions,
+effects or cleanup invalidate absence conclusions (HA12/HA17). Upstream machine
+planning must retain E-grounded LE-to-plan fidelity separately from encoding
+legality (compile construction; HA13/HA14). The complete default route includes
+any required terminating packaging/linking after M output under settled policy
+(HA15/HA16). None of these obligations has connected HA execution coverage.
+
 The A–C counterexamples in the host's HA13/HA16, HA01/HA07 and HA12/HA14
 subcases require pending effect-aware candidate isolation/reuse boundaries,
 dependency tracking for unexecuted formed guarded Pre consumers, and explicit

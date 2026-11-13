@@ -266,6 +266,11 @@ actual Move/repair, Valid and the three separate transfer proofs remain required
   successor checks even when signature/ABI shape is unchanged. Retain the
   selected frame/Param/result/activation and current authority; cached success
   cannot replay input transfer, admit stale state or reopen selection.
+  Revalidating a represented call requires that revision's lawful before-call
+  observations and their dependencies, not the cached after-call resident state.
+  A consumed generation being dead after the call says nothing by itself about
+  its earlier Pre. Missing correspondence prevents local reuse; recovery of
+  observations grants no current authority and repeats no transfer or Post.
 
 ## LC5. Exit compression and automatic Post
 
