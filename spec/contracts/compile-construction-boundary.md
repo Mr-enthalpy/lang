@@ -49,6 +49,36 @@ Val2 members keep their own owners or targets. Untransferred locals cannot escap
 These laws are owned by
 [compile invocation](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md).
 
+The [host cache handoff](e-host-architecture-and-incremental-revalidation.md#5-cacheable-material-and-current-state-premises)
+keeps parent-neutral computation/summary material, exact immutable tau snapshots
+and current instance/member resident state under different reuse premises.
+Only a lawful target-owner/input correspondence reuses neutral material; a
+required old snapshot cannot be reconstructed from today's resident/callspace.
+Key equality supplies no current OpenHere, generation, cleanup or dependency
+validity and cannot replay committed initialization or restore consumed authority after
+Close. Consumed body/contract content changes are validity inputs, not another
+CompileInstance identity axis. Their real consumers revalidate through E,
+including Pre/Post checks despite unchanged ordinary interface/ABI shape.
+These are future cache consumers, not capabilities supplied by current interning
+or the coarse exact-key package artifact cache.
+
+[Selection-domain validity](e-host-architecture-and-incremental-revalidation.md#61-selection-domains-and-negative-observations)
+includes consumed completeness, rejection, fallback and unique-preference
+observations, not only the selected pair. A changed new read can invalidate
+reuse without changing an old snapshot. For [fresh-compilation cache reuse](e-host-architecture-and-incremental-revalidation.md#51-same-history-revalidation-and-fresh-compilation-reuse),
+avoiding physical computation does not omit the new E state's required actions,
+acquisition effects or registry/conflict checks. The host owner's per-compilation
+LinkRegistry still permits only the first authorized acquisition; cached
+material neither imports an old Done state nor excuses a second source link.
+This is distinct from not replaying actions in an already represented history.
+
+Compile construction supplies complete declared results, selected frame/input
+identity, exact held snapshots, current-state/dependency support and E-selected
+delivery/ABIKind to the future [materialization handoff](e-host-architecture-and-incremental-revalidation.md#93-complete-default-route-within-declared-materialization-support).
+Its consumers establish plan fidelity/current validity, exact M validation and
+complete executable-artifact validity under that contract. Semantic success or
+cache-key equality establishes none of them. No materializer is connected here.
+
 A returned construction value does not implicitly install its outer binding.
 An explicit binding action creates the destination name and Place. Construction
 bodies perform value-side name formation and separately authorized ref/write

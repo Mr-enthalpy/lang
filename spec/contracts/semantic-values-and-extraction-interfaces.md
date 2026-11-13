@@ -109,13 +109,14 @@ before future common E source-body completion can consume it.
 ## Shared action and lifecycle handoff
 
 The [lifetime-program contract](lifetime-program-consumers.md) extends this
-handoff with LC1–LC8: real structure companions, whole-continuation Stage
+handoff with LC1–LC13: real structure companions, whole-continuation Stage
 forgetting, ordinary contract expressions, four-way boundary calls, origin
 compression/automatic Post, Function Pattern interfaces, trusted facilities and
-regular-access programs. It specifies future source consumers, not extra Rust
-evaluator phases. Existing supplied-fact and transaction tests cover only the
-slice below; they do not execute those ordinary source programs or certify a
-complete `@` value producer.
+regular-access programs, required captures, slice/repair, resource/effect handoff
+and complete original-K CPS correspondence. It specifies future source
+consumers, not extra Rust evaluator phases. Existing supplied-fact and
+transaction tests cover only the slice below; they do not execute those ordinary
+source programs or certify a complete `@` value producer.
 
 The common continuation owns action identity and position. `LifecycleState`
 is a projection, with no private continuation or action-commit API.
@@ -137,6 +138,73 @@ and external effect publication remain consumer gates.
 The evidence includes the fixed cleanup prefix and pending suffix; extending
 either changes the continuation snapshot. A different snapshot cannot reuse
 evidence merely because identity and action ordinal agree.
+
+The [host revalidation handoff](e-host-architecture-and-incremental-revalidation.md#10-failure-unavailable-and-transaction-discipline)
+consumes this exact current-world evidence, not a cached successful callback.
+Changed contract content, generation, cleanup snapshot or action/delivery
+mapping invalidates dependent checks; the requiring E consumer re-establishes
+them before its existing publication gate. Revalidation of represented history
+does not apply Post, Move/Kill/Drop or acquisition again. A genuinely new action
+uses its own ordinary premises. Missing correspondence remains unavailable;
+transaction tests with supplied material do not execute HA acceptance scenarios.
+
+For represented history, the [before-action observation rule](e-host-architecture-and-incremental-revalidation.md#51-same-history-revalidation-and-fresh-compilation-reuse)
+locates changed Pre checks in the corresponding revision's lawful pre-state,
+not a cached post-state or an unrelated latest resident. Recovered historical
+observations establish no present commit witness or authority; new actions
+still require the actual gate above. For negative access/effect/cleanup queries,
+the host retains observed range/domain completeness support as well as positive
+rows. Newly relevant actions invalidate dependent absence conclusions, even
+when old rows remain equal; missing support is unavailable (§4 of the handoff).
+
+For a fresh compilation, [authorized cache realization](e-host-architecture-and-incremental-revalidation.md#51-same-history-revalidation-and-fresh-compilation-reuse)
+still accounts for required actions/effects in that compilation's E state;
+same-history no replay cannot erase new registry entries or effect conflicts.
+For O candidates, this publication/legality gate is independently required
+alongside [E-grounded observational equivalence](e-host-architecture-and-incremental-revalidation.md#9-future-oplannerm-readiness).
+A structural cross-K relation may be nonbijective, but proves neither that
+equivalence nor authority to duplicate owned occurrences, effects or cleanup.
+
+The [checkpoint consumer](e-host-architecture-and-incremental-revalidation.md#91-branchable-accepted-checkpoints)
+retains or recovers multiple accepted descriptions and their support without
+destructively replacing all siblings. Forking/selecting/discarding those
+descriptions performs no common business commit or external rollback. Real
+actions still use this gate with current evidence. Local O1/O2 objective
+switching cannot bypass E saturation or actual cross-region dependencies;
+transaction storage must not require a global objective phase barrier.
+Function/call-SCC planning partitions are views derived from the current accepted
+K. After accepted call rewrites, the host permits their lawful rederivation and
+future-work reassignment, preserving actual inlined dependencies, affected
+validation and retained-checkpoint correspondence (§9.2 of that handoff).
+Partition identity supplies no semantic ownership or lifecycle SCC collapse law.
+These are future host capabilities, not tests of checkpoint execution.
+
+Lawful local K revisions must be able to retain unaffected structure, observations
+and valid dependency evidence without storage forcing full continuation,
+projection or index reconstruction (§4 of the host handoff). Actual crossing
+dependencies still propagate and revalidate. A stable result also requires the
+new revision's dependency support and invalidation lookup before reuse (§7.3);
+equal output alone cannot preserve an obsolete source association. Neither
+capability grants a commit witness, changes history or weakens E saturation.
+
+Common K also retains Seq/Unordered composition, common snapshots and scoped
+sibling contribution/merge/conflict support. Scheduling, diagnostics and cache
+realization cannot expose sibling writes or establish new semantic precedence.
+Ordinary contribution algebra and shared acquisition-registry conflict checks
+remain in force; host dependencies track their actual consumers (§§2/6).
+
+HA13/HA16 also distinguish a new irreversible compile-host effect exposed by
+an O1 candidate that is later discarded. Description snapshots alone cannot
+isolate real execution: without lawful isolation/reuse support, decline that
+exploration before the effect. No shared mutable branch history, cloned authority
+or claimed rollback may fabricate sibling legality; an actual prior commit
+retains its history. Acceptance still requires complete E saturation.
+
+Consumed E-known target facts and admitted external observations retain their
+actual source/context, validity interval and truth/maintenance premises as host
+dependencies (HA12/HA14). Their change invalidates dependent E/O evidence and
+machine artifacts separately. Source-key equality, machine shape or O/M-private
+constants cannot replace current evidence or alter historical admission facts.
 
 Move carries its source, destination and already fixed `MoveEffect`.
 Supplied Movable, instance Killable and the narrow Preserve proof are distinct

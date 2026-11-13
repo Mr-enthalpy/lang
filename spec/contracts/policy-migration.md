@@ -35,6 +35,24 @@ source-erasing projection is not this same-Type migration. The general retained
 Path evidence consumer remains pending; current same-Type checks alone do not
 prove it.
 
+For [host reuse/revalidation](e-host-architecture-and-incremental-revalidation.md#5-cacheable-material-and-current-state-premises),
+that evidence retains the candidate-specific prospective-world Path premises,
+actual source identities/generations, destination mapping and required
+frontier/reify-boundary correspondence. Changed dependencies or destination observations invalidate
+consuming checks even if Type and endpoint/ABI shapes stay equal. Revalidation
+uses the existing hard-A, selected-legality and final-delivery consumers at their
+respective boundaries; it neither rebinds a sealed source nor fabricates a
+destination resident. A newly formed request selects at its own actual frontier.
+Successful final demanded projection still publishes jointly below. These source
+and host consumers remain pending; no new migration path or permission follows.
+
+The [selection-domain requirement](e-host-architecture-and-incremental-revalidation.md#61-selection-domains-and-negative-observations)
+also applies to consumed existing-view absence, candidate applicability,
+fallback and preference observations. Retaining only the selected migration
+does not validate reuse after those observations change. It does not move a
+post-seal failure into hard A, reopen that invocation, or replace an immutable
+observed callspace with the current registry.
+
 Stage={compile,runtime}. Endpoints observe linked adjacent ranks. A direct
 migration preserves Type and rank-chain coherence; compile:runtime is invalid.
 Policy ranks obey absent* runtime* compile*; PolicyPair is their common
@@ -50,6 +68,16 @@ The selected dependent E work resumes at the runtime frontier; no past compile
 world receives runtime information. InputAdmissible, concrete readiness and
 endpoint capability remain independent. Bootstrap implementations provide candidate bodies and
 realization data; they do not decide the migration relation.
+
+Host reuse retains the established ClosedReturn/ClosedInterface observations,
+actual boundary/activation and reverse-dependency support. Changed support
+invalidates consuming admission/interface/materialization checks; a cached
+interface shape alone proves neither closure nor active-boundary authority.
+Outward input/output, regular effect shape, necessary capture and lifecycle
+requirements remain compile-determined independently of reverse runtime flow.
+Runtime choice within a fixed regular sum is legal; runtime-dependent public
+shape requires the ordinary handler/wrapper before exposure, not repair by M.
+These are the unified owner's existing §20 premises, not new reify APIs.
 
 Migration publication includes the final demanded projection. Candidate
 execution, complete result formation and project_p1 are evaluated in one

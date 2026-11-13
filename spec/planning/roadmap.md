@@ -142,6 +142,11 @@ Storage staging alone proves neither Ready, Pre, common commit nor joint Post.
 Tests reject stale/foreign evidence and failure of any Pre/Post without
 publication, and verify uniform cleanup gating and actual producer authority.
 
+The [host publication consumer](../contracts/e-host-architecture-and-incremental-revalidation.md#10-failure-unavailable-and-transaction-discipline)
+must retain this gate's actual cleanup/action/contract correspondence during
+reuse and revalidation. Cached success cannot replay producer/lifecycle Post
+or transfer. HA15–HA16 require future source integration beyond these tests.
+
 ## 5. Instance and result obligations
 
 Every selected compile call, including scalar/Product/external-type
@@ -153,6 +158,10 @@ Read_name and initialized Read_resident of InvokeName(I) do not EnterBody.
 Reacquisition reads current storage; old complete snapshots stay immutable.
 Cache reuse cannot replay initialization, restore consumed residents or grant
 saved authority. Writes, moves and invalidations keep their ordinary effects.
+
+The [construction/cache handoff](../contracts/compile-construction-boundary.md)
+connects these distinct material classes to host validity/dependency tracking
+(HA10–HA12); instance interning and package fingerprint hits do not implement it.
 
 Reach includes accessible members, Products, captures, references and share
 targets. Required unknown reachability is unavailable. An instance-open self-root
@@ -337,9 +346,9 @@ values do not execute contract expressions, automatic Post or the library.
 | LC1 | Atomic Pattern/structure companions and actual registered field pairing | Ordinary formation, structural roles and selected ADL; field commutation |
 | LC2 | Whole-K projection, business Stage forgetting and complete-zone provenance | Common E, selected actions/control/activation/delivery; no future execution or reselect |
 | LC3 | Source action facts, name/generation/origin, regions/colors and real internal APIs | Ordinary producers, fixed cleanup and common transaction; no double consumption |
-| LC4 | Ordinary compile contract evaluation, self-root check/admit formation and mapped four-way calls | Existing CompileInstance/OpenHere/result delivery and actual world authority; failed Pre publishes no success |
-| LC5 | Formed guarded-body structural summary and actual-exit compression/validation | LC1–LC4 supply selected descriptions/formal roles separately from reached history; each legal actual Post implies its mapped advance summary without future execution |
-| LC6 | Exposed Function Pattern defaults/implication and justified recursive interfaces | FnExtract erasure and ordinary contract computation; no implementation authority recovery |
+| LC4 | Ordinary compile contract evaluation, self-root check/admit formation, mapped four-way calls and consumed relation-content dependencies | Existing CompileInstance/OpenHere/result delivery and actual world authority; changed Pre/Post revalidates actual call/successor consumers despite unchanged signature/ABI shape; failed Pre publishes no success |
+| LC5 | Formed guarded-body structural summary and actual-exit compression/validation, with separate validity/dependencies | LC1–LC4 supply selected descriptions/formal roles separately from reached history; propagate changed automatic Post until required observations are proved stable inside a function, at its boundary or beyond; each actual Post still implies its mapped summary |
+| LC6 | Exposed Function Pattern defaults/implication, contract-content revalidation and justified recursive interfaces | Recheck compatibility at extraction/assignment without waiting for invocation; FnExtract erasure and ordinary contract computation supply no implementation authority recovery |
 | LC7 | Safeid, batch partition, alias windows and partbox ordinary programs plus trusted runtime facilities | True external-success facts, actual source authority, intervals and materializer protocol; no default success |
 | LC8 | Finite regular access and cropping, with proven adopted recursive combinations | LC1/LC3 material and defined Pattern relations; no restored terminal permission |
 
@@ -389,3 +398,57 @@ fixtures, invented residual or default permission. Until connected, report a
 spanned unavailable diagnostic, or transport only an actually established
 remaining continuation. Keep executed coverage, design scenarios and unproved
 obligations separately visible in each implementation PR.
+
+## 10. Structured E host and incremental revalidation readiness
+
+The [host handoff](../contracts/e-host-architecture-and-incremental-revalidation.md)
+contains the complete architecture requirements. This section tracks consumer
+prerequisites, implementation slices and evidence; it does not restate the
+future O/Planner/M contract.
+
+Status: **document constraints established; execution consumers pending;
+HA01–HA18 executable acceptance not yet passed**. Existing common transactions,
+owner/instance interning, sealed-frame and package-cache tests cover only the
+[audited substrate slices](../contracts/e-host-architecture-and-incremental-revalidation.md#112-audited-implementation-evidence).
+Complete common K/CPS, contract-content dependencies and automatic-summary
+propagation remain unconnected.
+
+As each LC1–LC13/common-E consumer connects, preserve its lawful revision
+mappings and consumed semantic observations at that boundary; do not defer
+dependency capture until the whole source chain is implemented. The
+[connected handoff map](../contracts/e-host-architecture-and-incremental-revalidation.md#11-connected-handoff-responsibilities)
+assigns producer/consumer responsibilities:
+
+| Existing handoff | Prerequisite material / pending connection |
+|---|---|
+| Owner/namespace and compile construction | Identity/selected-input correspondence, exact snapshots, current storage and compilation-effect context |
+| LC2/LC13 and shared action publication | Structured common K/CPS, Seq/Unordered overlays, caller/control/delivery correspondence, before-action observations and joint publication |
+| LC4/LC6 | Contract-content dependencies and mapped call/interface consumers |
+| LC5/LC8 | Separate summary/actual inputs, stable-stop dependency updates, original regular companions and contribution lineage |
+| Policy migration | Existing-view/candidate and destination/Path premises, active reify/closed-interface support |
+| Future search/materialization | Validated K/LE, selected Move/delivery/ABIKind, lifecycle/cleanup and target/environment inputs from the connected producers above |
+
+Suggested engineering slices, not semantic evaluation passes:
+
+1. Connect each supported common-K/LC producer with its scoped identity,
+   projection and dependency records, including positive, negative and
+   availability observations. Missing upstream material stays unavailable.
+2. Wire reverse-consumer invalidation and mapped call/interface/summary checks
+   over that support. Verify changed failed results, stable-stop source updates
+   and coherent combined queries along with ordinary successful reuse.
+3. Exercise local-update and accepted-checkpoint/search consumers over the validated
+   revision evidence, including contribution/conflict invalidation and changed
+   planning partitions. Recursive consumers require their supported-family
+   evidence; lifecycle name-item collapse and call planning remain distinct.
+4. Connect declared materialization support domains only with their required
+   common-K, delivery, lifecycle and machine inputs. Validate each handoff under
+   [host §9.3](../contracts/e-host-architecture-and-incremental-revalidation.md#93-complete-default-route-within-declared-materialization-support),
+   including upstream fidelity, M validation and complete final-artifact validity.
+   No supported family/target or executable generation is implemented here.
+
+[HA01–HA18 and their subcases](../contracts/e-host-architecture-and-incremental-revalidation.md#111-distinguishing-architecture-targets)
+remain normative acceptance targets. The
+[conformance index](canonical-semantic-conformance.md#e-host-preservation-and-incremental-revalidation-targets)
+routes them to existing consumers. Future implementation PRs must report actual
+connected coverage and failure/unavailable boundaries; document/link checks and
+substrate tests do not establish HA execution.
