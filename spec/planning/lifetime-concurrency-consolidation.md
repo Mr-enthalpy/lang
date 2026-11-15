@@ -303,6 +303,45 @@ including the explicit endpoint/authority boundary in the public summaries.
 These checks validate the finite carrier and documentation/evidence structure;
 they do not execute the 105 source targets or discharge F01–F18.
 
+## PR 120 entry-document audit corrections
+
+Audit snapshot: `89cf17bd06b9d893d99e7a57eb479a78d99b0d04`.
+This follow-up removes two conflicting entry rules and clarifies two compressed
+descriptions in place; it changes no Rust carrier, parser, backend or proof status.
+
+| Finding | Current entry behavior | Acceptance target |
+|---|---|---|
+| Glossary allocation preference | Standard malloc/free start at the current top without preference; supplementary requests follow next_pool. Custom strategies use explicitly injected ordinary Heap Objects and calls | HEAP01 rejects an outer-pool preference after locate(local_pool) |
+| Public omitted repair | Omission requests source-derived automatic repair, reducing to id only without replay. Actual identity repair preserves its own input but still cannot make an invalid ordinary Move legal | REP03 distinguishes omitted repair for r = v ref from actually selected Move[id] |
+| Walkthrough path terminology | Repeated legal heap submissions follow the regular chain of immediate parents up(H), including unknown remaining chain length; each step has one fixed target | HEAP05 retains the direct-parent rule and rejects arbitrary outer targets |
+| E/Region/O boundary | E interprets already determined common normalized-K events, including described but unexecuted Use/Consume/Drop. It does not execute unselected branches, enumerate unknown future paths or pre-spend future Post; O rewrites require equivalence and affected E revalidation | REG04 distinguishes event interpretation from future-path execution and optimization |
+
+Read-only scouts searched tracked current Markdown in AGENTS.md, README.md,
+SKILL.md and spec/**, excluding spec/history/**. Heap searches covered
+allocation preference, malloc/free, next_pool, relocation, outer-depth targets,
+historical-pool scans and Pending execution. Repair searches covered omission,
+automatic repair, identity repair, Move[id], replay and id fallback, in English
+and Chinese. Primary review checked the decisive passages against the owners,
+preserved correct identity-law and ordinary Policy-preference statements, and
+made the edits. No additional affirmative obsolete HeapStack/omitted-repair
+rule was identified in that inspection; this is a scoped semantic review, not
+a universal absence proof.
+
+The earlier inventory/link/model checker did not detect these semantic
+contradictions. Its success establishes structural and bounded-output checks,
+not faithful migration of every sentence. REG04, REP03 and HEAP01 are strengthened
+within the same 105 IDs; complete-source P/S/C/T/B and F01–F18 remain pending.
+
+Follow-up verification: `cargo fmt --all`, `cargo check --workspace` and
+`cargo test --workspace` pass again: 53 suite summaries, 974 passed, 0 failed,
+0 ignored. The committed audit still reports 41 Markdown files, 962 local
+links, zero broken destinations, unchanged clause/case counts, both model hashes
+matching, exit 0 and matching stdout. Independent read-only review of all six
+changed files and decisive owner passages found no confirmed conflict; the
+primary review additionally made explicit that described event material is not
+evidence of an actual commit or successful Post. These are documentation and
+existing-workspace checks, not executed source acceptance or new proof evidence.
+
 ## Input provenance and bounded evidence
 
 The package manifest lists 45 N, 31 M, 12 U, 18 F and 105 paired source targets.

@@ -203,8 +203,18 @@ materializes the same E and actual remaining continuation under a closed return
 contract. Dependencies separate formation, readiness and runtime realization.
 Self is Pattern-observable without transparent capture layout; return routing
 uses callable tag and actual activation independently of ActualSelf.
-Region_K(n)=R(NamePosition_K(n)); current Pre/commit/Post and cleanup facts
-suffice for E, while future-path analysis belongs to O.
+Region_K(n)=R(NamePosition_K(n)): E interprets the discrete Use/Consume/Drop
+event material already determined in the common normalized K, including legally
+described events that have not executed yet. Current Pre/commit/Post, fixed
+cleanup and actual reachable-continuation restriction constrain that
+interpretation. This requires neither executing unknown or unselected branches,
+enumerating unknown future paths nor assuming a future Post has succeeded.
+Described event material is not evidence that the event has committed or its
+Post holds.
+Unknown future values and physical execution time grant no pruning authority.
+O may analyze paths, specialize or remove them only while preserving semantic
+equivalence and revalidating affected E projections; O does not supply E's
+Region meaning or missing admission facts.
 
 Callable-head P2 reify has outward runtime horizon Policy and requires a return
 classifier explicit or input-inferable without reverse migration. Its outward

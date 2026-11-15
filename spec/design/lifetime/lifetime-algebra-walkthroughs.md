@@ -74,12 +74,18 @@ remains pending (LC9–LC12); the traces are positive/negative acceptance eviden
    history, then reveals the old heap binding. A pool without that guarantee
    cannot submit; metadata exhaustion cannot appear as a hidden legal failure.
    Submitting every introduced local layer removes covered local storage return
-   barriers even for preference-regular unknown depth, but an independent invalid
-   ref still blocks return. Object relocate instead performs real storage Move.
+   barriers along the regular chain of direct-parent up(H) submissions, even
+   when the remaining outer-chain length is unknown. Standard allocation has no
+   preference parameter and no submission selects an arbitrary outer depth. An
+   independent invalid ref still blocks return. Object relocate instead performs
+   real storage Move.
 4. With v and r both crossing wait, trivial Move can violate
-   `region_0(r) < origin(r).region`. Move[id] then fails its destination Valid
-   check before exposure: the id repair preserves its own input and cannot fix
-   the invalid Move result. The suspending side may supply
+   `region_0(r) < origin(r).region`. If identity repair is actually selected,
+   Move[id] then fails its destination Valid check before exposure: the id repair
+   preserves its own input and cannot fix the invalid Move result. Omitting the
+   attachment instead requests source-derived automatic repair; a valid plan
+   may rebuild the relation using the actual selected producers/partners before
+   publication. The suspending side may supply
    `@{r rebind = v ref;}` only with real exclusive/access/validity
    premises. Atomic Move[repair] delivers a complete legal concrete k and its
    successor AutoPre; it never publishes an invalid k and repairs later. The

@@ -678,10 +678,16 @@ An ordinary one-way pool/next_pool context. Locate creates a shadowing local
 layer after reading old heap. Object relocate obtains new storage and moves
 owned material; pool/heap relocate guarantees transfer of existing storage support,
 release duty and descriptors under declared Pre, preserves live Places/history,
-and restores the shadowed heap. Preference is an ordinary allocation argument;
-free has no preference and uses real responsibility credentials. Submitting all
-local layers eliminates covered local storage barriers even for regular unknown
-outer depth. Stage migration is independent. See the [heap owner](../design/lifetime/heap-stack-and-storage-responsibility.md).
+and restores the shadowed heap. Standard malloc and free enter at the current
+stack top without allocation preference parameters; supplementary allocation
+requests advance along next_pool one link at a time. Free retains the actual
+release credentials. Custom allocation strategies use explicitly injected
+ordinary Heap Objects and ordinary calls under their own contracts. Each
+standard heap relocate targets only its immediate parent up(H). Repeated legal
+direct-parent submissions remove the covered local storage barriers along that
+regular chain even when its remaining length is unknown; they do not select an
+arbitrary outer target or discharge independent borrow obligations. Stage
+migration is independent. See the [heap owner](../design/lifetime/heap-stack-and-storage-responsibility.md).
 
 ### Global capability
 
