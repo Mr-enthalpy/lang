@@ -1929,9 +1929,13 @@ This document does not freeze:
 A selected runtime:compile -> runtime:runtime observation migration must retain
 the actual instance's executable Move/Drop plus every required conservative
 dependency, using the [lifetime owner's N20–N24](../lifetime/lifetime-policy-and-overload-boundary.md#16-anonymous-names-executable-operations-and-partial-recovery).
-Type-wide trivial movement, type-wide uniform repair and the actual name's
-protocol-scoped instance proof are distinct sufficient evidence. No mandatory
-Copyable trait, vtable, hidden Box or ABI switch is implied.
+A type-defined DefaultWorld is a default *new-formal internal-name relation*
+assumption, not a blanket proof of Movable for every actual instance. A
+type-/continuation-parametric ordinary repair may be reused only under its
+proved input and destination premises. Each actual name retains protocol-scoped
+Move/Drop legality and executable materials; an equal Core or default-world
+label cannot replace them. No mandatory Copyable trait, vtable, hidden Box
+or ABI switch is implied.
 
 Inside an active closed reify boundary, runtime:runtime -> runtime:compile
 default recovery is partial. A legitimately selected operation succeeds only

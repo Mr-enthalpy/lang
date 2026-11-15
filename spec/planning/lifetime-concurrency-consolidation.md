@@ -123,7 +123,7 @@ were reviewed together; prohibitions/counterexamples are not obsolete positives.
 | M13 | [lifetime-policy-and-overload-boundary.md](../design/lifetime/lifetime-policy-and-overload-boundary.md) | N19 and W3 copy/borrow/derived distinction; no prior index consumer found — N19：copy 刷新、借用传递/专门派生、端点偏序 |
 | M14 | [product-repetition-and-unpacking.md:148](../design/patterns-overload/product-repetition-and-unpacking.md) | Aggregate insertion now explicitly requires conservative lifecycle summary and operations — N20–N21：遗忘前保守准入，整体依赖 |
 | M15 | [lifetime-policy-and-overload-boundary.md](../design/lifetime/lifetime-policy-and-overload-boundary.md) | N21 and Product/extraction summaries; no prior subtraction consumer found — N21：默认不撤除整体依赖，新名字继承 |
-| M16 | [lifetime-policy-and-overload-boundary.md:614](../design/lifetime/lifetime-policy-and-overload-boundary.md) | N22/N23 + Policy migration: universal and instance evidence distinct, retained operation domain — N22–N23：三类证据，Drop/Move 实现保存 |
+| M16 | [lifetime-policy-and-overload-boundary.md:614](../design/lifetime/lifetime-policy-and-overload-boundary.md) | N22/N23 + Policy migration: universal and instance evidence distinct, retained operation domain — N22–N23：类型默认世界、实例 Move/Drop 证明及实际操作保存 |
 | M17 | [unified-static-name-and-structural-semantics.md:684](../design/unified-static-name-and-structural-semantics.md) | Partial actual-instance recovery and declared failure narrowed in unified/Policy/contracts — N24–N25：部分恢复，具体拒绝走异常 |
 | M18 | [heap-stack-and-storage-responsibility.md:46](../design/lifetime/heap-stack-and-storage-responsibility.md) | Heap §§2/4/5 and H03/H08/F08 remove preference/arbitrary depth — N26、N29：删除偏好，显式注入，精确 up |
 | M19 | [heap-stack-and-storage-responsibility.md:49](../design/lifetime/heap-stack-and-storage-responsibility.md) | Current-top free and active upward handling explicitly replace vague credential routing — N27：栈顶接收，主动分流上抛 |
@@ -175,7 +175,7 @@ already required. Finite endpoint tests establish neither full F01 nor F02–F04
 | F05 | Pattern 分层合流及实际提取与 origin/权限相关性；异 Pattern 精度保持 | 不隐含恢复同 Pattern 分支，不拼接来源权限 |
 | F06 | 索引验证生产者、有效性协议、借用传递及派生 copy 的端点规则 | 裸数值/相同数值不授权；无重复验证补救隐藏入口 |
 | F07 | 合法名字遗忘与 default-world 抽象的健全性；数组整体摘要与取出 | 无证据拒绝；不以 unknown 洗掉依赖 |
-| F08 | Drop/Move 可执行材料保留和三类证据的适用域；实例证据不泛化 | 不强制 Copyable/类型 trait，不隐式 Box |
+| F08 | Drop/Move 可执行材料保留、类型默认世界与实例移动证据的适用域；默认不证明全称 Movable | 不强制 Copyable/类型 trait，不隐式 Box |
 | F09 | reify 具体实例默认性判定的真实性、成功身份映射、异常及 ClosedInterface | 偏离实例拒绝；缺消费者不能假作恢复异常 |
 | F10 | 独立容器的 effect 树变换、调用材料、Region/Color 和逃逸 | 无普通来源/同步关系不能并行发射或逃逸 |
 | F11 | Heap 顶层接收、逐层补充/提交、单次责任守恒、Pending 顺序和保证完成资源条件 | 无能力不能登记/提交后丢责任；不偷扫原始 pool |
@@ -256,7 +256,7 @@ The audit follow-up and its separate validation record are described below.
 | 5 Convergence | Same observable Pattern forgets source-arm distinction; actual Some grants trust, None grants none |
 | 6 Index/K-V | Ordinary Index copy loses credential; ordinary lookup needs no validate_key phase |
 | 7 Anonymous aggregate | New extraction inherits whole obligations; remaining aggregate does not subtract them |
-| 8 Movable | Type-wide sufficient evidence and event/instance legality coexist without generalization |
+| 8 Movable | Type-default entry relations do not imply Movable; actual event and repair proofs still apply |
 | 9 Recovery | Hidden non-default dependencies prevent default recovery; missing consumer is unavailable |
 | 10 Heap | Current-top malloc/free, immediate-parent relocate, unexecuted Pending; universal non-root locate capability |
 | 11 Reclamation | Escape fails at production/allocation Pre; QS is not a language premise |

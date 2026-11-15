@@ -465,8 +465,40 @@ Existing names at an empty slice, including InPlace automatic captures, inherit
 the established state under §2.1.8; they are not default-generated again:
 
 ```text
-U_entry_newnames = U_default ⊕ Delta_pre
+U_entry_newnames(F,theta)
+    = U_default_base(theta)
+      ⊕ TypeDefault(F,theta)
+      ⊕ Delta_pre(F,theta)
 |Delta_pre| < infinity
+
+TypeDefault(F,theta) instantiates any type-defined DefaultWorld(tau)
+description for each genuinely new formal name of complete type tau. Missing
+type-specific description contributes no extra relation: the existing base
+U_default remains. These type-specific descriptions are ordinary compile
+lifecycle relation material over the actual registered internal name/structure
+roles, not a new Object axis, separate evaluator or authority-bearing type trait.
+The eventual declaration/registration spelling is still to be selected.
+
+DefaultWorld(tau) is a *default entry hypothesis*, not a theorem that all
+actual instances of tau are trivially Movable at every future frontier. It
+does not reconstruct existing captures, producer history or already held
+continuation material. Explicit Pre replaces only the default relations it
+specifies; all remaining relations retain the applicable default. The resulting
+entry requirement is checked against the actual selected caller-world name,
+generation, target and source correspondence **before** input/action commit:
+
+    CallerPreOK(K,F,actual,theta)
+      requires ActualWorld_K(actual,theta)
+               satisfies U_entry_newnames(F,theta)
+
+A default or explicit correction cannot create a name or capability, delete
+fixed Color/history/Drop, alter registered access or source facts, or make an
+invalid Region/borrow valid. A proved false requirement rejects; missing
+required evidence is Unavailable. The simplest value-like type default
+describes *no additional cross-component name dependencies*, while preserving
+all actual structural/name-companion dependencies, fixed exclusive/shared
+borrow-root defaults and independent resource/capability Pre. In particular,
+it does not declare every origin=None or every shared root distinct.
 
 DefaultOriginUniverse:
   exclusive-write borrow roots e_i, e_j
@@ -593,7 +625,7 @@ Rust 载体的 `contains_event` 只查询完整 `(cut, action ordinal)`，`conta
 
 ### N04 — 默认入口世界与已有名字的继承 [不变量]
 
-一般函数的新入参在省略 Pre 时按既有默认世界生成；默认世界不凭空建立两个独占入参之间的父子关系。共享根的既有默认规则继续有效，不能改写成“所有入参的所有来源均两两不同”。
+一般函数的新入参在省略 Pre 时按既有基础默认世界及其类型参数化 DefaultWorld 生成；显式 Pre 在其指定关系上替换默认假设，随后由真实调用端映射和 Pre 检验，而非改写既有事实。默认世界不凭空建立两个独占入参之间的父子关系。共享根的既有默认规则继续有效，不能改写成“所有入参的所有来源均两两不同”。类型默认关系本身不证明 Movable。
 
 已有名字不重新默认生成。InPlace 自动捕获继承上一刻的 Post；空动作切片满足同一观察词汇下的 `Pre(id)=Post(id)`。实际交接之后，后续续体持有材料的 AutoPre 由成功交接 Post 经合法名字对应形成。
 
@@ -755,8 +787,8 @@ For a Function Pattern LHS interface F and actual callable contract A,
 omission and compatibility have these meanings:
 
 ```text
-Entry_new_parameters(F) = U_default op_plus Delta_pre
-omitted pre  => Delta_pre = empty  // defaults for genuinely new input names
+Entry_new_parameters(F) = U_default_base op_plus TypeDefault(F) op_plus Delta_pre
+omitted pre  => Delta_pre = empty  // typed defaults for genuinely new input names
 omitted post => Post_F = NoDelta(S_before,S_after)
 NoDelta = unchanged state on every lifecycle observation of the contract
 
@@ -2293,23 +2325,33 @@ runtime:compile -> runtime:runtime
 
 Move/Drop 的可执行性不等于已遗忘的精确名字关系可以恢复；保存了析构函数也不等于可消除它对外部名字的真实依赖。
 
-### N23 — 可移动性的三种充分证据 [定义]
+### N23 — 类型默认世界、统一 repair 与实例 Move 证明 [定义]
 
-基础仍是具体事件判断 `Movable_K(n,m)`。以下三条是不同来源的充分证据，不是三个新内建 trait：
+基础始终是具体事件判断 `Movable_K(n,m)`。类型的默认关系、
+普通统一 repair 和事件级证明承担不同职责，不能当成三种可互换
+的类型级 Movable 公理：
 
-| 证据 | 含义 |
+| 材料 | 含义 |
 |---|---|
-| 类型级平凡移动全称命题 | 类型的全部准入实例，在所声明普通移动条件下无需 repair 即合法 |
-| 类型级统一 repair | 类型提供对全部准入实例适用的移动修复方式；具体续体类型可具有自己的统一 repair |
-| 当前名字的实例证明 | 无上述全称性质，但此名字对该遗忘后协议实际要求的移动已有合法证明及可执行材料 |
+| `DefaultWorld(tau)` | 对新的 tau 形式实例内部名字关系的类型定义默认假设，在显式 Pre 未覆盖的关系上应用；不是所有实际实例可移动的全称命题 |
+| 普通统一 repair | 类型或具体续体可以提供适用于其已证明输入域的统一修复程序，但每次仍要检验实际源、伙伴、Pre、Region、Color、目的地与资源责任 |
+| 当前名字的实例证明 | `Movable_K(n,m)` 对当前真实名字/动作的合法证明，以及该承载协议所需的实际 Move/Drop 可执行材料 |
 
-实例性与全称命题不矛盾。不得以“Movable 是名字事件”禁止任何类型级全称结论，也不得以一个实例成功推出同类型的所有实例都成功。
+即使某个受约束实例族可以**另外证明**其默认世界及普通
+移动前提蕴涵某类无 repair 移动，这也只是带有明确假设与
+动作域的定理；不能由 `DefaultWorld(tau)` 声明本身推出。
+不符合默认关系的实例并非类型错误：合法显式 Pre 可描述其
+额外关系，只要实际调用映射和动作均满足该 Pre。缺少证据
+不能当作独立性，不能凭声明覆盖真实 origin、历史或权限。
 
-实例证明只覆盖其已证明的操作域；不能用一次 m 的证明承诺任意其他目的地、Region 或将来移动。对目标承载协议允许的所有必需 Move/Drop 都有材料才可遗忘；缺少证据则拒绝，不隐式装箱、改 ABI 或要求 Copyable。
+一次具体 m 的证明不承诺其他目的地、Region 或未来动作。
+对目标承载协议的所有必需 Move/Drop 均须保留可执行操作与
+充分准入证据；否则拒绝，不隐式 Box、clone、改 ABI 或要求
+Copyable。
 
 ### N24 — 默认世界反向恢复是部分操作 [不变量]
 
-在 reify 内，已依法选择的 `runtime:runtime -> runtime:compile` 恢复，只接受能够按默认世界重建实例名字依赖的对象。已经遗忘并隐藏了非默认依赖的实例，不因持有正确 Type、移动子或析构子而取得该恢复能力。
+在 reify 内，已依法选择的 `runtime:runtime -> runtime:compile` 恢复，只接受能够按其类型已确定的默认世界（若无类型自定义则按基础默认世界）重建实例名字依赖的对象。已经遗忘并隐藏了非默认依赖的实例，不因持有正确 Type、移动子或析构子而取得该恢复能力。
 
 ```text
 RecoverDefault(x):
