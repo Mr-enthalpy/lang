@@ -342,6 +342,31 @@ primary review additionally made explicit that described event material is not
 evidence of an actual commit or successful Post. These are documentation and
 existing-workspace checks, not executed source acceptance or new proof evidence.
 
+## CI audit integration
+
+Follow-up to the audit of `ceed3642c90174673089b7cfed99b699da96d4af`:
+`.github/workflows/ci.yml` now has an independent `Specification and evidence
+audit` job alongside Rust. All existing pull-request, main-push and manual
+triggers run the committed audit command with explicitly installed Python 3.13.
+The job uses only the standard library, retains read-only repository permissions
+and fails normally on link/inventory, preserved-hash or bounded-output mismatch.
+It does not depend on the Rust job succeeding and has no path filter or
+continue-on-error exemption.
+
+The existing checker, preserved model and expected output are unchanged. This
+adds automated structural/evidence enforcement, not a semantic text-consistency
+proof, an actual E/LC permission consumer or execution of the 105 source targets.
+Trusted snapshot facts still require actual selected-producer evidence in a
+future source consumer; no Region/set entry or pure relation creates authority.
+P/S/C/T/B and F01–F18 completion states are unchanged.
+
+Local verification parses the workflow with both independent jobs and all three
+existing triggers, confirms read-only contents permissions, and runs the exact
+audit command successfully: 41 Markdown files, 963 local links, zero broken
+destinations, unchanged inventories and model hashes/output. Formatting,
+workspace checking and tests pass again: 974 passed, 0 failed, 0 ignored across
+53 suite summaries. The extra link is the evidence README's CI workflow link.
+
 ## Input provenance and bounded evidence
 
 The package manifest lists 45 N, 31 M, 12 U, 18 F and 105 paired source targets.

@@ -9,6 +9,14 @@ the model's actual output. Run from a checkout with Python 3:
 python spec/planning/evidence/lifetime-concurrency/audit_consolidation.py
 ```
 
+The [CI workflow](../../../../.github/workflows/ci.yml) runs this same command in
+the independent `Specification and evidence audit` job on pull requests, pushes
+to main and manual dispatch. It installs Python 3.13 and needs no third-party
+Python packages. A link/inventory, preserved-hash or model-output mismatch fails
+the job. This structural check does not establish that every normative sentence
+is consistent, execute the 105 source targets or discharge semantic proof gates;
+those still require separate review and their actual consumers.
+
 The audit has an explicit document scope and needs neither an uncommitted diff
 nor the original downloaded ZIP. It is auxiliary evidence, not lang syntax,
 a source consumer, an ISA
