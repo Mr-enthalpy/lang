@@ -3,7 +3,7 @@
 //! The carriers in this module intentionally do not encode a CFG, arena, or
 //! closed Color universe.  They establish the canonical relations consumed by
 //! evaluation: one `SemanticContinuation`, finite lifetime observations,
-//! half-open generations, cleanup-before-observation, Pre-before-action/Post-
+//! discrete event Regions, cleanup-before-observation, Pre-before-action/Post-
 //! after-commit, and extensible Color/access snapshots.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -17,17 +17,91 @@ use crate::{
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct LifeName(pub u64);
 
+/// One instruction occurrence in normalized K. The action ordinal retains
+/// already fixed ordering between different instructions at the same cut.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct RegionEventPosition {
+    pub cut: SemanticPosition,
+    pub action_ordinal: u64,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Region {
-    pub start: SemanticPosition,
-    pub end: Option<SemanticPosition>,
+    pub continuation: ContinuationIdentity,
+    pub events: BTreeSet<RegionEventPosition>,
     pub generation: u64,
 }
 
 impl Region {
-    pub fn contains(self, position: SemanticPosition) -> bool {
-        self.start <= position && self.end.is_none_or(|end| position < end)
+    /// Supplied complete event positions, not a source producer or a liveness
+    /// proof. Construction establishes no actual name, activation, branch or
+    /// revision correspondence and grants no borrow/access authority.
+    pub fn from_events(
+        continuation: &SemanticContinuation,
+        generation: u64,
+        events: impl IntoIterator<Item = RegionEventPosition>,
+    ) -> Self {
+        Self {
+            continuation: continuation.identity().clone(),
+            events: events.into_iter().collect(),
+            generation,
+        }
     }
+
+    /// Exact occurrence membership, including the fixed action ordinal.
+    pub fn contains_event(&self, position: RegionEventPosition) -> bool {
+        self.events.contains(&position)
+    }
+
+    /// Whether any recorded occurrence occupies this cut, regardless of ordinal.
+    /// This projection supplies neither exact event identity nor authority.
+    pub fn contains_cut(&self, cut: SemanticPosition) -> bool {
+        self.events.iter().any(|position| position.cut == cut)
+    }
+
+    /// Pure endpoint relation, not validation of a borrow-producing action.
+    /// No parent events are inserted and no subset relation is required.
+    /// Each operand retains its own generation; parent and child need not have
+    /// equal generation numbers. Actual producer/name correspondence and the
+    /// common branch/activation interpretation remain consumer premises.
+    /// Equal continuation identity is insufficient: cloned or rewritten K
+    /// snapshots still need lawful current-revision correspondence at the
+    /// requiring consumer. Ok(true) creates no LifecyclePreProof or permission.
+    pub fn strictly_within(&self, parent: &Self) -> Result<bool, LifecycleFailure> {
+        if self.continuation != parent.continuation {
+            return Err(LifecycleFailure::ForeignContinuation);
+        }
+        match (
+            parent.events.first(),
+            self.events.first(),
+            self.events.last(),
+            parent.events.last(),
+        ) {
+            (Some(p_min), Some(c_min), Some(c_max), Some(p_max)) => {
+                Ok(p_min < c_min && c_max < p_max)
+            }
+            _ => Err(LifecycleFailure::RegionEndpointsUnavailable),
+        }
+    }
+
+    /// Pure restriction preserves the established name/generation context.
+    /// Choosing `reachable` requires actual control/current-revision evidence
+    /// from the consumer; the supplied set establishes none of that evidence.
+    pub fn restrict_reachable(&self, reachable: &BTreeSet<RegionEventPosition>) -> Self {
+        Self {
+            events: self.events.intersection(reachable).copied().collect(),
+            ..self.clone()
+        }
+    }
+}
+
+/// Operational custody and observed events. Formation is not a Region event;
+/// this prefix cannot stand in for the full fixed-K observation required by @.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct ActiveGeneration {
+    formed_at: SemanticPosition,
+    generation: u64,
+    events: BTreeSet<RegionEventPosition>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -265,7 +339,7 @@ pub enum LifecycleFailure {
     CleanupPointMismatch,
     CleanupPrecedencePending,
     CleanupBoundaryPending(LifeName),
-    NonEndingEventAtBoundary(LifeName),
+    RegionEndpointsUnavailable,
     IdentityExhausted,
     StaleOrForeignProof,
     PreRejected(String),
@@ -295,7 +369,7 @@ pub struct LifecycleState {
     continuation: ContinuationIdentity,
     next_name: u64,
     values: BTreeMap<SemanticValueId, LifeName>,
-    active: BTreeMap<LifeName, Region>,
+    active: BTreeMap<LifeName, ActiveGeneration>,
     pending_formations: BTreeSet<LifeName>,
     origins: BTreeMap<LifeName, LifecycleOrigin>,
     colors: BTreeMap<LifeName, BTreeSet<ColorId>>,
@@ -352,10 +426,10 @@ impl LifecycleState {
         self.origins.insert(name, origin);
         self.active.insert(
             name,
-            Region {
-                start: formed_at,
-                end: None,
+            ActiveGeneration {
+                formed_at,
                 generation: 0,
+                events: BTreeSet::new(),
             },
         );
         Ok(name)
@@ -446,7 +520,7 @@ impl LifecycleState {
             .ok_or(LifecycleFailure::DeadName(name))?;
         // An old clone of K must not import facts into a projection that has
         // already observed later committed actions or this subject's birth.
-        if region.start > continuation.position()
+        if region.formed_at > continuation.position()
             || self.events.last().is_some_and(|event| {
                 event.at > continuation.position()
                     || event.action.ordinal >= continuation.next_action_identity().ordinal
@@ -477,8 +551,8 @@ impl LifecycleState {
     }
 
     /// ReifyLife requires the fully fixed generation continuation, including
-    /// its endpoint, not just a frozen cleanup table. That consumer is pending;
-    /// do not expose the operational active Region as a complete LifetimeValue.
+    /// its discrete future event material, not just a frozen cleanup table.
+    /// That consumer is pending; an observed prefix is no complete LifetimeValue.
     pub fn reify_value(
         &self,
         continuation: &SemanticContinuation,
@@ -579,25 +653,6 @@ impl LifecycleState {
                 }
             }
         }
-        // A scalar half-open Region cannot later end at a cut that already
-        // contains a Use or Preserve of that generation. Action ordinal does
-        // not change Region membership, even for an unscheduled ending action.
-        if ending
-            && self.events.iter().any(|event| {
-                event.name == name
-                    && event.at == at
-                    && matches!(
-                        event.kind,
-                        LifecycleEventKind::Use
-                            | LifecycleEventKind::Move {
-                                effect: MoveEffect::Preserve,
-                                ..
-                            }
-                    )
-            })
-        {
-            return Err(LifecycleFailure::NonEndingEventAtBoundary(name));
-        }
         match *action {
             LifecycleAction::Move {
                 source,
@@ -680,7 +735,12 @@ impl LifecycleState {
             LifecycleAction::Use(name) | LifecycleAction::Drop(name) => name,
             LifecycleAction::Move { source, .. } => source,
         };
-        let current = self.active[&name];
+        let mut current = self.active[&name].clone();
+        current.events.insert(RegionEventPosition {
+            cut: at,
+            action_ordinal: committed.identity().ordinal,
+        });
+        self.active.insert(name, current.clone());
         let mut closed_region = None;
         let mut destination_name = None;
         let kind = match *committed.action() {
@@ -697,17 +757,17 @@ impl LifecycleState {
                             .expect("Pre established the finite origin/Color observation");
                         let new_name = LifeName(self.next_name);
                         self.next_name += 1;
-                        let view = self.close_region(source, current, at);
+                        let view = self.close_region(source, current.clone());
                         closed_region = Some(view);
                         // Preserve deeper origin, not a new edge to the old name.
                         self.origins.insert(new_name, self.origins[&source]);
                         self.colors.insert(new_name, inherited_colors);
                         self.active.insert(
                             new_name,
-                            Region {
-                                start: at,
-                                end: None,
+                            ActiveGeneration {
+                                formed_at: at,
                                 generation: current.generation + 1,
+                                events: BTreeSet::new(),
                             },
                         );
                         new_name
@@ -724,7 +784,7 @@ impl LifecycleState {
                 }
             }
             LifecycleAction::Drop(_) => {
-                closed_region = Some(self.close_region(name, current, at));
+                closed_region = Some(self.close_region(name, current));
                 LifecycleEventKind::Drop
             }
         };
@@ -742,12 +802,7 @@ impl LifecycleState {
         })
     }
 
-    fn close_region(
-        &mut self,
-        name: LifeName,
-        current: Region,
-        at: SemanticPosition,
-    ) -> NameView<()> {
+    fn close_region(&mut self, name: LifeName, current: ActiveGeneration) -> NameView<()> {
         self.active.remove(&name);
         let view = NameView {
             name,
@@ -756,8 +811,9 @@ impl LifecycleState {
                 .resolved_origin(name)
                 .expect("Pre established the origin fact"),
             region: Region {
-                end: Some(at),
-                ..current
+                continuation: self.continuation.clone(),
+                events: current.events,
+                generation: current.generation,
             },
         };
         self.closed.push(view.clone());
@@ -805,7 +861,7 @@ impl CleanupObligations for LifecycleState {
         if self
             .active
             .get(&name)
-            .is_some_and(|region| region.contains(continuation.position()))
+            .is_some_and(|generation| generation.formed_at <= continuation.position())
         {
             CleanupObligation::Outstanding
         } else {
@@ -817,6 +873,145 @@ impl CleanupObligations for LifecycleState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn event_cuts(events: &BTreeSet<RegionEventPosition>) -> BTreeSet<SemanticPosition> {
+        events.iter().map(|event| event.cut).collect()
+    }
+
+    fn supplied_event(cut: u64, action_ordinal: u64) -> RegionEventPosition {
+        RegionEventPosition {
+            cut: SemanticPosition(cut),
+            action_ordinal,
+        }
+    }
+
+    #[test]
+    fn region_membership_distinguishes_exact_nonzero_event_from_its_cut() {
+        let k = SemanticContinuation::default();
+        let event = supplied_event(3, 5);
+        let region = Region::from_events(&k, 0, [event]);
+        assert!(region.contains_event(event));
+        assert!(region.contains_cut(SemanticPosition(3)));
+        assert!(!region.contains_event(supplied_event(3, 0)));
+        assert!(!region.contains_event(supplied_event(3, 6)));
+        assert!(!region.contains_cut(SemanticPosition(2)));
+        let empty = Region::from_events(&k, 0, []);
+        assert!(!empty.contains_event(event));
+        assert!(!empty.contains_cut(SemanticPosition(3)));
+    }
+
+    #[test]
+    fn same_cut_endpoint_order_distinguishes_instruction_occurrences() {
+        let k = SemanticContinuation::default();
+        let point = |action_ordinal| RegionEventPosition {
+            cut: SemanticPosition(3),
+            action_ordinal,
+        };
+        let parent = Region::from_events(&k, 7, [point(1), point(4)]);
+        let child = Region::from_events(&k, 99, [point(2), point(3)]);
+        assert_eq!(child.strictly_within(&parent), Ok(true));
+        assert!(!child.events.is_subset(&parent.events));
+        assert!(!child.contains_event(point(1)));
+        let slice = child.restrict_reachable(&BTreeSet::from([point(3)]));
+        assert_eq!(slice.events, BTreeSet::from([point(3)]));
+        assert_eq!(slice.generation, 99);
+        assert_ne!(
+            Region::from_events(&k, 7, [point(2), point(3)]),
+            child,
+            "equal positions do not merge generations"
+        );
+    }
+
+    #[test]
+    fn discrete_region_parent_order_accepts_interleaving_without_subset() {
+        let k = SemanticContinuation::default();
+        let region = |points: &[u64]| {
+            Region::from_events(&k, 0, points.iter().map(|cut| supplied_event(*cut, 0)))
+        };
+        let parent = region(&[1, 4, 9]);
+        let child = region(&[3, 6]);
+        assert_eq!(child.strictly_within(&parent), Ok(true));
+        assert!(!child.events.is_subset(&parent.events));
+        assert!(!parent.contains_cut(SemanticPosition(2)));
+        assert_eq!(region(&[3, 10]).strictly_within(&parent), Ok(false));
+        assert_eq!(region(&[1, 6]).strictly_within(&parent), Ok(false));
+        assert_eq!(region(&[3, 9]).strictly_within(&parent), Ok(false));
+        assert_eq!(
+            region(&[]).strictly_within(&parent),
+            Err(LifecycleFailure::RegionEndpointsUnavailable)
+        );
+        assert_eq!(
+            child.strictly_within(&region(&[])),
+            Err(LifecycleFailure::RegionEndpointsUnavailable)
+        );
+        let foreign = Region::from_events(
+            &SemanticContinuation::default(),
+            0,
+            [supplied_event(3, 0), supplied_event(6, 0)],
+        );
+        assert_eq!(
+            foreign.strictly_within(&parent),
+            Err(LifecycleFailure::ForeignContinuation)
+        );
+    }
+
+    #[test]
+    fn pure_region_slice_removes_only_unreachable_events_without_reproduction() {
+        let k = SemanticContinuation::default();
+        let before = Region::from_events(
+            &k,
+            7,
+            [
+                supplied_event(1, 0),
+                supplied_event(4, 0),
+                supplied_event(9, 0),
+            ],
+        );
+        assert_eq!(before.restrict_reachable(&before.events), before);
+        let reachable = BTreeSet::from([
+            supplied_event(4, 0),
+            supplied_event(8, 0),
+            supplied_event(9, 0),
+        ]);
+        let after = before.restrict_reachable(&reachable);
+        assert_eq!(
+            event_cuts(&after.events),
+            BTreeSet::from([SemanticPosition(4), SemanticPosition(9)])
+        );
+        assert_eq!(after.generation, 7);
+        assert_eq!(after.continuation, before.continuation);
+        assert_eq!(
+            after.restrict_reachable(&before.events),
+            after,
+            "restriction cannot restore an earlier event"
+        );
+    }
+
+    #[test]
+    fn committed_region_records_events_without_filling_holes_or_adding_color() {
+        let (mut k, mut state, name) = fixture();
+        commit(&mut k, &mut state, 1, LifecycleAction::Use(name)).unwrap();
+        commit(&mut k, &mut state, 4, LifecycleAction::Use(name)).unwrap();
+        let post = commit(&mut k, &mut state, 9, LifecycleAction::Drop(name)).unwrap();
+        let region = post.closed_region.unwrap().region;
+        assert_eq!(
+            event_cuts(&region.events),
+            BTreeSet::from([
+                SemanticPosition(1),
+                SemanticPosition(4),
+                SemanticPosition(9)
+            ])
+        );
+        assert!(!region.contains_cut(SemanticPosition(6)));
+        assert!(region.contains_event(supplied_event(4, 1)));
+        assert!(region.contains_cut(SemanticPosition(4)));
+        assert!(!region.contains_event(supplied_event(4, 0)));
+        assert!(state.observed_colors(name).unwrap().is_empty());
+        assert_eq!(
+            state.events().last().unwrap().kind,
+            LifecycleEventKind::Drop
+        );
+    }
 
     fn fixture() -> (SemanticContinuation, LifecycleState, LifeName) {
         let mut continuation = SemanticContinuation::default();
@@ -910,7 +1105,7 @@ mod tests {
         assert_eq!(
             state.reify_value(&k, SemanticValueId(1)),
             Err(LifecycleFailure::LifecycleContinuationPending),
-            "a full generation continuation, not a frozen boolean, must establish [0,9)"
+            "a full generation continuation must establish actual discrete events"
         );
         assert_eq!(state, before);
         assert_eq!(k.position(), SemanticPosition(0));
@@ -976,8 +1171,8 @@ mod tests {
         k.freeze_cleanup_through(SemanticPosition(5)).unwrap();
         let post = commit(&mut k, &mut state, 5, LifecycleAction::Drop(destination)).unwrap();
         assert_eq!(
-            post.closed_region.unwrap().region.end,
-            Some(SemanticPosition(5))
+            event_cuts(&post.closed_region.unwrap().region.events),
+            BTreeSet::from([SemanticPosition(2), SemanticPosition(5)])
         );
         assert!(state.cleanup_obligation_discharged(destination));
         assert_eq!(
@@ -1024,12 +1219,18 @@ mod tests {
         k.freeze_cleanup_through(SemanticPosition(6)).unwrap();
         let post = commit(&mut k, &mut state, 6, LifecycleAction::Drop(name)).unwrap();
         let region = post.closed_region.unwrap().region;
-        assert_eq!(region.start, SemanticPosition(1));
-        assert_eq!(region.end, Some(SemanticPosition(6)));
+        assert_eq!(
+            event_cuts(&region.events),
+            BTreeSet::from([SemanticPosition(6)])
+        );
+        assert!(
+            !region.contains_cut(SemanticPosition(1)),
+            "formation is not use"
+        );
     }
 
     #[test]
-    fn use_and_preserve_cannot_occupy_their_scheduled_half_open_endpoint() {
+    fn use_and_preserve_cannot_preempt_fixed_cleanup_at_the_same_cut() {
         for effect in [None, Some(MoveEffect::Preserve)] {
             let mut k = SemanticContinuation::default();
             let mut state = LifecycleState::new(&k);
@@ -1066,8 +1267,8 @@ mod tests {
             assert_eq!((state.clone(), k.clone()), before);
             let post = commit(&mut k, &mut state, 5, LifecycleAction::Drop(name)).unwrap();
             assert_eq!(
-                post.closed_region.unwrap().region.end,
-                Some(SemanticPosition(5))
+                event_cuts(&post.closed_region.unwrap().region.events),
+                BTreeSet::from([SemanticPosition(5)])
             );
         }
     }
@@ -1125,7 +1326,7 @@ mod tests {
     }
 
     #[test]
-    fn unscheduled_ending_cannot_put_an_existing_event_outside_its_region() {
+    fn unscheduled_ending_retains_same_cut_events_in_fixed_action_order() {
         for nonending in [false, true] {
             for kill in [false, true] {
                 let (mut k, mut state, name) = fixture();
@@ -1148,15 +1349,32 @@ mod tests {
                 } else {
                     LifecycleAction::Drop(name)
                 };
-                let before = (state.clone(), k.clone());
+                let post = commit(&mut k, &mut state, 3, ending).unwrap();
+                let region = post.closed_region.unwrap().region;
                 assert_eq!(
-                    commit(&mut k, &mut state, 3, ending),
-                    Err(crate::SemanticCommitFailure::Pre(
-                        LifecycleFailure::NonEndingEventAtBoundary(name)
-                    ))
+                    event_cuts(&region.events),
+                    BTreeSet::from([SemanticPosition(3)])
                 );
-                assert_eq!((state.clone(), k.clone()), before);
-                commit(&mut k, &mut state, 4, LifecycleAction::Drop(name)).unwrap();
+                assert_eq!(
+                    region.events.len(),
+                    2,
+                    "same-cut instructions stay distinct"
+                );
+                assert_eq!(
+                    region.events.first().unwrap().action_ordinal,
+                    state.events[0].action.ordinal
+                );
+                assert_eq!(
+                    region.events.last().unwrap().action_ordinal,
+                    state.events[1].action.ordinal
+                );
+                assert_eq!(
+                    state.events.len(),
+                    2,
+                    "event kinds and order remain distinct"
+                );
+                assert!(state.events[0].action.ordinal < state.events[1].action.ordinal);
+                assert!(commit(&mut k, &mut state, 4, LifecycleAction::Drop(name)).is_err());
             }
         }
     }
@@ -1373,7 +1591,7 @@ mod tests {
             name
         );
         assert_eq!(
-            state.active[&name].start,
+            state.active[&name].formed_at,
             SemanticPosition(1),
             "formation occurred before discovery at 4"
         );
@@ -1501,10 +1719,14 @@ mod tests {
         let new_name = post.destination.unwrap();
         assert_ne!(new_name, source);
         assert_eq!(
-            post.closed_region.unwrap().region.end,
-            Some(SemanticPosition(3))
+            event_cuts(&post.closed_region.unwrap().region.events),
+            BTreeSet::from([SemanticPosition(3)])
         );
-        assert_eq!(state.active[&new_name].start, SemanticPosition(3));
+        assert_eq!(state.active[&new_name].formed_at, SemanticPosition(3));
+        assert!(
+            state.active[&new_name].events.is_empty(),
+            "Move does not invent destination uses"
+        );
         assert_eq!(state.name_of(destination), Some(new_name));
         assert_eq!(
             state.reify_value(&k, destination),
@@ -1535,7 +1757,7 @@ mod tests {
     fn preserve_move_transports_the_same_subject_without_clone_or_generation_change() {
         let (mut k, mut state, source) = fixture();
         let before_name_count = state.next_name;
-        let region = state.active[&source];
+        let generation = state.active[&source].clone();
         let color = ColorId("stable-subject".into());
         state
             .admit_committed_color_fact(&k, source, color.clone())
@@ -1556,7 +1778,12 @@ mod tests {
         assert!(post.closed_region.is_none());
         assert_eq!(state.name_of(SemanticValueId(7)), Some(source));
         assert_eq!(state.name_of(destination), Some(source));
-        assert_eq!(state.active[&source], region);
+        assert_eq!(state.active[&source].formed_at, generation.formed_at);
+        assert_eq!(state.active[&source].generation, generation.generation);
+        assert_eq!(
+            event_cuts(&state.active[&source].events),
+            BTreeSet::from([SemanticPosition(2)])
+        );
         assert_eq!(
             state.next_name, before_name_count,
             "Preserve creates no fresh lifecycle subject"
@@ -2265,6 +2492,17 @@ mod tests {
                 .freeze_cleanup_through(SemanticPosition(100))
                 .unwrap();
         }
+        // The numeric endpoint relation can hold across cloned K snapshots;
+        // it grants no authority to reuse a Pre from the other revision.
+        let parent = Region::from_events(&k, 0, [supplied_event(1, 0), supplied_event(9, 0)]);
+        let child = Region::from_events(
+            &other_snapshot,
+            0,
+            [supplied_event(3, 0), supplied_event(6, 0)],
+        );
+        assert_eq!(k.identity(), other_snapshot.identity());
+        assert_ne!(k, other_snapshot);
+        assert_eq!(child.strictly_within(&parent), Ok(true));
         let action = LifecycleAction::Drop(b);
         let facts = validation(&state, &action);
         let proof = state

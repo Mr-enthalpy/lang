@@ -4,3 +4,4 @@
 *.ast text eol=lf
 *.md text eol=lf
 *.rs text eol=lf
+spec/planning/evidence/lifetime-concurrency/* text eol=lf

@@ -2,7 +2,7 @@
 
 Baseline: merged PR #117, commit 49d0511d865eb1d19fe1534d9ba5b148122ec162.
 This is an implementation/verification index, not a second semantic authority.
-The external handoff's N01–N20 and U01–U06 are distributed among current owners;
+The earlier Heap/IO/effect handoff's HIE-N01–HIE-N20 and HIE-U01–HIE-U06 are distributed among current owners;
 history is neither needed nor read for current interpretation.
 
 ## Replacement closure M01–M13
@@ -41,7 +41,7 @@ proof-search requirements. Unknown evidence is unavailable, not permission.
 | F05 | First-layer Move locality and valid atomic repair | lifecycle §2.1.3/§2.1.8 Pre_MoveRepair/Valid |
 | F06 | Locate/submit conserve hierarchy and all live storage duties | heap §§1,3,4 Pre/commit/Post |
 | F07 | Guaranteed submit over every admitted Pre state | heap §4 SubmitCap, feasible metadata guarantee |
-| F08 | Conservative regular sources and complete local-layer elimination | heap §5 StorageSource/L_pi and LocalLayers theorem |
+| F08 | Conservative regular sources and complete local-layer elimination | heap §5 exact up^k(H) submissions and covered LocalLayers elimination |
 | F09 | Actual one-step trace, unselected branches have no actions | effect §§1–3; Pattern §11.3 regular Function Pattern |
 | F10 | Legal grain equivalence preserves all observations | E §11 Legal/Generate/Obs |
 | F11 | Dropped concrete continuation cleans exactly once ordinarily | effect §4 plus lifecycle fixed cleanup/destructors |
@@ -141,8 +141,18 @@ clarifications only; standard providers and handoff execution remain pending.
 The lifecycle identity clarification makes Pre(id)=Post(id) explicit on complete
 observations of the same material. InPlace capture AutoPre and suspension's held
 handoff material both consume it; the latter inherits the legally mapped actual
-successful Move/repair Post. Default repair id preserves only its own input;
+successful Move/repair Post. An actually selected identity repair preserves only its own input;
 ordinary Move and destination Valid are still required. F04, L01–L03 and
 LC10/LC12/LC13 carry these unexecuted obligations, including no fresh defaults,
 no invented facts and no weakening or loss of cleanup/history. Existing source
 execution remains pending.
+
+## Lifecycle/concurrency refinement
+
+This index's earlier HIE-scoped M/F rows retain their original scope; the
+[current N/M/U/F ledger](lifetime-concurrency-consolidation.md) records the
+2026-11-15 consolidation. Current-top malloc/free, exact direct-parent relocate,
+lazy duty and universal non-root locate refine H03–H08/F06–F08. Omitted repair
+is source-derived automatic repair, not unconditional id. Region is a discrete
+event set with strict parent/child endpoints. Historical audit/test paragraphs
+above record earlier checks only; they are not evidence for the new 105 targets.

@@ -306,3 +306,18 @@ registration. Derived ref/share field forwarding requires actual helper
 registrations. Reference primitives retain borrowing/lifecycle duties. State
 derived from concrete T0 does not follow its former Place after Write(place,T1);
 a new T1 formation/call is needed to observe T1's final members.
+
+## Atomic as a formed-type consumer
+
+Like ordinary struct augmentation, [atomic](../lifetime/atomic-pattern-transitions-and-causality.md)
+consumes a complete type already formed from ordinary $ material. It registers
+trusted one-attempt sum-Pattern transitions only after every actually retained
+state name proves no external origin dependence, including stored I/Index and S.
+Legal ordinary formation may produce a fresh closed name; treating an input as
+a state number never erases its dependency. A comparison-only unretained input
+keeps its ordinary access Pre without becoming held state merely by comparison.
+Atomic creates no enum grammar, Pattern category or
+Object coordinate. Pattern construction's complete identity commit alone is
+not a hardware CAS. Actual A(I_a;S_a) -> B(I_b;S_b) admission/commit delivers old
+S_a, installs incoming S_b and publishes the result/version at one point;
+Rejected retains S_b. Source/atomic/backend consumers remain unavailable.

@@ -85,7 +85,7 @@ The [heap owner](spec/design/lifetime/heap-stack-and-storage-responsibility.md)
 defines ordinary locate and guaranteed storage-duty submission by heap relocate,
 preserving live Places/history. The
 [effect owner](spec/design/control-flow/effect-steps-and-continuation-handoff.md)
-defines concrete Wait successors, atomic user repair, transparent propagation,
+defines concrete Wait successors, atomic automatic/explicit repair, transparent propagation,
 throw and ordinary Drop cleanup. Effects carry no implicit runtime Stage or Box;
 global IO/heap are ordinary capability contexts. Standard globalheap supplies a
 terminal root compatible with single-linked HeapStack construction; other user
@@ -94,7 +94,7 @@ Live captured output maps to successor call context under separately checked
 name, ownership and cleanup obligations, not default self-field ownership.
 Lifecycle id has equal Pre/Post: InPlace automatic captures inherit preceding
 Post, and held suspension material inherits the legally mapped successful
-handoff Post. Default repair id does not make the composite Move an identity.
+handoff Post. An identity repair does not make the composite Move an identity.
 Function Pattern projection exposes former captures as explicit inputs. It
 consumes capture specifications, not projection-site capture values; absent
 heap does not prevent a proved parameterized interface. Future
@@ -214,3 +214,55 @@ all non-absent ranks compile, preserving absence. Explicit Hole Policies can
 address individual ranks. Unknown higher observations remain unavailable.
 Type operations use the compile algebra. See the
 [unified owner](spec/design/unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).
+
+## Lifecycle and concurrency consolidation
+
+The [lifetime owner](spec/design/lifetime/lifetime-policy-and-overload-boundary.md)
+defines discrete event Regions and strict parent/child endpoint order without
+set containment. Pure advance restricts actual reachable events and preserves
+established production facts. Serial borrowing adds no independent-access Color;
+async/unique Wait custody alone is not concurrent dispatch. Only actual independent
+access checks and establishes the relevant Color.
+
+Endpoint order is only a pure relation. Borrow/access Pre independently requires
+the actual selected producer/parent-child source, names/generations, activation/
+guarded branch and lawful current E/K revision correspondence. Supplied event
+sets, true endpoints or equal K identity across forks grant no permission;
+missing correspondence is unavailable before production or access.
+
+Omitted repair requests source-derived automatic repair: preserve live origin-None
+local roots without clone, replay actual selected derived producers/partners once,
+delegate inputs/captures outward, and stop at actual unknown boundaries. Ordinary
+initialization remains once; new replay occurrences retain real effects. Missing
+F02–F04 plan/proof/consumer is unavailable before exposing a successor.
+
+Same-Pattern convergence forgets arm distinction while retaining correlated
+source/permission obligations. The specific Option ? delivers Some and throws on
+None; other views keep their own protocols. Index credentials bind names, not equal
+integers. Ordinary Index copy loses trust; map lookup needs no forced validation
+phase. Anonymous insertion requires conservative whole obligations and executable
+Move/Drop, and extraction does not subtract the remaining aggregate's obligations.
+Default-world reify recovery is partial; hidden non-default instances throw their
+declared exception, and missing consumers remain unavailable.
+
+Standard malloc/free enter current top. Every standard non-root locate requires
+universal guaranteed direct-parent Submit and lazy acceptance across all admitted
+reachable management states. Relocate targets up(H), transfers Pending without
+executing it, and Drop performs its unique ordered duty. Escape is rejected at
+production Pre. Ordinary custom heaps are permitted under their own contracts.
+
+[Atomic](spec/design/lifetime/atomic-pattern-transitions-and-causality.md)
+consumes $-formed ordinary type material whose every retained state name has no
+external-origin dependency, including retained state/count/Index I as well as S.
+Only a real ordinary producer Post can establish a fresh closed name; neither
+an I role nor equal numeric content erases a retained dependency.
+Its single successful CAS jointly changes branch/state and S_a/S_b custody;
+Rejected keeps incoming S_b. Actual branch versions publish/import causal closure,
+and backend realization must honor ownership-transfer visibility. Atomic fields
+do not make an atomic outer type; safe primitives do not prove arbitrary protocol
+subsets. No implicit retries or per-operation relaxed/acquire/release operands.
+Only extra SeqCst/fence remains undecided at F15; F17 standard locate is fixed.
+
+Read the [owner map](spec/design/README.md) and
+[status/proof ledger](spec/planning/lifetime-concurrency-consolidation.md).
+D/P/S/C/T/B are separate; finite carrier/model tests are not source or ISA proof.

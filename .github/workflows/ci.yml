@@ -27,3 +27,19 @@ jobs:
 
       - name: Run tests
         run: cargo test
+
+  consolidation-audit:
+    name: Specification and evidence audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Python
+        uses: actions/setup-python@v7.1.0
+        with:
+          python-version: '3.13'
+
+      - name: Audit specifications and bounded evidence
+        run: python spec/planning/evidence/lifetime-concurrency/audit_consolidation.py

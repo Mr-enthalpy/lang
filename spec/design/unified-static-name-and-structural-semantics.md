@@ -681,8 +681,10 @@ result o has Policy(o)=runtime and Policy(Type(o))=compile
 ```
 
 The endpoint observations belong to adjacent ranks of the same Object's
-classification chain. Reverse migration recovers the classifier of that
-runtime Object, not an unrelated compile type. Its same-Type and actual
+classification chain. When its actual default-world recovery condition succeeds, reverse migration
+recovers the classifier of that runtime Object, not an unrelated compile type.
+An instance hiding non-default dependencies follows the declared ordinary throw
+branch; missing consumers remain Unavailable, not a catchable recovery failure. Its same-Type and actual
 source/classifier evidence survive in the resumed continuation.
 
 ```text
@@ -721,8 +723,9 @@ caching and tables are equivalent O representations of the same E.
 Region_K(n)=R(NamePosition_K(n))
 ```
 
-The current semantic name position, not future branch availability or physical
-execution time, determines Region. E uses current continuation Pre/commit/Post
+The current semantic name position determines the fixed-K discrete event
+interpretation. Actual reachable-continuation restriction may remove events;
+unknown future values and physical execution time confer no pruning authority. E uses current continuation Pre/commit/Post
 and fixed cleanup observations. It does not require future-path enumeration.
 Inside a closed reify P2 boundary, `compile let val = runtime_express` may
 remain an actual delayed continuation when its
@@ -730,3 +733,145 @@ required value is not yet available. A selected reverse migration inside a close
 its actual dependent E work with inputs at args-in; ordinary origin relations stay within semantic name-position
 algebra. Runtime strings supply no authority to redefine fixed structured names.
 Future-path proof, specialization and layout remain O work with E revalidation.
+
+## Partial recovery and outward closure
+
+### N25 — reify 的接口闭合不因恢复异常而放松 [不变量]
+
+保留 ClosedReturn、ClosedInterface 和 active reify boundary。恢复失败的异常/effect 必须落入 compile 可确定的对外接口，或由内部普通 handler/wrapper 收束。
+
+runtime 可以选择固定和模式中的不同结果，不能倒灌出新的 compile 接口形状、输入要求或生命周期契约。两级端点只是常用观察窗口，不能把所有实例、函数模式或生命周期材料固定在 rank 0。
+
+The lifecycle owner's N20–N24 define legal forgetting, retained executable
+Move/Drop material and the actual default-instance recovery condition. A
+same-Type migration candidate and active boundary are necessary, not evidence
+that every instance is recoverable. Failure keeps actual ownership/effects and
+never reopens selection.
+
+## Cross-owner correspondence
+
+U01–U12 below compose the named topic owners; Region/origin/Color/repair remain
+owned by lifetime, standard routing by heap, and atomic memory by its own topic.
+Mathematical notation and source sketches are target material, with consumers
+and proof gates recorded separately in planning.
+
+## U01 — 同一动作、多种伴随观察
+
+对同一个已选动作 `a*`，普通求值、结构/Pattern 变化、生命周期伙伴、原子内存事件必须使用同一实际来源和交接对应：
+
+```text
+selected ordinary action a*
+  -> actual value/result delivery
+  -> corresponding Pattern transition
+  -> lifecycle companion over ordinary rank-0 values
+  -> memory event when this action really performs an admitted atomic access
+```
+
+这些不是另加四个执行器。结构形成时同步产生需要的生命周期伴随材料；`(x.field*)@ = x@.field_lifetime*` 的已有要求继续有效。`$` 本身仍是解释极性机制，不因每个 `$` 额外执行生命周期动作。
+
+atomic 注册的底层事实是共享内存域真实提交能力；对原始 CAS，其同一个提交点同时使 A→B、I_a→I_b、S_a→调用者及 S_b→B 生效，并发布成功版本与相应生命周期 Post。返回的 Committed/Rejected 是一般和 Pattern，其分支续体的内存因果观察属于同一个 K（N39、N41）。不把所有一般构造/提取的完整性提交都改成 CAS。
+
+## U02 — Pre/动作/Post 与正常失败
+
+静态不可用、Pre 不成立、原子竞争拒绝、Option None、reify 实例恢复拒绝是不同情况：
+
+| 结果 | 普通语义处理 |
+|---|---|
+| 语法/必要消费者缺失或必需证据不可得 | 正常诊断/Unavailable；不造成功或可捕获业务异常 |
+| 已选动作 Pre 不成立 | 动作提交前拒绝；不回滚已提交历史、不重选 |
+| CAS 实际竞争未提交 | 声明的 Rejected 和模式；不改变本次原子状态、不取出 S_a、返还/保留 S_b；仅在实际观察有证据时发布对应因果事实 |
+| 验证产生 None | 普通 None；被该 Option `?` 使用时由其实现 throw |
+| 合法已选 reify 恢复遇非默认实例 | 声明的普通异常/effect；无成功恢复 Post |
+
+调用方 Pre.check 与实现体 Pre.admit 不得互相循环自证；Post 的普通 check/admit 仍只传递实际授权事实。Origin 合流、typed helper、bool 与 OpenHere 均不创造权限。
+
+## U03 — 固定事件、repair 与重新验证
+
+Region 从固定 K 的已形成事件描述取得；新 repair 是依保留生产对应生成的普通续体片段，不是生命周期检查器把原有 drop 前后挪动来救程序。
+
+生成片段必须有普通名字形成、Move、cleanup 与交付关系，且在真实交接发布前全部验证。改变 K 的合法生成/优化必须重新验证受影响投影。不得把这个过程实现为“调整 cleanup → 生命周期失败 → 再移动 cleanup”的求解循环。
+
+生成算法如何先形成足够的修复描述、固定新增片段并避免无根据循环，是 F02/F03 的明确证明义务。缺少这项消费者不能被一个修复成功标记替代。
+
+## U04 — 空切片连续性保留，Move 不变成恒等
+
+```text
+same world, same vocabulary, no action:
+    Pre(id) = Post(id)
+
+real Move[repair]:
+    source world -> validated successor world
+
+held successor material:
+    AutoPre = mapped successful handoff Post
+```
+
+换了 self/activation/名字 generation 时使用真实映射，不把旧 self 和新 self 当成同一对象。新 resume 入参仍在真正调用时形成；未绑定 RequiredCapture 仍是声明，不因手握一个后继续体提前获取来源。
+
+## U05 — 类型全称命题是具体判断的证明，不是替代
+
+“类型规定全部准入实例满足某性质”和“具体名字在具体事件上合法”可以同时存在。前者为后者提供证据，后者仍消费当前外部 Region、Access、Color 及目的地条件。
+
+同理，无外部 origin 是 atomic 全部保留状态名字（含保留的 I/Index 与 S）的准入约束，不给外部 Cell 借用永久存活；只有合法普通生产 Post 能建立真正闭合的新名字，状态数角色不清除旧依赖。保存 Move/Drop 操作给遗忘对象可执行性，不给 reify 可逆性。
+
+## U06 — 合流、压缩、SCC 与名字遗忘各有职责
+
+- Pattern 合流决定来源选择是否仍由结果模式区分。
+- 边界 origin 压缩移除已经退出的局部中间名，保留实际外部依赖。
+- SCC 在既定 closure 边界坍缩到原始正则材料，不凭类型重新重建名字身份。
+- 匿名名字遗忘主动降低精度，只在默认可恢复或保守摘要充分时准入。
+
+四者均不能提高权限或伪造 None/unknown。它们不是同一个“把看不懂的东西变 unknown”的操作。生产式重演也不得穿过已合法遗忘的边界恢复隐藏历史。
+
+同 Pattern 合流后的外露接口不再分辨原来源；内部为 E 等价验证保留的来源记录不授予调用者恢复这些事实的权力。
+
+## U07 — 函数模式、捕获与输入槽不回退
+
+普通可调用值保留结构化来源，捕获不必由调用者写成显式实参；LHS 函数模式萃取完整入参/捕获及契约，来源遗忘后原捕获作为显式参数。RHS 仍是普通调用请求，不有自定义 capture 或新 Pre/Post 位置。
+
+`P let lhs=rhs` 是调用位置材料命名，不是修改函数模式方向性的理由。RequiredCapture 每次新调用在合法上下文绑定；Initialized/Automatic 已形成来源不重新按同名查找。
+
+自动 repair 新执行的生产片段不把一般调用/投影改成“重跑初始化器”。手写函数模式省略 Post 仍是 NoDelta，不因新增自动 repair 就从被遗忘的函数体中重推合同。
+
+## U08 — 物化与生成粒度不获得第二套解释权
+
+原子切割粒度与实际生成续体粒度继续分开；从保留来源的母版可按需直接生成较大片段，不要求先生成对象再融合。
+
+自动 repair、延迟析构和内存观察有真实可见效果时，融合不得删除这些效果。只有有证明的等价变换才可消除动作。默认自动栈语义、由 E 决定的 ABI1/ABI2 与显式 Box 保持原职责；async、返回、匿名化或默认恢复失败都不授权 O 隐式选堆分配补救。
+
+## U09 — Heap 回收不取代内存排序
+
+Heap 接收 Pending、Region 上界拒绝逃逸及单次责任交接解决存活/回收合法性；它们不自动建立发布/订阅的 rf、对象修改序或 fence 保证。
+
+反之，成功 CAS、fence 或观察到某版本不能证明目标 heap 足够长寿、没有读者逃逸或可以跳过 deferred Drop。不得用“回收安全”和“内存可见性”相互充当证明。
+
+## U10 — Atomic 的复用边界是输入结构和关联 API
+
+合法的复用路径为：
+
+```text
+general $-formed Pattern/type material
+    -> admitted atomic registration
+    -> actual associated Cell ref/share surfaces under OpenHere
+    -> ordinary safe operations / Pattern branches / effects
+```
+
+原始 CAS 是受信任的一般和 Pattern 状态变换，不是新的和模式本体。成功在单一真实提交点共同交接 `S_a/S_b` 并形成 `Committed`，失败形成 `Rejected`；不同结果分支的后续原子动作发布各自真实因果事实（N39、N41）。
+
+没有 `atomic enum` 新本体；没有自动 `struct-of-atomic -> atomic-struct` 规则；没有“用户声明安全即可”的任意世界写入口。
+
+更高层算法的可证明行为必须位于既有内部安全不变量的组合范围内。想强制一个更小的协议转换集合，必须让它成为真实的接口/材料/Pre 限制，不能只给一个包装名字。
+
+## U11 — reify 保留阶段代数与失败效果
+
+默认世界恢复只是现有选定迁移中关于具体实例的准入条件。它不另立 Stage，不给 runtime 值写回过去 compile 世界，也不根据值的运行结果扩展 compile 已闭合接口。
+
+恢复需要的 Drop/Move 可执行材料和默认性判断必须真实保留或实现；类型注册表/标签只是一种实现，不能成为生命周期本体。对外异常行为与所有其他 effect 一样由普通接口匹配/handler 处理。
+
+## U12 — 主干规范与 E host 同步
+
+现行 host 契约为 `spec/contracts/e-host-architecture-and-incremental-revalidation.md`。本轮须保持其单 E、合法来源对应、选择域验证、完整 K、缓存状态依赖与提交前联合验证要求。
+
+新增 Region 形态、生产式 recipe、合流摘要、遗忘资格、恢复资格、Move/Drop 实现、heap 父层及 Pending、原子权限与因果前提，都要进入真正依赖它们的缓存/复用检查。签名或机器布局没变，不等于这些判断仍有效。
+
+缓存命中不重放旧 IO/CAS；语义规定的 repair 重演是新动作，不是 host 重用旧提交。不得以并发/原子为由给优化器或实现层私下新增可观察事实。

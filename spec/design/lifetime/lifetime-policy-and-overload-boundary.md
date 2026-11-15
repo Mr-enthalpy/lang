@@ -13,8 +13,8 @@ The common transaction checks earlier cleanup for every action through a
 continuation-relative observation relation. Outstanding or unavailable facts
 block commit even when the action has no lifecycle projection.
 The substrate fixes continuation-relative cleanup prefixes, leaving future
-generations' suffix placements available. Same-cut Use/Preserve cannot occupy
-their own half-open endpoint; scheduled Drop and boundary Kill follow fixed order.
+generations' suffix placements available. Use/Preserve cannot preempt their scheduled cleanup; Drop and boundary Kill
+follow fixed order. Regions retain actual discrete events, including ending events.
 Roster discovery supplies stable names, not formation/origin facts. Full
 generation-continuation reification, source operations, cleanup point derivation,
 access-tree construction and the complete E consumer remain pending.
@@ -533,78 +533,79 @@ Places, lifecycle generations or credentials.
 
 #### 2.1.3 Region and lifecycle events
 
-The first-level region of one LifeName generation is a linear half-open
-interval over the current semantic continuation K. NamePosition_K fixes the
-region; future branches and their physical availability are not premises:
+### N01 — Region 的离散事件基础 [定义]
+
+把已经按普通控制、所有权与结束事件规则规范化的语义续体记为 `N(K)`，每个语义指令位置有确定行号。这里的行号不是源文件行号，也不是机器地址。
+
+对某个实际名字及其 generation，在其适用的续体/分支解释下：
 
 ```text
-Region_K(n) = R(NamePosition_K(n)) = [i, j)
-events    = use | move | drop
+L(K) = normalized semantic instruction positions
+Region_K(n) ⊆ L(K)
+event kinds relevant to Region = use | consume/move | drop
 ```
 
-`use` records an observation point. When MoveEffect=Kill, move rebuilds only the first-level
-generation/Region and preserves the deeper origin exactly:
+Region 是这些事件位置的离散集合；分支、合流、循环和递归改变位置的解释及可达性，不改变这个基础。重复出现的静态行号仍由既有 activation、generation 与正则续体材料区分，不得合并不同次的名字实例。
+
+不得把 Region 定义为实数时间、机器栈区间、任意 CFG 本体，或为了满足借用关系而扩张的 `SupportClosure`。对空集合或不可得端点，不得擅自填入无穷大、零或新 unknown；相应消费者必须有既有事件材料或报告不可用。
+
+### N02 — 析构先定与纯切片 [不变量]
+
+普通控制流、MoveEffect、析构、使用和消费事件先确定；生命周期观察随后取得它们的投影。同位置的优先关系也先确定。生命周期程序不能移动析构点以满足自己生成的约束。
+
+对同一名字/generation，若一步只缩小未来可达续体，没有新的名字生产、Move 或其他状态变更，则当前 Region 是此前 Region 的限制：
 
 ```text
-MoveOriginPreservation (MoveEffect_K(old,m)=Kill):
-
-old@ = { name = n_old, origin = o, region = r_old }
-move(old -> new)
-new@ = { name = n_new, origin = o, region = r_new }
-
-new@.origin = old@.origin
-k := Boundary(move)
-k is a position in SemanticContinuation
-end(Region_1(old))   = k
-begin(Region_1(new)) = k
-
-Region_1(old) = [i, k)
-Region_1(new) = [k, j)
+R_after = RestrictReachable(R_before, actual continuation advance)
+R_after ⊆ R_before
 ```
 
-`Boundary(move)` is the single continuation cut occupied by the move event.
-The old generation ends and the new generation begins at that same cut; no
-unowned interval or implicit position lies between them. A future IR may split
-one event into explicit `PrePos(move) < PostPos(move)` only if it uses those two
-positions consistently for both interval endpoints; the one-position semantic
-model above has no strict `>` edge.
+只有确实删去原 Region 中位置时才为严格子集。分支材料可以预先形成受守卫的描述，但不能据此执行未选分支、提交未来事实或利用未知业务值裁剪未来。
 
-The new generation therefore does not acquire the old generation itself as its
-origin. Origin effects of copy-derived formation belong to the selected
-ordinary share/rebind and clone lifecycle postconditions rather than to the
-lifetime calculus as a universal copy theorem:
+切片上的既有颜色随限制继承。不可达部分不再参加当前观察，不等于撤销历史染色。优化器改变 K 后必须重算/验证对应位置关系，而不是原样搬用旧行号证明。
+
+### N03 — 父子借用只要求首末偏序，不要求集合包含 [定义]
+
+在产生子借用的同一合法事件解释下，对父 F、子 C：
+
+\[
+R_C\prec R_F
+\quad\Longleftrightarrow\quad
+\min R_F<\min R_C\ \land\ \max R_C<\max R_F.
+\]
+
+这是生命周期端点的严格嵌套关系，不是 `R_C ⊆ R_F`。例如：
 
 ```text
-ordinary source : T:
-  shared_view := share(source)
-  selected ordinary clone invocation on shared_view
-    -> fresh complete result with the selected clone's lifecycle post
-  Move(result)
-
-source : T ref | T share:
-  rebound_view := rebind(source)
-  selected ordinary clone invocation on rebound_view
-    -> fresh complete result with the selected clone's lifecycle post
-  Move(result)
+R_F = {1, 4, 9}
+R_C = {3, 6}
 ```
 
-The selected clone-family realization owns the relation. A particular builtin,
-default, or custom clone candidate may declare
-`origin(result)=NameOf(source)`, `SomeInternalOrigin(source)`, a re-rooted
-relation, or another legal lifecycle post. None is implied merely by the name
-`copy`. The lifetime calculus consumes that selected post
-through the ordinary Pre/Post boundary and adds no copy-origin equation.
+满足父子关系，且允许串行的父、子、父、子交错使用。父 Region 无须补入子事件。
 
-Mechanical `copy(x)` evaluates ordinary share/rebind and the selected clone,
-then transports the fresh complete result through terminal `Move(result)`.
-The clone owns result formation/origin; terminal Move has its independently
-fixed lifecycle effect. There is no opaque copy-producing action or compact
-semantic alias. Candidate-specific origin effects do not authorize a pre-move
-of `x`.
+子借用生产时，其 Region 已由该次续体材料决定；相应偏序在生产 Pre 检查。后续纯切片保留已建立的生产事实及观察对应关系，不把每个剩余集合重新当成新借用生产来测试或生成 origin。
 
-`drop` ends the outstanding lifecycle/cleanup obligation for the current
-generation. Path-sensitive facts are represented by a region slice plus a
-regular origin path, not by turning Region into an arbitrary CFG subgraph.
+端点偏序只是纯关系计算，不是借用生产的充分性证明。`initialize_bounded_region` 及任何访问/借用 Pre 必须独立取得：真实已选生产动作与父子来源、实际名字/generation、该次 activation/守卫分支解释，以及输入 Region 对当前 K 的合法来源和修订对应。外部提供的事件集合、同一 continuation 身份、同样的数值端点或 `strictly_within = true` 都不建立这些事实。共用原始 K 身份的分叉快照不能据此互相发放权限；K 改写后，消费者须验证现有 E/K 对应及其依赖仍适用于当前动作，不能原样采用旧位置证明。所需事实为假则在提交前拒绝，缺失则 Unavailable；端点查询不产生 `LifecyclePreProof`、origin 或访问权限。
+
+Rust 载体的 `contains_event` 只查询完整 `(cut, action ordinal)`，`contains_cut` 只查询该 cut 是否有任意记录事件。原始 cut 不隐式补 ordinal=0；`from_events` 只接受完整事件位置。两种成员查询及集合构造都不建立上段的消费者准入证据，也不是第二种 Region/K 本体。
+
+该条件不免除具体操作的其他 Pre，例如资源版本、有效索引凭证或实际访问权限。不得以“独占借用”名义另加一个无 Color 的普遍父冻结规则。
+
+### N04 — 默认入口世界与已有名字的继承 [不变量]
+
+一般函数的新入参在省略 Pre 时按既有默认世界生成；默认世界不凭空建立两个独占入参之间的父子关系。共享根的既有默认规则继续有效，不能改写成“所有入参的所有来源均两两不同”。
+
+已有名字不重新默认生成。InPlace 自动捕获继承上一刻的 Post；空动作切片满足同一观察词汇下的 `Pre(id)=Post(id)`。实际交接之后，后续续体持有材料的 AutoPre 由成功交接 Post 经合法名字对应形成。
+
+父子借用同时传入一个未声明该关系的一般接口而失败，不能统一解释为 Color 冲突。捕获与入参的语义平权也不等于对已存在捕获清空历史。
+
+A killing Move ends old-generation custody and starts destination custody at
+one common commit. Its source consume event belongs to the source Region;
+formation alone is not an invented destination use. Deeper origin is preserved,
+not replaced with an old-name origin edge. A selected clone-derived path still
+performs share/rebind -> clone -> fresh complete result -> terminal Move;
+its actual producer Post determines origin. Preserve retains the subject and
+adds only the actual event, without a second owner or implicit clone.
 
 #### 2.1.3.1 Instance killability and move legality
 
@@ -830,6 +831,22 @@ computation-reordering constraints. Finite Color relations remain a bounded
 mechanical foundation; this does not restrict full contract programs to
 conjunctions of Color atoms or make Color an arbitrary proposition black box.
 
+### N05 — Color 的引入边界是独立访问 [不变量]
+
+普通串行父子/兄弟借用不自动新增排斥性 Color。访问一旦能够脱离当前续体的串行支配、在另一执行上下文独立发生，交接/发射 Pre 必须检查所需 Region 关系并建立相应 Color。
+
+对实际访问域，具有冲突颜色的父子、兄弟及其他相关访问必须区间排斥；兼容颜色可以重叠。此处的区间是既有 Region/访问协议的时序解释，不新增一类可独立任意移动的“授权时间轴”。
+
+不同执行主体的局部行号不能未经共同 K 的控制、交接或同步关系直接比较。Color 不证明目标仍存活；Region 不证明独立访问彼此兼容。
+
+`async`、挂起、恢复、换设备本身均不自动意味着并发。只交出唯一执行权的续体交接，不因 `wait` 这个拼写就染上并发色。
+
+### N06 — 兼容颜色不等于可交换操作 [不变量]
+
+允许重叠独占染色，只说明规定访问协议的独立使用可以合法并存；不说明两次操作可交换、没有竞争、都能成功，或形成跨对象全局原子性。
+
+Color 词汇及兼容/排斥关系继续使用有限、定向、机械可验证的基础。更强的库行为不变量不能靠增加一个能容纳任意命题的 Color 绕过证明。
+
 #### 2.1.8 Empty slices, inherited AutoPre and atomic Move repair
 
 The identity action id on a lifecycle continuation preserves its complete
@@ -867,12 +884,12 @@ An actual handoff additionally proves the composite selected transaction:
 ```text
 Pre_MoveRepair(Sigma_s, names, rho, destination)
   = ordinary Move/cleanup/access/capability/resource premises
-    and legal execution of user repair rho in the mapped scratch world
+    and legal execution of the source-derived automatic/explicit repair plan rho
     and Valid(projected repaired successor)
 Sigma_s -- Move[rho] --> Sigma_prime
 commit publishes only Sigma_prime and its complete successor callable
 AutoPre(k) = RenameAndProject_(s->k)(Sigma_prime)
-rho omitted = id
+rho omitted = source-derived automatic repair (id only if no replay is required)
 ```
 
 The same identity law generates the lifecycle interface of the already
@@ -893,7 +910,7 @@ self and new k as identical Objects. It does not describe execution of k's body.
 New resume parameters still receive only their ordinary entry rules when formed;
 unfulfilled RequiredCapture slots remain specifications until their admitted call.
 
-The identity of an omitted repair is also local: Pre(rho=id) = Post(rho=id)
+For an actually selected identity repair, Pre(rho=id) = Post(rho=id)
 in its actual repair-entry world. Move[id] still includes the selected Move and
 may change generations/regions or ownership under the ordinary rules. It is not
 id on the entire source world and is not evidence that destination Valid holds.
@@ -904,8 +921,8 @@ Trivial killing Move resets the first-level region (region_0, called Region_1
 in §2.1.3), retaining origin and deeper regions. In particular the destination
 must satisfy `region_0(n) < origin(n).region` wherever required. A repair such
 as `r rebind = v ref;` must supply the ordinary exclusive/valid/access premises;
-the suspending side supplies it and the language verifies it. No algorithm is
-invented automatically. Failed or unavailable repair exposes neither an illegal
+the suspending side forms and validates the source-derived plan, including
+any explicit repair's exact responsibilities. Failed or unavailable repair exposes neither an illegal
 intermediate callable nor successful Post. Earlier unrelated committed effects
 are not rolled back. Resume receives an already legal concrete callable.
 
@@ -915,6 +932,61 @@ obligations. [Effect steps](../control-flow/effect-steps-and-continuation-handof
 own Wait/handler control; [heap protocols](heap-stack-and-storage-responsibility.md)
 own storage-support/release-duty transfer. Neither can rewrite old origin or
 Color to discharge a missing premise.
+
+### N10 — 跨点保存取决于存活，不仅是后续使用 [不变量]
+
+跨挂起点需要交接的材料由已确定的生命周期切片给出，包括存活依赖和未完析构责任，而不是仅扫描挂起后出现哪些变量名。
+
+子借用跨点存活时，其名字依赖也必须满足相应跨点存活关系。该结论来自 N03 的偏序，不通过扩大父 Region 得到。
+
+保存范围是重演当前生命周期切片所需的最小合法材料；“最小”相对于保留的实际生产依赖和契约，不要求编译器求解任意程序的全局最小化问题。
+
+### N11 — repair 按第一层 origin 递归分解 [不变量]
+
+对本层跨点名字，执行以下确定的责任分类：
+
+| 材料 | 本层责任 |
+|---|---|
+| 入参、捕获 | 外部挂起/调用交接位置负责修复；本层消费修复后的实际映射 |
+| 局部名字，第一层 origin 明确为 None | 保存已产生的值材料，停止倒追其生产过程 |
+| 局部名字，第一层 origin 非空且有本层可追踪生产来源 | 沿原已选生产表达式形成必要的重演依赖闭包 |
+| 已建立的外部 unknown 边界 | 停止跨边界猜测；使用其已有外部契约和交接材料 |
+| 缺少必要来源/伙伴/可用材料 | 不可用或拒绝，不能伪造 None/unknown |
+
+本层挂起点也负责其被挂起表达式的输入槽修复，义务沿嵌套调用递归分解。不得反向展开外部函数的全部私有历史或把所有层的修复责任抛给最外层用户。
+
+`unknown` 不等于 `None`；未记录 origin 也不等于 `None`。
+
+### N12 — 重演保留表达式—已选动作—伙伴对应 [不变量]
+
+每个参与重演的节点保留原语义表达式、已选定实现、实际操作数/名字对应及其生命周期伙伴。自动 repair 通过该对应重演表达式本身，不先降成一堆内建 ref/share 原子动作再搜索如何拼回。
+
+共同子表达式保持实际共享与单次生产责任；实际分支使用对应生产关系，不执行所有候选来源。循环/SCC 必须使用已存在的正则描述与组合契约，不能凭有限表示宣称任意反向展开必终止。
+
+重演是新的实际执行发生，不是重新提交旧动作、撤销旧历史、重新选择旧重载或再次使用旧成功回执。真正的新普通调用仍按其真实调用位置的既有规则处理。
+
+### N13 — 保存旧值不要求 Copyable；重演不要求额外纯度 [不变量]
+
+局部 origin-None 根的保存接近保留 SSA 旧版本的语义材料，不调用 `copy/clone`，不创造两个可独立消费的所有者。Move、实际名字/generation 对应和 cleanup 义务仍只交接一次。
+
+重演对象生产式不等于复制原资源所有权。普通 Pre 仍然必须成立，但不得另设“含资源/IO 所以不可自动重演”的纯度白名单。
+
+IO 获得的独立值或指向实际外部 unknown 的材料通常是停止倒追的边界；若某个实际生产式处于重演闭包且有 IO 副作用，新增 IO 是允许的真实可观察效果。不得缓存旧 IO 成功、声称额外效果不存在，或隐藏其 effect 形状。
+
+### N14 — repair 是 Move 内部的交接计算 [不变量]
+
+```text
+prior valid slice
+  -> ordinary selected Move with automatic/explicit repair
+  -> complete valid successor and mapped Post
+  -> successor AutoPre
+```
+
+不得先向外发布非法续体再修复。没有需重演的部分时自动 repair 可退化为 id；省略 `@{}` 不再一律等于仅尝试 `Move[id]`。
+
+显式修复继续是普通语言程序。其与自动片段必须具有明确、单次的生产/消费责任；不得默认“全部自动一次，再全部手写一次”，也不得默认手写代码具有绕过独立 Pre 的权力。
+
+自动 repair 重演的可信验证可能再次失败或发出 effect，按一般和模式及 effect 协议处理，不虚构成功后继。修复义务仍由形成/交付续体的一侧完成，resume 侧接收已合法形成的材料。
 
 ### 2.2 No implicit borrow formation
 
@@ -969,7 +1041,7 @@ positive obligation is:
 
 ```text
 Escapes(view, destination)
-  = Region(destination) ⊄ ValidRegion(view)
+  = not LifetimeOrderAndAccessLegal_K(view, destination)
 
 Escapes(view, destination)  ->  the storing/returning operation is rejected
 ```
@@ -995,8 +1067,8 @@ relation, and the view's ordinary capability. It is never a construction-Open
 region:
 
 ```text
-ValidRegion( type ref )   =  LifetimeRegion( Target ) ∩ RefCapabilityRegion
-ValidRegion( type share ) =  LifetimeRegion( Target )
+ValidRegion(type ref)   = target endpoint order + actual ref access premises
+ValidRegion(type share) = target endpoint order + actual share access premises
 ```
 
 The two views differ in write capability, not in whether their pointee is Open:
@@ -1381,8 +1453,9 @@ observation with no cleanup/lifecycle repair loop.
 Region_K(n)=R(NamePosition_K(n))
 ```
 
-Region follows current semantic name position, independently of future branch
-availability and physical runtime timing. E uses current Pre/commit/Post and fixed
+Region is the fixed normalized-K event-set interpretation at the current
+semantic name position. Actual reachability restricts it; unknown future values
+and physical runtime timing grant no pruning permission. E uses current Pre/commit/Post and fixed
 cleanup observations, without future-path enumeration. A closed callable reify P2 boundary resumes its reverse-dependent work in the same E
 at args-in. Origins remain relations inside compile name-position algebra.
 Runtime strings create no authority to redefine fixed structured-name coordinates.
@@ -1439,7 +1512,7 @@ failure-without-publication boundary before it can support library composition.
 |---|---|
 | Name and generation | Actual formation/observation supplies LifeName, generation and current K position, including temporaries without a Place |
 | Origin | Selected formation/transfer supplies links, explicit termination or established unknown boundaries, plus legal field observations |
-| Region and Color | Fixed cuts and interval relations, finite directed compatibility/exclusion/exchange rows and inherited historical constraints |
+| Region and Color | Fixed event sets, endpoint order and pure slices, finite directed compatibility/exclusion/exchange rows and inherited historical constraints |
 | Move and borrowing | Predetermined Kill/Preserve, frontier Movable, actual ref/share/weakening/rebind targets; no implicit borrow or copy fallback |
 | Complete identity | Construction, consuming extraction and non-consuming Pattern observation produce their distinct companion material atomically where applicable |
 | Invocation and exit | Selected Param/captures, explicit input, actual activation, delivery, target return and fixed cleanup correspondence |
@@ -1533,7 +1606,7 @@ host operation. The final column points to the existing pending handoff.
 | try_trust, partition_refs | L: ordinary observation, control, range planning and ownership/result assembly; B supplies actual input/source authority and ref formation. X is only the otherwise underivable successful validation/disjointness fact and its maintained interval, not the entire function | W: LC3/LC7/LC8 and materialization |
 | range_access, validation/source/generation/shared/interval/read requirement rows, element_share_at and clone::word in W3 | L forms typed ordinary requirements, queries established evidence and composes a real indexed shared projection with an already selected independent Word clone. B supplies actual call/Move mapping, current names/generations, read/access/Color/interval and complete formation; the consumer creates no new validation fact. A runtime integer supplies targeting, not lifecycle proof by numeric equality | W: LC2–LC4/LC7/LC8 and actual indexed projection/clone producers |
 | prepare_ranges, validate_separation, acquire_children, partition result/requirement rows and checked_ranges in W3 | L observes actual handles, preserves ranges/source mapping, forms contracts and branches on the real validator result. B supplies current original-ref authority and normal consumption/formation legality. X is only the validator's earlier compatible strict-range-separation success; neither a plan nor SeparationOk supplies root authority | W: LC2–LC5/LC7/LC8 and actual range validation |
-| form_child_pair, child_pair_life, child_formation_parts, end_selected_share_intervals, begin_exclusive_children and finish_child_pair_material in W3 | L composes the actual selected complete producer's scoped companion. B supplies exact input/share-ending/fresh-child scopes, source/region/exclusive-Color laws and one complete publication gate. X separation is already available before this producer's Pre. Components may stage only the prescribed ends/new formations; they cannot erase other dependencies, rewrite history or strengthen the share handles | W: LC2/LC3/LC7 and ordinary complete ref/result formation |
+| form_child_pair, child_pair_life, child_formation_parts, end_selected_share_intervals, begin_exclusive_children and finish_child_pair_material in W3 | L composes the actual selected complete producer's scoped companion. B supplies exact input/share-ending/fresh-child scopes, source/Region/actual access laws and one complete publication gate. Independent access additionally checks its required Color. X separation is already available before this producer's Pre. Components may stage only the prescribed ends/new formations; they cannot erase other dependencies, rewrite history or strengthen the share handles | W: LC2/LC3/LC7 and ordinary complete ref/result formation |
 | success_id_role/outcome_roles, validation input/interval/from/shared dependency rows, required_contract_pattern, guarded_rows and failure_delivery_rows in W3 | L extracts formed interface roles and builds typed guarded descriptions for the ordinary contract constructor. B supplies the legal input read/Move, source, interval and actual delivery mapping; a result role is not an observed future payload | W: LC2–LC5/LC7 |
 | probe_index, finish_probe and validated_index_rows in W3 | L organizes the ordinary probe result and ends its temporary view. X is the real successful validation tied to actual Q/generation/index/result and maintained interval; the row describes that fact rather than producing it. A tag or the outer contract's own check cannot justify the external guarantee | W: LC7 and the selected actual facility; unsafe post source notation is pending |
 | probe_success_life, initialize_borrow_origin, initialize_bounded_region, begin_shared_dependency and finish_validated_name_material in W3 | L composes the selected fresh producer's companion. B supplies its actual one-shot name/source authority, bounded region and compatible shared dependency formation, including logical borrowing by ordinary non-ref values. It cannot rewrite an earlier name or grant access. X supplies only the actual validation packaged with those components | W: LC2/LC3/LC7; these are scoped formation responsibilities, not unrestricted world-field setters or a safeid builtin |
@@ -1624,8 +1697,8 @@ host bootstrap code and later source code must obey the same premises.
 |---|---|---|---|
 | initialize_empty_root | Current InvokeName(I), independently authorized fresh formation window, declared complete-type target, live one-shot initialization authority and ordinary formation/lifecycle Pre | A complete empty structural type at that actual I, with its real roles/callspace; consume that target's initialization authority. No foreign root, read of an absent resident or world-writing privilege | Its own ordinary complete-formation commit, under the construction owner |
 | initialize_borrow_origin | Selected fresh producer/name/generation, its still-pending source-formation responsibility, actual authorized source target/generation and ranges, and legal dependency-formation Pre | Exactly the origin relation prescribed for that new name by the selected source action. No rewriting an older name or inventing termination/unknown material | Stage in that producer's scoped companion storage; publish only with its complete action and joint Post |
-| initialize_bounded_region | Same actual fresh producer/name and source; fixed generation cuts and admitted interval containment | The actual bounded region constraint, without extending the target or changing a cut | Same producer boundary |
-| begin_shared_dependency | Same producer/name/source, actual bounded interval and protected endpoints, compatible directed shared Color and existing access/validity premises | Shared dependency/Color constraints for those endpoints and that interval, retaining inheritance/history. No new access and no recoloring the past | Same producer boundary |
+| initialize_bounded_region | Same actual fresh producer/name/generation and authorized parent/child source, actual activation/guarded branch, fixed events and lawful current-K revision correspondence, plus strict source/child endpoint order and ordinary access Pre | Only that producer's actual bounded Region; a supplied event set or true endpoint query grants no proof, origin or authority and changes no cut | Same producer boundary; missing correspondence is Unavailable before publication |
+| begin_shared_dependency | Same producer/name/source, actual bounded Region and protected endpoints, existing access/validation/validity premises; independently executing access additionally proves its required directed Color relation | Exactly the shared dependency on those endpoints with its actual validity obligations. Serial production adds no exclusionary Color; any independent-access Color retains inheritance/history. No new access and no recoloring the past | Same producer boundary |
 | adopt_origin | Live entry/success-scoped boundary view with actual K/action/activation/cut/generation/result mapping; established permitted source relation and the origin operation's own Pre | Only its corresponding mapped origin consequence; transfer of the same scoped view, not another view with broader authority | Stage in that boundary's storage; all components publish jointly |
 
 These authorities are actual semantic relations established by their ordinary
@@ -1651,8 +1724,9 @@ ActualFreshProducer_K(A, n/g_n), FormationScope(F) = (K,A,n/g_n)
 F covers this pending origin component and has not been used for it
 SelectedSource_K(A) = (s/g_s, P, o)
 ActualSourceAccess_K(A,s/g_s,P), OrdinaryFormationPre_K(A)
-I is the actual bounded result interval, I within source-target validity
-SharedCompatible_K(history, s/g_s, P, I), required access/Color premises
+I records the actual result event set and strict endpoint order to the source
+ActualSharedAccessLegal_K(s/g_s, P, I)
+IndependentAccess_K(A) => required directed Color premises
 -----------------------------------------------------------------------
 initialize_borrow_origin(F,s/g_s)
   stages exactly delta_origin = { origin(n/g_n) = o } in scratch_A
@@ -1908,28 +1982,42 @@ of §13. Distinct paths or anonymous origins alone never prove actual disjointne
 
 ## 12. Dynamic credentials and batch acquisition
 
-A trusted runtime check can establish a logical dependency for an ordinary
-value, without changing its business type or making it a borrow. For example:
+### N17 — 可信索引是名字事实，不是新业务类型 [不变量]
 
-```lang
-let safeid = (vector ref ..try_trust(num))?;
-```
+`try_trust` 是示例 API 名称，不是关键词、内建识别入口或不可更改命名。库可以使用 `validate_index`、`validate_range` 等明确表达具体验证行为的名称。
 
-The [walkthrough](lifetime-algebra-walkthroughs.md#3-dynamic-safeid-and-batch-share-partitioning)
-expands success/failure through ordinary registered Patterns. `?` remains
-one-layer extraction, with no implicit success unwrap or error propagation.
-The successful action's complete Post binds the delivered id's actual
-name/generation to resource origin, protected range/region and shared Color;
-Pre limits its valid interval. In the
-[expanded contract/body example](lifetime-algebra-walkthroughs.md#writing-the-trusted-apis-contracts-and-body),
-ordinary Post computes the authorized from/shared dependency and unsafe Post
-supplies only the otherwise underivable actual validation with its maintained
-interval. Neither a result tag nor copied rows supply that external fact or
-ordinary world-update authority. Numeric equality transfers no credential.
-Move, clone, arithmetic and view delivery need their own actual selected Post.
-Runtime-unknown values may have established names. T * omega need not preserve
-all element structural names or numeric relations in the ordinary type for
-the lifecycle material to express these range dependencies.
+验证对象的业务值和类型可以保持为原 Index 类型；实际成功必须把凭证绑定到交付名字、真实聚合资源及其有效条件。数值相等、同类型、复制描述数据或返回 `true` 均不构成该绑定。
+
+内建匿名聚合的安全区间/元素访问拒绝未经证明的索引。成功验证必须维护所有实际失效条件，例如资源/元素布局、长度、generation、索引内容等，而不只保护一个叫 capacity 的字段。已建立且仍有效的凭证可以支持后续访问不重复同一数值检查。
+
+纯串行情况下，不把凭证维护重新说成普遍并发染色。改变被凭证保护的事实必须受该协议独立 Pre 约束；真正独立访问另按 N05/N06 建立 Color。
+
+### N18 — 普通 K–V 查询不要求先验证 key [不变量]
+
+一般 `lookup(map,key) -> Option(value)` 可以直接做普通查询并按成功 Post 建立结果来源。不得把内建匿名聚合的索引准入推广成所有容器、字典或查询接口必须两阶段验证。
+
+同一库可封装验证及访问而对外提供一个普通查询；内部仍须兑现它使用的访问基础的 Pre。`make_view` 这类安全元素访问不能把裸整数直接当成可信名字。
+
+### N19 — 凭证传递有借用与派生名字两条路径 [不变量]
+
+对平凡 Index 的普通 copy，得到相同数值的新名字，其 origin 按该普通生产规则刷新为 None，验证凭证不随数值相等复制。
+
+合法复用可以选择：
+
+1. 借用可信索引，保留真实 origin 链并向访问 API 传递它；
+2. 提供额外的普通派生 API，形成同值同业务类型的新子名字，并按借用式生产规则建立 child origin 与受限 Region。
+
+第二种路径必须满足：
+
+\[
+origin(j)=i,\qquad
+\min R_i<\min R_j,\qquad
+\max R_j<\max R_i.
+\]
+
+**不得写成 `R_j ⊆ R_i`。** 它不是普通 Index copy 的隐含特殊化，也不能复制不允许重复发放的独占授权。凭证通过实际生产 Post 传递；选择、接口名和是否提供该便利 API 属于库设计自由。
+
+通过可信索引借用形成视图，必须保留实际证明依赖，使 repair 能沿正确伴随表达式追踪；不能只保留整数值后再猜其来源。
 
 The library's whole operation protocol must block or first end the credential
 before every action invalidating its guarantee: length/capacity, layout,
@@ -1943,7 +2031,7 @@ transport preserves actual dependencies and intervals, not a global credential.
 The [safeid consumer](lifetime-algebra-walkthroughs.md#consuming-safeid-at-range-access)
 exposes runtime index@ in range_access's ordinary compile Pre. Its typed rows
 check the existing validation/source, actual input-generation mapping, required
-live shared Color, maintained interval and endpoint permissions. Runtime
+actual access/validation dependencies, maintained validity and endpoint permissions. Runtime
 targeting then uses the numeric index without another bounds comparison; the
 illustrated selected Word clone returns an independent complete result.
 There is no new external admission or permission from an equal integer.
@@ -1986,7 +2074,7 @@ separates preparation, trusted validation and actual child formation. The
 validator's unsafe success fact is available before the child producer's
 ordinary Pre; an outward Post cannot authorize an earlier missing Pre.
 Current original-ref authority, legal share-ending and fresh formation scopes,
-bounded exclusive regions/Color and absence of surviving conflicts remain
+bounded Regions and actual access premises (Color only for independent access) and absence of surviving conflicts remain
 independent premises. Its scoped companion stages the prescribed interval ends
 and new children for one existing complete result gate. Dynamic failure returns
 current input ownership without child permissions; a selected semantic failure
@@ -2161,3 +2249,79 @@ cleanup and same-cut order, return barriers and E-selected delivery remain.
 This revision supplies no independent lifecycle checker, SMT engine, source
 runner, container implementation or physical ABI. Existing carrier tests are
 evidence only for their implemented transaction/value slices.
+
+
+## 16. Anonymous names, executable operations and partial recovery
+
+### N20 — 名字遗忘的保守准入 [不变量]
+
+不可追踪的名字生成/遗忘是本代数的明确精度边界。对即将遗忘的名字：
+
+- 已有依赖符合默认世界的，允许按默认关系隐藏；
+- 非默认部分只有在能够保守化为更深 origin 链中的真实 unknown 边界时才允许隐藏；
+- 无法这样表达而又不扩大权限的，拒绝该遗忘。
+
+合法 unknown 化是一个有实际来源、由遗忘操作建立的观察边界；不是把缺失证据、失效借用、任意环或已死亡目标伪装成 unknown。不能借默认的独占根独立性掩盖实际共享/父子依赖。
+
+遗忘丢失观察精度，不消除已有历史，不增加 Region，不删除既有 Color，不恢复被裁剪的访问权限。
+
+按默认关系形成新的取出名字时，深层保守依赖仍然存在；这与 N24 中恢复被遗忘具体实例的 compile 名字状态不同，不能从本条推出 reify 的可逆性。
+
+### N21 — 匿名聚合按整体粒度承接依赖 [不变量]
+
+对于以匿名元素聚合为语义的数组/重复结构，投放前必须能把元素相对默认世界的全部特殊名字依赖，合法表达为聚合整体的约束；否则拒绝投放。
+
+这些约束是义务的保守合并，不是权限的并集。一个数组可能需要同时受 A/B 资源有效性限制，但取出一个索引凭证不因此同时拥有针对 A 和 B 的具体授权。
+
+普通取出生成的新名字继承聚合的全部保守依赖；剩余聚合不能仅凭“取出了一个元素”撤去整体依赖。取出实际所有权仍按选定动作交接，不重复复制资源。没有精确来源证据，就不能按数值、位置或相同类型恢复原 LifeName。
+
+整体销毁或有独立充分证明的专门操作可以结束当前责任；“历史不可擦除”不等于一个已经合法结束的对象永远仍有活跃义务。
+
+无外部名字依赖的普通值不因匿名化凭空取得外部约束。值身份、实际资源所有权与析构责任仍保留；不可 Copy 不自动等于不可进入数组。
+
+### N22 — 遗忘必须保留可执行的 Drop 和 Move [不变量]
+
+名字/类型观察精度下降时，不仅要保留保守依赖，还须保留后续操作的实现与合法性材料。典型端点为：
+
+```text
+runtime:compile -> runtime:runtime
+```
+
+这是既有 Policy 链上的相应 rank 迁移，不是新增类型擦除本体。实际 Type 及其合法迁移关系仍遵守既有 owner。
+
+至少必须保留与实际实例对应的析构子及移动子，或足以执行等价普通操作的材料。可以使用代码、闭包、运行时描述符等表示，不强制 vtable、固定字段、全局注册表或隐藏分配。
+
+Move/Drop 的可执行性不等于已遗忘的精确名字关系可以恢复；保存了析构函数也不等于可消除它对外部名字的真实依赖。
+
+### N23 — 可移动性的三种充分证据 [定义]
+
+基础仍是具体事件判断 `Movable_K(n,m)`。以下三条是不同来源的充分证据，不是三个新内建 trait：
+
+| 证据 | 含义 |
+|---|---|
+| 类型级平凡移动全称命题 | 类型的全部准入实例，在所声明普通移动条件下无需 repair 即合法 |
+| 类型级统一 repair | 类型提供对全部准入实例适用的移动修复方式；具体续体类型可具有自己的统一 repair |
+| 当前名字的实例证明 | 无上述全称性质，但此名字对该遗忘后协议实际要求的移动已有合法证明及可执行材料 |
+
+实例性与全称命题不矛盾。不得以“Movable 是名字事件”禁止任何类型级全称结论，也不得以一个实例成功推出同类型的所有实例都成功。
+
+实例证明只覆盖其已证明的操作域；不能用一次 m 的证明承诺任意其他目的地、Region 或将来移动。对目标承载协议允许的所有必需 Move/Drop 都有材料才可遗忘；缺少证据则拒绝，不隐式装箱、改 ABI 或要求 Copyable。
+
+### N24 — 默认世界反向恢复是部分操作 [不变量]
+
+在 reify 内，已依法选择的 `runtime:runtime -> runtime:compile` 恢复，只接受能够按默认世界重建实例名字依赖的对象。已经遗忘并隐藏了非默认依赖的实例，不因持有正确 Type、移动子或析构子而取得该恢复能力。
+
+```text
+RecoverDefault(x):
+  actual instance satisfies default-world recovery condition -> success
+  actual instance deviates from that condition              -> ordinary throw
+```
+
+语言不承诺 compile/runtime 迁移互为逆函数，不承诺双射，也不承诺 `restore(forget(x))=x`。不得由 unknown 推出默认独立性，不重造旧 generation，不以 unsafe pre 追认。
+
+tag、表、描述符或其他运行时判定方式均属实现。抽象侧只规定判定的真实性、成功 Post、拒绝分支及资源归属。具体实例拒绝是已声明的普通异常；未实现消费者、缺失语义定义或不合法选择本身不是伪造出来的 catchable 异常。
+
+These judgments consume selected actions and mapped ordinary Pre/commit/Post.
+The [reify owner](../unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration)
+retains closed interfaces; the [implementation ledger](../../planning/lifetime-concurrency-consolidation.md)
+separates definitions from proofs, source consumers and backend support.

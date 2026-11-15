@@ -625,3 +625,16 @@ acquisition and share acquisition are ordinary selected operations with their
 own Policy and lifecycle premises. Diagnostic field observations consume those
 ordinary entries and registered relations. A graph kind or resolver expectation
 supplies neither call authority nor structural registration.
+
+## Atomic associated API boundary
+
+[Atomic registration](../lifetime/atomic-pattern-transitions-and-causality.md)
+consumes already formed ordinary $ type/Pattern material with external-origin
+closure for every retained state name, including stored I/Index and S. An actual
+ordinary producer may form a fresh closed state number; its numeric role alone
+cannot clear an existing origin. Under actual OpenHere, advanced operations can be ordinarily
+registered on the associated Cell ref/share types. Registered Color permits
+only its protected atomic domain. All fields being atomic proves neither an
+atomic outer type nor an atomic composed transaction; public-method inspection
+cannot manufacture that certification. Actual payload/ref access retains
+ordinary access, lifetime, synchronization and protocol Pre.

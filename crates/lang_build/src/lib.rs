@@ -93,7 +93,7 @@ pub use lifecycle::{
     LifecycleAction, LifecycleEvent, LifecycleEventKind, LifecycleFailure, LifecycleOrigin,
     LifecyclePost, LifecyclePreProof, LifecyclePrecondition, LifecycleSnapshot, LifecycleState,
     LifecycleValidationContext, LifecycleValidationProof, LifetimeValue, MoveEffect, NameView,
-    Region,
+    Region, RegionEventPosition,
 };
 pub use literal_semantics::{
     abstract_character_value, compile_literal_policy, form_abstract_literal_value,

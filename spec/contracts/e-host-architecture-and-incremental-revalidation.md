@@ -1051,3 +1051,37 @@ concrete choices needed here; no closed semantic question is reopened:
 Chosen representations still need the corresponding owners' fidelity,
 composition and termination evidence. A future implementation reports each
 connected boundary and its actual tests separately from these design targets.
+
+## 12. Lifecycle/concurrency observation dependencies
+
+This handoff consumes the updated canonical owners without replacing any
+earlier host preservation duty. Actual dependent observations include discrete
+Region events/endpoints and reachability, expression/selected-producer/lifecycle
+partner recipes, Pattern-correlated source alternatives, aggregate forgetting
+summaries, executable Move/Drop and default recovery qualifications, immediate
+heap parent/universal Submit/lazy Pending custody, and atomic authority,
+versions/rf/mo/Past plus path causal knowledge.
+
+Region queries retain data provenance without granting authority. Equal original
+K identity, including cloned snapshots, proves neither common branch/activation
+interpretation nor lawful revision correspondence for a current producer/access
+Pre. The consumer must independently validate those existing E/K premises;
+numeric endpoint success cannot fill them. Invalidation also tracks the actual
+retained-state-name closure used by Atomic admission, including I/Index, S and
+their retained dependencies, plus any ordinary producer Post establishing a
+fresh closed name. Parameter role or equal numeric content is no reuse proof.
+
+Retain the actual supporting names/generations, guard/branch, action/mapping,
+Pre/commit/Post and completeness support for each consumer. Changed content
+invalidates its consumers despite equal signature/layout. Pure slicing retains
+established production facts, not newly invented origins. A repair recipe's new
+execution is an ordinary new occurrence with real effects; same-history reuse
+does not execute old IO/CAS or reuse old successful receipts. Shared recipe
+nodes retain single production responsibility.
+
+Atomic machine commit and joint resource Post must already be feasible before
+the real CAS; unpublished scratch is not rollback of that commit. Rejected
+retains input ownership and imports only an actually observed version. Branch
+causality and resource-transfer synchronization are fixed by the atomic owner;
+F15 extra SeqCst/fence and F14/F16 proofs remain separate. Missing upstream
+proof/consumer follows §10, with no fabricated successful Post or Residual.

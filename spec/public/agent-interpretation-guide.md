@@ -244,10 +244,15 @@ sources do not recapture. InPlace existing captures inherit preceding Post when
 Pre is omitted; only genuinely new input names use default entry generation.
 This is the lifecycle identity law Pre(id)=Post(id) on the same observed
 material. Held material delivered at suspension reuses it on the legally mapped
-successful handoff Post; it is not initialized again. Omitted repair id preserves
-its own repair-entry state, while the composite Move[id] still performs its
-ordinary Move and must prove destination validity. Neither the capture body nor
-the resumed body is declared to be id by this interface-generation rule.
+successful handoff Post; it is not initialized again. Omitting the repair
+attachment requests source-derived automatic repair using the actual selected
+producers and partners; it reduces to id only when no replay is required. A
+missing required plan or proof remains unavailable before successor publication.
+An actually selected identity repair preserves its own repair-entry state,
+while the composite Move[id] still performs its ordinary Move and must prove
+destination validity; id does not itself repair an invalid Move result. Neither
+the capture body nor the resumed body is declared to be id by this
+interface-generation rule.
 Actual access/capability/lifetime checks decide outer writes.
 Ordinary => closures use one explicit or automatic value-capture mode. An
 explicit list excludes automatic value capture; missing external values are
@@ -299,7 +304,7 @@ compile/reify boundaries must compose faithfully. Local wait splitting, Raw/Norm
 rewriting and a separate async evaluator cannot substitute for this account.
 Heap relocate transfers existing support/release responsibility under a guaranteed
 Pre and preserves live Places; object relocation moves real storage. Wait yields
-a concrete ordinary callable by valid atomic Move[repair], default id. Throw
+a concrete ordinary callable by valid atomic Move[repair], source-derived automatic repair. Throw
 uses that protocol; dropping its continuation cleans ordinarily, without unwind.
 Internal completion and effect Done(v) are distinct. IO/heap need no effect or
 shared stack shape; async needs no implicit Box or uniform state-machine type.
@@ -540,3 +545,41 @@ Ordinary barriers. Keep cropping, Color, origin and name/target identity.
 Regular access, ordinary program recursion and machine slot reuse require
 separate evidence. Existing lifecycle carriers/transaction tests are substrate,
 not proof that `@`, automatic Post or the trusted library source protocols run.
+
+## Lifecycle/concurrency interpretation checks
+
+Use [public §18](normalized-surface-semantics.md#18-lifecycleconcurrency-target-interface-consumers-pending)
+and the [owner/status ledger](../planning/lifetime-concurrency-consolidation.md).
+A child Region need not be a parent subset; strict endpoints permit serial
+parent/child interleaving. Color begins with actual independent access, not async.
+The endpoint relation alone grants no borrow/access authority: Pre independently
+requires actual selected producer/source, names/generations, activation/guarded
+branch and lawful current E/K revision correspondence. A supplied set or equal
+K identity across forked snapshots proves none of that mapping; true endpoints
+with missing correspondence remain unavailable before production/access.
+Save live dependencies/cleanup, not merely future reads. Origin-None roots need
+no clone; input/capture repair is outer and derived replay retains selected
+expressions/partners. Missing origin is neither None nor an invented unknown.
+
+Same-Pattern results cannot recover the old source arm. Some establishes its
+actual credential, None has none; the specific Option ? throws only by its
+registered contract. Equal Index copy loses trust. Whole-array dependencies
+survive ordinary extraction, and executable Move/Drop does not make forgetting
+invertible. Default-world recovery can reject an instance through ordinary throw;
+missing consumers remain unavailable.
+
+Standard malloc/free start at current top, relocate goes exactly to the parent
+with Pending unexecuted, and all standard non-root locate requires universal
+guaranteed parent submission plus lazy acceptance. Ordinary custom heaps remain
+allowed. Production Pre owns escape rejection; QS is no language premise.
+
+Atomic is a formed-type consumer requiring external-origin closure of all retained
+state names, including I/Index and S; it creates no enum Pattern. A real ordinary
+copy/formation can establish a fresh closed name, but state-number role or equal
+content cannot erase an existing dependency. Comparison-only, unretained input
+still satisfies ordinary access Pre. CAS success jointly transfers S_a/S_b and
+version/state at one point,
+failure retains incoming custody. Real result-branch causality and resource
+visibility are fixed; extra SeqCst/fence, OOTA proof and backend lowering have
+their precise pending gates. No field-to-outer atomic propagation, payload access
+from peek, automatic retry or arbitrary protocol-subset inference is licensed.

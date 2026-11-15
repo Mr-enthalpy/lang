@@ -94,12 +94,12 @@ they do not run RequiredCapture fulfillment or an initializer.
 | C08 | Env Object forwards heap/IO fields normally | Wrapper grants no new access/lifetime or mandatory Box | D Pattern §11.2 | P ordinary forwarding | None |
 | H01 | Locate reads old heap then installs shadowing node | No self-resolving new binding or special push | D heap §1 | P LC11 | None |
 | H02 | Subborrow next_pool, replenish outward and terminate at None; standard globalheap exposes the compatible terminal root and terminating root protocol | No reverse prev pointer or pool copy inferred; an incompatible standard root fails its contract, other user Heap/IO need no isomorphism, and root capacity is not infinite | D heap §1 | P standard provider/library | None |
-| H03 | Default starts at top; preference may skip participating layers | Top need not supply physical storage; no magical search | D heap §2 | P library | None |
-| H04 | Free follows real allocation responsibility after heap rebinding | No preference arg or forced historical pool path | D heap §2 | P credentials | None |
+| H03 | Standard malloc starts at top and replenishes through each next_pool | Top need not supply physical storage; no magical search | D heap §2 | P library | None |
+| H04 | Free submits real credentials and responsibility to current top, which handles/forwards | No preference arg or forced historical pool path | D heap §2 | P credentials | None |
 | H05 | Guaranteed submit preserves live Places and reveals old heap | Name deletion/history rewrite cannot substitute for transfer | D heap §4 | P LC11 | None |
-| H06 | Admit only pool with guaranteed submit under actual Pre | No hidden metadata-allocation failure on legal submit | D heap §4 | P guarantee proof | None |
+| H06 | At standard locate, every non-root pool proves universal direct-parent Submit and lazy acceptance over all admitted reachable states | No hidden metadata-allocation failure on legal submit | D heap §4 | P guarantee proof | None |
 | H07 | Post-submit free uses transferred complete duties | No orphaned or duplicate release duty | D heap §4 | P library | None |
-| H08 | Object relocation requests up(H) or permitted regular outer path | No no-action source rewrite or automatic alias repair | D heap §§4–5 | P library | None |
+| H08 | Standard relocation requests exactly up(H); repeated legal operations traverse one link each | No no-action source rewrite or automatic alias repair | D heap §§4–5 | P library | None |
 | H09 | All local layers submitted eliminates covered local storage barrier | Unsubmitted/uncovered or independent ref barrier still blocks | D heap §5 | P regular proof | None |
 | L01 | Lifecycle-continuation id has equal complete Pre/Post; empty slicing composes that identity | No reset of names/generations/history/cleanup duties, weakening of complete observations or creation of unknown facts | D lifecycle §2.1.8 | P LC10 | None |
 | L02 | InPlace automatic captures generate AutoPre by inheriting preceding Post through id; new args alone default | No U_default regeneration of old captures or claim that the closure body is id | D lifecycle §2.1.8 | P LC10 | None |
@@ -189,8 +189,10 @@ without advancing K, distinguish discovery from formation/origin facts, and
 keep full ReifyLife unavailable instead of returning an incomplete Region.
 Prefix regressions cover future cleanup of Kill destinations and late admitted
 formation, immutable fixed prefixes, stale evidence after prefix/suffix changes,
-same-cut Use/Preserve rejection, and fixed-order boundary Kill. Scalar half-open
-Regions also reject later endings at an existing Use/Preserve cut.
+scheduled-cut Use/Preserve rejection and fixed-order boundary Kill. Discrete
+Regions retain ordered same-cut events when no fixed cleanup forbids them;
+they do not fill holes or use membership as liveness. Endpoint-order tests accept
+interleaving parent/child sets and reject empty/foreign/equal/outside endpoints.
 Color admission regressions reject foreign K (including colliding numeric
 LifeNames), unallocated/pending/closed subjects and stale frontiers without
 mutation; ended-generation Color cannot invalidate Kill inheritance or pollute
@@ -1275,3 +1277,13 @@ committed history remain intact. These checks have no executed HA coverage.
 No group above has a connected HA execution chain. [Roadmap §10](roadmap.md#10-structured-e-host-and-incremental-revalidation-readiness)
 tracks the linked consumer work; passing documentation/link checks or repository
 tests is neither a lifecycle-source test nor a summary/recursion proof.
+
+## Lifecycle and concurrency consolidation acceptance
+
+The [105 paired cases](lifetime-concurrency-acceptance.md) supersede conflicting
+old scenario assumptions in their named domains. [Evidence by N/M/U/F](lifetime-concurrency-consolidation.md)
+uses D/P/S/C/T/B explicitly. Existing table column P means pending consumer,
+not proof discharged. Full source acceptance for these 105 cases is pending;
+Rust event-set/transaction tests and the bounded Python model are separately
+identified. F15 is the sole open extra-memory-order decision; F17 is a fixed
+standard-locate obligation with proof/consumer pending.

@@ -92,3 +92,14 @@ remain architecture acceptance targets, separate from executed substrate tests.
 Only [`planning/open-questions.md`](planning/open-questions.md) may classify a
 canonical representation or semantic decision as Open. Implementation wiring
 of a closed relation belongs in the roadmap instead.
+
+## Lifecycle/concurrency consolidation
+
+Start with the [topic owner map](design/README.md), then the updated
+[lifetime](design/lifetime/lifetime-policy-and-overload-boundary.md),
+[heap](design/lifetime/heap-stack-and-storage-responsibility.md),
+[atomic](design/lifetime/atomic-pattern-transitions-and-causality.md) and
+[heterogeneous container](design/control-flow/heterogeneous-computation-containers.md) owners.
+The [migration/proof/status ledger](planning/lifetime-concurrency-consolidation.md)
+and [paired acceptance](planning/lifetime-concurrency-acceptance.md) separate
+D/P/S/C/T/B and retain unconnected behavior as unavailable.

@@ -419,3 +419,21 @@ source acceptance targets. Async, boxing and Function Pattern projection are
 independent choices. Neither return nor async instructs O to infer heap escape,
 allocate a box, generate a uniform Future/state-machine type, or choose a special
 async ABI. The existing ordinary materialization inputs in §10.1 suffice.
+
+## Source-derived repair and causal observations
+
+Retained common K includes each actual producer expression, sealed action,
+operand/name/generation mapping and lifecycle partner. A newly formed repair
+fragment follows the [lifetime origin classification](../lifetime/lifetime-policy-and-overload-boundary.md#218-empty-slices-inherited-autopre-and-atomic-move-repair);
+it does not replay already represented actions during ordinary projection,
+invocation or cache reuse. New IO/validation exceptions and actual atomic
+attempts are real events with their ordinary effects. F02–F04 must justify
+fragment formation, fixed cleanup and single explicit/automatic responsibility;
+missing support is unavailable before successor exposure.
+
+A Region observation uses discrete events and actual reachable restriction;
+guarded descriptions create no unexecuted facts. Rewrites validate endpoint,
+source-choice, forgetting/recovery, heap/Pending and actual atomic-version/rf/
+causal correspondence when consumed. Heap safety proves no memory ordering.
+Atomic branch causality supplies no permission to alter E's selected ABI,
+materialize implicit Box or invent an extra SeqCst order.

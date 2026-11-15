@@ -74,12 +74,18 @@ remains pending (LC9–LC12); the traces are positive/negative acceptance eviden
    history, then reveals the old heap binding. A pool without that guarantee
    cannot submit; metadata exhaustion cannot appear as a hidden legal failure.
    Submitting every introduced local layer removes covered local storage return
-   barriers even for preference-regular unknown depth, but an independent invalid
-   ref still blocks return. Object relocate instead performs real storage Move.
+   barriers along the regular chain of direct-parent up(H) submissions, even
+   when the remaining outer-chain length is unknown. Standard allocation has no
+   preference parameter and no submission selects an arbitrary outer depth. An
+   independent invalid ref still blocks return. Object relocate instead performs
+   real storage Move.
 4. With v and r both crossing wait, trivial Move can violate
-   `region_0(r) < origin(r).region`. Move[id] then fails its destination Valid
-   check before exposure: the id repair preserves its own input and cannot fix
-   the invalid Move result. The suspending side may supply
+   `region_0(r) < origin(r).region`. If identity repair is actually selected,
+   Move[id] then fails its destination Valid check before exposure: the id repair
+   preserves its own input and cannot fix the invalid Move result. Omitting the
+   attachment instead requests source-derived automatic repair; a valid plan
+   may rebuild the relation using the actual selected producers/partners before
+   publication. The suspending side may supply
    `@{r rebind = v ref;}` only with real exclusive/access/validity
    premises. Atomic Move[repair] delivers a complete legal concrete k and its
    successor AutoPre; it never publishes an invalid k and repairs later. The
@@ -997,28 +1003,31 @@ connected. The compact spelling does not demonstrate executable safeid support.
 let safeid = (vector ref ..try_trust(num))?;
 ```
 
-It means `(vector ref, num) |> try_trust::adl`, followed by the selected
-one-layer extraction. It establishes no universal error propagation or success
-unwrap. For an ordinary registered `ok | err` result with a declared exposed
-view, a full use instead separates the paths:
+Here `try_trust` is an illustrative API name returning Some(Index) | None.
+The specifically selected Option `?` delivers Some's actual credential-bearing
+content and executes ordinary throw on None. It establishes no universal error
+propagation for Product/effect/custom `?`. To inspect both Option branches,
+request an explicit ordinary view instead of that throwing operation:
 
 ```lang
 let outcome = vector ref ..try_trust(num);
-outcome?
-    |> ok { /* ordinary named extraction obtains the successful id */ }
-    |> err { /* ordinary extraction obtains the failure payload */ };
+outcome |> expose_option::trust
+    |> Some { /* ordinary named extraction obtains the successful id */ }
+    |> None { /* no successful id exists */ };
 ```
 
-The head names stand for the actual registered success/failure Patterns;
-payload extraction follows R_Gamma, not a special meaning of `try` or `?`.
-If that one-layer result view is unavailable, the use is unavailable. On
-failure the bare binding in the compact seed does not magically denote a
-trusted integer. Branch code must explicitly bind the id from the ok payload.
+The head names stand for actual registered Patterns; no spelling creates trust.
+The nonthrowing exposed view is an ordinary separately registered interface.
+Missing either interface is Unavailable. Only a real Some producer establishes
+s; two Some(Index) sources A/B with the same observable Pattern remain an
+indistinguishable correlated source choice after extraction.
 
 ### Writing the trusted API's contracts and body
 
 Here is a minimal **design expansion** of that API. VectorRef, TrustResult,
-ProbeOk and ProbeErr denote ordinary registered library types/Patterns. The
+ProbeOk and ProbeErr denote ordinary registered library types/Patterns.
+TrustResult is the ordinary Some(Index) | None family; the internal probe's
+separate ProbeOk/ProbeErr view is not the throwing Option operator. The
 success branch of TrustResult contains one ordinary Index; its type need not
 change. The declaration fixes that result role before execution. success_id_role
 extracts this bound role from the formed return interface; it neither reads a
@@ -1031,7 +1040,7 @@ Despite that helper's name, it also constructs the types consumed as Pre.
 The row constructors are ordinary library functions over available material.
 from_rows is the data-level expansion of the exposed from relation, and
 shared_dependency_rows records its actual protected endpoints, region and
-shared Color. Neither writes a world. Their normal check/admit operations have
+shared access dependency. Neither writes a world. Their normal check/admit operations have
 the independent authority premises described in W2.
 required_contract_pattern wraps the concatenated Pre rows in a complete typed
 ContractPattern; guarded_rows forms that same family with explicit alternatives.
@@ -1080,23 +1089,24 @@ let try_trust =
             let probe = (v share, num share) |> probe_index::facility;
             probe?
                 |> (_, let why:ProbeErr::) {
-                    (num, why) |> err::trust return;
+                    (num, why) |> finish_failed_probe_as_none::trust return;
                 }
                 |> (_, let observed:ProbeOk::) {
                     let s = observed |> finish_probe::facility;
                     num |> drop;
-                    s |> ok::trust return;
+                    s |> some::trust return;
                 };
         };
 ```
 
 The Pre's rows require the actual legal validation-read route, current resource
 and input generations, legal input transfers and the proposed successful
-result's interval contained in the admitted source interval. The s role can
+result's strict endpoint order to its actual source (not event-set containment). The s role can
 occur in an entry requirement without executing a future validation. Missing
 source/window evidence stops at caller Pre; body admit cannot repair it.
 The validator's temporary shared observations end before num is dropped.
-ok/err are real complete constructors, and target returns cross only the shown
+Some/None are real complete constructors; failed-probe-to-None disposes its
+actual input/diagnostic material under its declared ordinary Move/Drop contract, and target returns cross only the shown
 InPlace branch scopes. Each branch's result is delivered once.
 
 probe_index's successful producer forms a **fresh complete Index**, with the
@@ -1137,8 +1147,9 @@ let probe_success_life =
 ```
 
 Each initializer checks its own actual formation/source/interval authority,
-and begin_shared_dependency requires the ordinary compatible shared Color and
-protected-access premises. These are not setters on arbitrary existing names:
+and begin_shared_dependency requires actual protected-access and validation
+premises. Serial logical borrowing adds no exclusionary Color. Only independent
+access dispatch introduces the appropriate Color under the lifetime owner. These are not setters on arbitrary existing names:
 there is no rewrite of num's origin, extension of a cut, deletion of Color or
 enlargement of access. finish_validated_name_material packages only those
 established components and the real compatible validation; copying its inputs'
@@ -1156,7 +1167,7 @@ The unsafe part is precisely the otherwise underivable fact
 the selected probe actually validated this index against this live resource
 generation, and the facility/protocol maintains that condition in I. It does
 not assert origin, access or arbitrary world writes. The ordinary success Post
-computes the from relation and shared coloring from the authorized source,
+computes the from relation and shared dependency from the authorized source,
 actual successful producer and mapped result under their own operation Pre.
 Those relations carry the external validation's dependency; no Boolean or
 ProbeOk constructor can invent it. Pure numeric comparisons, when available,
@@ -1184,7 +1195,7 @@ it neither reruns the probe nor manufactures a success payload.
 | Ordinary Pre | Actual vector ref target/generation, index name n/generation, valid region, authorized read of the resource and legal input moves | A failed Pre prevents the selected external action; unsafe cannot repair it |
 | Dynamic validation | Concrete runtime index and resource state; library checks bounds plus the identity/layout/version conditions of its protocol | Failed validation produces err with no trusted id or success credential |
 | Successful action | Actual successful check tied to resource identity Q and the delivered id name s/current generation | Success Post adds compatible external knowledge at common commit; no separate fact import |
-| Lifecycle Post | `origin(s)` source relation, interval constraint, path/range material and shared Color on the resource dependency | s may have the same ordinary integer type as num and need not be ref/share |
+| Lifecycle Post | `origin(s)` source relation, interval constraint, path/range material and shared access dependency on the resource dependency | s may have the same ordinary integer type as num and need not be ref/share |
 | Subsequent access | s's credential and current protected resource/window; actual selected range accessor | Accept only that maintained evidence; missing evidence is unavailable/rejected, without fallback check or reselection |
 
 For example the ordinary lifecycle record may carry `(s, generation_s,
@@ -1206,7 +1217,7 @@ dependencies and valid interval; it cannot globalize it.
 With this protocol established, accesses in the valid interval need not repeat
 the same runtime numeric validation. They retain their other ordinary Pre and
 machine costs. After legitimate interval end the required exclusive operation
-may proceed in a new region; the old validation and shared Color history remain.
+may proceed in a new region; the old validation and shared access dependency history remain.
 
 ### Consuming safeid at range access
 
@@ -1254,7 +1265,8 @@ associated check/admit. Their registered ordinary component checks must test:
 |---|---|
 | Validation source / source_matches | An already established ValidatedIndex for this index name, mapped source choice, actual Q and protected ranges; v's actual read target must be that Q, not an equal container or copied descriptor |
 | Generations / source_matches | Current index and resource generations, including the permitted actual input-Move mapping; an old index/resource generation supplies no current credential |
-| Shared dependency / color_compatible | Presence of the required live shared dependency on every protocol-protected endpoint, plus its inherited/directed compatibility facts. Historical Color alone or absence of conflict is insufficient |
+| Shared dependency / actual access requirement | Presence of the required live shared dependency on every protocol-protected endpoint, and actual access/validation conditions. Independent-access Color is checked
+only when present; historical Color alone or absence of conflict is insufficient |
 | Interval / region_fits | This access and its temporary element observation lie in the credential's maintained interval and actual target validity; no invalidating resource/index action has intervened |
 | Range/read/transfers / access_is_subset and effects_match | The selected element endpoint is in both the validated range and v's permitted read structure; actual input Moves, temporary borrowing, clone and cleanup satisfy their own Pre |
 
@@ -1308,7 +1320,7 @@ include R again if a legal dependency really retains R and its authority.
    h1/h2 does not consume those dependents.
 4. At the successful existing atomic boundary end the admitted old intervals
    and form complete **new** child ref handles from R's authority, with actual
-   child targets, new generations/regions and exclusive Color. Post preserves
+   child targets, new generations/regions and exclusive access premises. Post preserves
    prior shared history and the validated source/range correlation.
 
 With equal or intersecting ranges, foreign origins, unavailable authorization,
@@ -1454,7 +1466,7 @@ ends any share, removes another dependency or forms a child ref.
 
 The outer ordinary Post transports the actual producer's guarantee. Its ok
 rows describe new children sourced from R over their respective actual ranges,
-the exact share consumptions/interval ends, new exclusive regions/Color and all
+the exact share consumptions/interval ends, new Regions/access facts and all
 other effects. Its err rows describe current returned r/h1/h2 ownership and
 reached observation history, with no child or separation permission. There is
 no outer unsafe clause that retrospectively repairs acquire_children.
@@ -1468,7 +1480,7 @@ All component operations below check their own scope/authority premises.
 
 **Origin:** illustrative generated partner fragment for that selected producer.
 **Basis:** L composition; B actual share-ending and new-ref formation scopes,
-source, bounded regions and compatible exclusive Color; X separation is already
+source, bounded regions and legal exclusive access premises; X separation is already
 available; W LC2/LC3/LC7. **Frontier:** this frame and these scoped source
 operations are pending. They are responsibilities of normal formation, not
 unrestricted lifetime setters.
@@ -1519,6 +1531,17 @@ the ordinary source/authority/interval/access/Color/conflict/consumption Pre
 remain. A statically established separation can use a separately selected
 ordinary realization, never a fallback after this validator fails. Exact API,
 representation, normalization and caching choices remain engineering work.
+
+### Index copy, derivation and ordinary queries
+
+A trivial ordinary Index copy forms an equal numeric value with origin=None;
+it transfers no credential. Borrowing the trusted name retains its actual origin
+and proof dependencies. A separately registered same-value derived-name API
+may establish origin(j)=i only under min(R_i)<min(R_j) and max(R_j)<max(R_i),
+with its own real producer Post; it is not ordinary copy or an event-set subset.
+An ordinary map lookup accepts a key directly and returns Option with its real
+success Post. It needs no mandated validate_key phase. Anonymous array/range
+access still requires its actual credential; same value/type is no substitute.
 
 ### A regular access program, with endpoint-only cropping
 
@@ -2260,3 +2283,22 @@ earlier effects, while a rejected semantic action publishes no delta at its
 own gate. The whole relink is several ordinary commits, not a new multi-slot
 atomic transaction. This proves only the stated finite protocol obligation,
 not arbitrary graph safety, collection or reclamation.
+
+
+## Discrete Regions and source-driven suspension repair
+
+Target semantics/consumers pending. With R_F={1,4,9} and R_C={3,6},
+min(R_F)<min(R_C) and max(R_C)<max(R_F), so parent/child production passes
+without shared events. Replacing 6 by 10 fails at production Pre; cleanup
+cannot move to rescue it. Actual branch advance restricts only reachable events
+and need not strictly shrink every name. Serial parent/child interleaving adds
+no independent-access Color or universal parent freeze.
+
+At a suspension, an origin-None non-Copy local retains its already-produced
+value and one cleanup responsibility. A live derived view replays its original
+selected production expression/partner, shared nodes once; outer input/capture
+repair is delegated recursively. A real unknown boundary stops tracing. New
+validation/IO executions have their real failure/effect paths; neither a pure
+function whitelist nor cached prior success proves repair. F02–F04 must close
+placement and explicit/automatic responsibility before publication. Until then,
+the corresponding source consumer remains Unavailable.

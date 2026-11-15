@@ -60,7 +60,7 @@ these handoffs supply no standalone evaluator or executable success claim.
 
 | Field | LC9 Required capture | LC10 Slice / MoveRepair | LC11 Heap submission | LC12 Effect / Drop |
 |---|---|---|---|---|
-| Input material | Required slot/name/rank/Pattern/Policy, actual context/entry/K, initialized sources | Preceding Post/cut, existing names, new args, fixed MoveEffect, destination, repair/id | Actual local layer/next_pool, allocations, descriptors, support/duty credentials, guaranteed capability | Original common K/CPS correspondence including pending caller suffixes; selected cut, yield/resume Patterns, held material, repair, actual handler and compile/reify boundary |
+| Input material | Required slot/name/rank/Pattern/Policy, actual context/entry/K, initialized sources | Preceding Post/cut, existing names, new args, fixed MoveEffect, destination, automatic/explicit repair plan | Actual local layer/next_pool, allocations, descriptors, support/duty credentials, guaranteed capability | Original common K/CPS correspondence including pending caller suffixes; selected cut, yield/resume Patterns, held material, repair, actual handler and compile/reify boundary |
 | Existing action | Ordinary R_vis/hard A and selected invocation | Empty slicing or actual handoff Move | Ordinary locate, object relocate or consuming submit | Step/Wait, resume/handler/drop, forced actual Miss |
 | Ordinary program | Actual selected source read/transfer/ref | Mapped name projection, ordinary rebind/ref repair | Library routing/allocation/descriptor calls with narrowly trusted external success | Ordinary selected calls/contracts/repair/destructors; throw expansion |
 | Output lifecycle material | Bound CaptureValueProduct, names/origin/region and canonical observed inputs | Equal id Pre/Post (including epsilon); held handoff material inherits mapped successful Move/repair Post as successor AutoPre | Real moved value, or unchanged live Places with transferred support/duty and restored old heap | Done(v) or Wait(y,k), valid successor and held cleanup responsibility |
@@ -431,14 +431,16 @@ actual Move/repair, Valid and the three separate transfer proofs remain required
   [partition program](../design/lifetime/lifetime-algebra-walkthroughs.md#a-two-share-partition-contract-and-ordinary-program)
   establishes dynamic separation at the validator's earlier successful gate,
   then checks child formation's own original-ref/region/Color/access Pre.
-- **Output lifecycle material:** Ordinary source/interval/Color and delivery
+- **Output lifecycle material:** Ordinary source/Region/access and delivery
   material composed with only the needed compatible external success facts:
   actual index validation, disjoint ranges, or maintained window validity/
   exclusion. Fresh successful credential formation uses real scoped
   source/formation authority, not a terminal Move that rewrites input origin.
   New refs come from original R; alias-window origins are fresh and non-alias.
-  A valid shared Color requirement includes its live dependency/interval,
-  not just a historical row or absence of a conflict. Partition components
+  A required shared dependency includes its actual live source/validity interval,
+  not just a historical row or absence of a conflict. Serial formation adds no
+  exclusionary Color; independently executing access checks its actual required
+  Color separately. Partition components
   end exactly their admitted current share intervals and stage new child
   formation for the same complete producer; no other dependency is consumed.
 - **Commit/delivery boundary:** Successful common action and joint Post, then
@@ -534,3 +536,24 @@ resident publication, component-scoped safe world operations and the expanded
 walkthrough programs are pending. Existing host callbacks/snapshots prove only
 their supplied-material slice; they cannot validate a source function merely
 because it is named check/admit or returns true.
+
+## Consolidated consumer admission
+
+Use the [N/M/U/F ledger](../planning/lifetime-concurrency-consolidation.md)
+and [paired cases](../planning/lifetime-concurrency-acceptance.md) for exact
+D/P/S/C/T/B status. The existing LC1–LC13 chain is still pending.
+
+| Domain / existing consumer | Input / ordinary action and computation | Pre / commit / Post | Failure, proof and distinguishing cases |
+|---|---|---|---|
+| Region / LC2–LC3 | Fixed normalized K, actual selected producer/parent-child source, name/generation/activation/guarded branch and lawful current-K revision correspondence; ordinary companion event/slice computation | Independently established actual source/interpretation and ordinary access Pre, strict endpoint order and fixed cleanup; joint Post preserves origin/Color and only restricts pure slices | {1,4,9}/{3,6} passes the endpoint query only; supplied sets or equal K identity across forks grant no borrow authorization. Missing F01/source/revision evidence is unavailable before publication; child max=10 fails without inserting parent events |
+| Replay / LC2–LC3, LC10–LC13 | Live dependency/Drop material, original selected expression/partner and input/capture/unknown map; ordinary newly formed repair fragment | Founded recipe, fixed new cleanup and one explicit/automatic responsibility; Move/repair commits only complete valid successor; mapped Post becomes AutoPre | F02–F04 pending, no id fallback; origin-None roots retain without clone, shared producers once, real IO/validation failure |
+| Join/index / LC1, LC3–LC8 | Actual result Pattern/source guards, actual credential producer and source/generation/access validity; ordinary sum/view/validation/extraction | Source/permission correlation and strict derived-name endpoints; actual Some commit grants credential, None grants none; registered Option ? throws on None | F05/F06 pending; same-Pattern A/B does not prove A; equal Index copy has no trust; ordinary map lookup has no forced validation phase |
+| Forget/recover / LC3–LC6 | Aggregate obligations, actual operation implementations and target protocol, actual default-instance condition; ordinary insertion/Move/Drop/migration | Conservative whole summary and required operations before forgetting; selected recovery succeeds with actual mapping or throws declared instance failure | F07–F09 pending; remaining aggregate retains obligations; missing consumer is unavailable, no unknown-to-None or inverse theorem |
+| Standard heap / LC11–LC13 | Actual top/up(H), all admitted management states, storage credentials, Pending and established cleanup order; ordinary pool calls | Universal parent Submit and lazy acceptance at non-root locate, production escape Pre; submit commits full custody without moving live bytes/draining Pending; Drop executes duty once | F11/F12/F17 pending; partial one-state capability fails registration; custom heap allowed; root has no fictitious parent |
+| Independent container / LC9–LC13 | Formed interface/effect tree, actual Param/args, common-K dispatch/custody; ordinary compile tree transformation and selected calls | Dispatch checks Region/access/independent Color; commit transfers once; Post retains actual task obligations and normal return dependency boundary | F10 pending; unique Wait custody adds no concurrent Color; async grants no escape or implicit join |
+| Atomic / ordinary LC1–LC7 plus memory consumers | Formed type, external-origin closure for every retained state name including I/Index and S, actual version/authority and branch causal support; admitted primitive plus ordinary registered calls | Pre checks retained-state-name closure, resource/sync/transition contract before hardware CAS; a real ordinary producer may supply a fresh closed I_b, never role-based forgetting; same successful point changes A/I/S and yields Committed; failure returns S_b without S_a or success version | F13/F14/F16/F18 pending, F15 undecided; comparison-only unretained input keeps ordinary Pre, keep/take compete on same instance, peek has no payload/latest guarantee, no safe-subset or outer atomic inference |
+
+These handoffs add no evaluator, intrinsic success marker or user proof Object.
+Logical end may transfer a real deferred Drop continuation under the heap owner;
+fixed placement and observable destructor order remain unchanged by checking.
+Source consumer/host dependency wiring is required before any execution claim.

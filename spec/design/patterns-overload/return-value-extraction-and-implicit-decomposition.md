@@ -190,9 +190,9 @@ consumer; unsupported families are explicitly unavailable.
 
 ## One-layer extraction boundary
 
-Bare `?` exposes at most one admitted layer. It does not keep peeling until a target pattern
-is found, perform Error propagation, search for an extractor, or stand for
-arbitrary pattern matching. Leaves and Pattern normal forms are fixed points.
+The default structural `?` exposes at most one admitted layer. It does not
+search recursively or insert error propagation. A specifically registered
+Option `?` has the separate ordinary Some-delivery/None-throw contract below. Leaves and Pattern normal forms are fixed points.
 
 Pattern-directed destructuring consumes the supplied structure through the
 Pattern matcher:
@@ -284,7 +284,8 @@ Compile `t * ω` requires an available finite payload; its runtime-only view
 cannot create a static bare Product and instead needs an iteration-like
 consumer. These are ordinary Policy-sensitive candidates for the same value.
 
-It is not recursive by default, and it is not an error-propagation shorthand.
+This default view is not recursive and inserts no error propagation; the
+specific registered Option operation below carries its own explicit effect.
 
 ```text
 leaf e:
@@ -328,8 +329,8 @@ Pattern view, not another branch universe.
 The same mechanism generalizes beyond `bool`:
 
 ```text
-Option-like value:
-  opt? -> some | none
+Default structural observation of an Option-like value:
+  expose its declared some | none view (not the Option throwing operation)
 
 Result-like value:
   res? -> ok | err
@@ -570,7 +571,7 @@ that sequence implicitly.
 1. Evaluation result normalizes to e or P.
 
 2. `?` exposes one selected layer: a repetition payload or a named top view.
-   It supplies no recursive search, cross-rank conversion or Error propagation.
+   This default supplies no recursive search, cross-rank conversion or implicit Error propagation.
    Runtime-only t * ω supplies no static variable-arity expansion.
 
 3. On leaf values, `?` is idempotent:
@@ -635,3 +636,22 @@ Type/compile/Pattern material remains ordinary instance material with normal
 pass and lifecycle obligations; shape or stage creates no automatic exemption. Mechanical elaboration supplies the
 continuation to [E](../static-evaluation/evaluation-residual-and-optimization.md);
 optional optimizer search cannot change its rules.
+
+## Registered Option question operation
+
+### N16 — Option 保留成功凭证，特定 `?` 可消去失败 [不变量]
+
+可信验证 API 返回 `Some(s) | None`。仅 Some 的实际成功 Post 建立 s 的凭证和来源；None 没有一个隐形成功 s。
+
+本协议采用的 Option `operator ?` 在 Some 分支交付内容，在 None 分支执行普通 throw。因而 `validate(...) ?` 的正常后继只收到成功材料；这不是从函数名、bool 或成功标签凭空产生授权。
+
+该行为属于具体注册的 Option `?` 实现，不把所有 Product 解包、effect 结果提取或所有 `?` 改成自动异常传播。通用单层结构提取与 Option 的显式注册语义必须分清。
+
+若两个 Some 的内容同 Pattern、分别来自 A/B，解出后来源仍为 A 或 B 的不可区分选择；不得因此当作一定属于 A。需要保留区分时，程序必须留下真实可区分的模式材料。
+
+The specific Option operator is an explicitly selected ordinary result/effect
+adapter, rather than ambient Error-type propagation. General Product peeling,
+repetition unpacking and effect-result branching keep their own registered
+interfaces. The [effect owner](../control-flow/effect-steps-and-continuation-handoff.md)
+owns throw/Wait and the common handoff; syntax preservation of postfix `?`
+does not connect this Option consumer.

@@ -125,3 +125,15 @@ presence, both Policy observations, same Type and capability coherence remain
 mandatory. Already available views win before the one admitted direct family;
 no-reopen and selected-failure rules are unchanged. opposite-context Policy interpretation obeys readiness
 and never runs a candidate body to obtain its own applicability Pattern.
+
+## Instance-level forgetting and recovery handoff
+
+Before an observation loses names, prove the lifetime owner's conservative
+aggregate/default boundary and retain actual Move/Drop operations for the target
+protocol. Missing source/qualification is unavailable before migration.
+Default-world recovery in an active reify is a partial selected operation:
+a genuinely non-default hidden instance produces its declared ordinary
+exception, with no successful recovery Post. An absent consumer does not throw
+that exception. ClosedReturn/ClosedInterface include the actual failure effect,
+direct same-Type selection remains sealed, and no inverse theorem follows.
+Host reuse tracks those instance conditions and executable operation mappings.
