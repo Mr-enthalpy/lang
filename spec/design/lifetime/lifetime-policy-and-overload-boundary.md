@@ -470,8 +470,9 @@ U_entry_newnames(F,theta)
       ⊕ TypeDefault(F,theta)
       ⊕ Delta_pre(F,theta)
 |Delta_pre| < infinity
+```
 
-TypeDefault(F,theta) instantiates any type-defined DefaultWorld(tau)
+`TypeDefault(F,theta)` instantiates any type-defined DefaultWorld(tau)
 description for each genuinely new formal name of complete type tau. Missing
 type-specific description contributes no extra relation: the existing base
 U_default remains. These type-specific descriptions are ordinary compile
@@ -487,9 +488,11 @@ specifies; all remaining relations retain the applicable default. The resulting
 entry requirement is checked against the actual selected caller-world name,
 generation, target and source correspondence **before** input/action commit:
 
-    CallerPreOK(K,F,actual,theta)
-      requires ActualWorld_K(actual,theta)
-               satisfies U_entry_newnames(F,theta)
+```text
+CallerPreOK(K,F,actual,theta)
+  requires ActualWorld_K(actual,theta)
+           satisfies U_entry_newnames(F,theta)
+```
 
 A default or explicit correction cannot create a name or capability, delete
 fixed Color/history/Drop, alter registered access or source facts, or make an
@@ -500,6 +503,7 @@ all actual structural/name-companion dependencies, fixed exclusive/shared
 borrow-root defaults and independent resource/capability Pre. In particular,
 it does not declare every origin=None or every shared root distinct.
 
+```text
 DefaultOriginUniverse:
   exclusive-write borrow roots e_i, e_j
     -> DefaultRoot(e_i) and DefaultRoot(e_j) are anonymous
@@ -534,7 +538,7 @@ DefaultOriginUniverse:
     -> additionally receive the exclusive/shared default-root rules above
 
 PreDoesNotConstructUniverseFromZero:
-  Delta_pre is a finite patch over U_default,
+  Delta_pre is a finite patch over U_default_base and TypeDefault,
   not the complete origin universe
 ```
 
