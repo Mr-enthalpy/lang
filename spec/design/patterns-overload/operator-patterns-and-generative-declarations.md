@@ -5,21 +5,56 @@ Status: canonical semantics; source consumers remain pending.
 ## 1. One declaration, two surface projections
 
 ```lang
-P let f = (self,args):compile => { B }
-P let (self,args) f => { B }
+P let f = <T>[capture](self, x:T):runtime -> result:R
+    lifetime pre E_pre lifetime post E_post => { B }
+
+P let <T>[capture](self, x:T) f:runtime -> result:R
+    lifetime pre E_pre lifetime post E_post => { B }
+
+P let <T>[capture](self, x:T) f::path:runtime -> result:R
+    lifetime pre E_pre lifetime post E_post => { B }
 ```
 
-These are equal surface projections of ordinary compile callable material:
+The first two are equal surface projections of the **same general Ordinary
+callable declaration material**, not just of a `:compile` body with a bare
+parameter Product. The schema covers every admitted DeduceList, capture
+specification, contextual self/explicit parameter Pattern (including supported
+Pack and defaults), callable-head P2 (`compile`, `runtime`, or `reify`),
+result `->` clause, ordinary lifetime pre/post head clauses and implementation
+tail (ordinary block, named strategy, default or delete), with their original
+Policy, source order, binder identities, lexical scope and dependencies.
+A particular form remains subject to the same independent grammatical
+restrictions as its ordinary closure counterpart. No omitted component is
+filled by reparsing the other form, and neither body nor capture initializer
+executes twice. In particular, the head's contextual self is not an extra
+explicit call argument.
 
-    CallableDeclaration<Policy, NameHead, SelfPattern, ArgPattern, Body>
-    Norm(Form_call_value) = Norm(Form_pattern_name)
+    CallableDeclaration<Policy, NameDestination, GeneralClosureHead, ImplementationTail>
+    ProjectCallableMaterial(Form_call_value)
+      = ProjectCallableMaterial(Form_pattern_name)  // for the same destination
 
-The callable-value form preserves ordinary self; the name form receives a
-requested NameValue. Source normalization preserves syntax without lookup or
-semantic declarations. Both use ordinary dependency formation and selected
-CompilePartner identity. Requested-name observations enter canonical inputs.
-The established callable may retain legally formed dependencies; invocation
-uses only the actual self-name and admitted dependency material.
+This is a semantic material correspondence, not a mandated new AST node.
+Source normalization preserves the respective syntax without lookup, Pattern
+solving or semantic declarations. Both use ordinary dependency formation and
+selected CompilePartner identity. Requested-name observations enter canonical
+inputs. The established callable retains its legally formed dependencies;
+invocation uses only the actual self-name and admitted dependency material.
+
+The third form extends the **name destination** to `f::path` in the existing
+structural direction. Its terminal selector is `f`; `path` is interpreted by
+the ordinary qualified-name/Path consumer. When the declaration forms a
+qualified name it must satisfy the names owner's resolved structural-root,
+current OpenHere, selector, freshness, ordinary Place/initialization and
+publication premises. The name's destination and associated scope do not
+change the GeneralClosureHead or its P2. The post-destination `:runtime` above
+is callable-head P2, not the initializer-free `P let f::path:t` Place-type
+annotation. The `=>` callable form supplies that syntactic distinction.
+
+Qualified name formation does not by itself establish V_tau callability,
+Pattern registration, a member on a different type snapshot, or a special
+receiver. Concrete, wildcard and HoleRef requested heads keep the existing
+requested-coordinate and specificity rules; this extension grants no
+independent generator or naming authority.
 
 Ordinary P let lhs = rhs has extractive polarity: the known RHS is matched by
 R_Gamma(lhs,rhs,rho). Generative P let H => B has the direction:

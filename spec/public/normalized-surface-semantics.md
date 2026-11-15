@@ -1314,11 +1314,34 @@ surface and must not be assumed:
 
 ## Canonical construction and consumer alignment
 
-The canonical equal callable/name-producer declaration surfaces `P let f = (self,args):compile => B`
-and `P let (self,args) f => B` preserve the same declaration material. This is
-a syntax/semantic handoff requirement, not a claim that the current parser has
-connected the latter form. Neither form normalizes by resolving a name or
-solving a Pattern. Likewise bare `let` preserves an absent override, written
+The canonical callable/name-producer equivalence applies to the **whole
+admitted general Ordinary closure head**: DeduceList, explicit/automatic capture
+material, contextual self and argument Pattern, P2 (including reify), return
+Pattern/Policy, lifetime head clauses, and the implementation tail with its
+source order and effects. For example:
+
+```lang
+P let f = <T>[cap](self, x:T):runtime -> r:R
+    lifetime pre E_pre lifetime post E_post => { B };
+
+P let <T>[cap](self, x:T) f:runtime -> r:R
+    lifetime pre E_pre lifetime post E_post => { B };
+
+P let <T>[cap](self, x:T) f::path:runtime -> r:R
+    lifetime pre E_pre lifetime post E_post => { B };
+```
+
+The first two project equal callable declaration material at the same
+destination; the third uses the ordinary structured-name destination
+`f::path`, which must independently satisfy qualified-name formation and
+publication. The `:runtime` after that destination is callable P2, distinct
+from initializer-free `P let f::path:t`'s Place type. No closure-head component,
+capture source or contextual self is lost, recaptured or evaluated twice;
+`=>` determines the callable form, not a different name or type system.
+These are syntax/semantic handoff requirements, not claims that the current
+parser has connected the named forms. Raw/Norm preserves roles and syntax
+without name lookup or Pattern solving. Likewise bare `let` preserves an
+absent override, written
 `const` / `mut` concrete constraints, and `<p> p let` an explicit deduction hole;
 later elaboration computes Pin/Pout overlays and any default completion.
 
@@ -1602,13 +1625,23 @@ omitted Post still promise NoDelta. The four
 [walkthroughs](../design/lifetime/lifetime-algebra-walkthroughs.md) show the
 design data flow, including the specifically registered Option `?` that
 returns Some's content and throws on None; Product/effect views remain separate. Their schematic APIs do not assert executed source coverage.
+A type-defined default-world description, if available, supplies only
+fallback internal-name relations for newly introduced formal names at Pre.
+Explicit Pre may replace those defaulted relations; existing captured/real
+source facts are never reset. This is not a type-wide Movable certificate.
+Its exact source declaration spelling is not yet frozen in the lifetime owner.
 See [LC1–LC8](../contracts/lifetime-program-consumers.md) for the source handoff.
 
 ## 17. Unified resource and effect surface (consumer pending)
 
 The [effect owner](../design/control-flow/effect-steps-and-continuation-handoff.md)
 defines `(yield_val,resume_pattern) wait @{repair}` and
-`(yield_val) |> wait (resume_pattern)@{repair}` as one handoff contract. Repair
+`(yield_val) |> wait (resume_pattern)@{repair}` as one handoff contract. Each actual wait/throw request is stage-indexed by
+the selected enclosing callable's P2: compile requests compile effects,
+runtime requests runtime effects, and reify has an outward runtime horizon.
+Effect-stage matching applies to transparent propagation and declared regular
+effect interfaces; it does not change the Policy of yield values, lifecycle
+projection or the unique E. Repair
 binds to the complete preceding expression more weakly than full E; parentheses
 delimit it, and omission requests source-derived automatic repair, reducing to id only when no replay is required. The lifecycle owner's identity law Pre=Post
 also generates InPlace automatic-capture and held handoff-material AutoPre;
