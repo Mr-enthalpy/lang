@@ -65,6 +65,9 @@ owns static/name/structural interpretation and instance formation.
 
 1. Independent PolicyMode={const,mut}, OpenPolicy={open,close} and
    Stage={compile,runtime}; total output demand before maxima.
+   The extended named callable/general head/qualified destination and
+   enclosing-P2 wait-stage requirements are canonical but await their actual
+   source/effect consumers; syntax equivalence alone proves no execution.
 2. Resolve once; ordinary associated Val2[()] entrance and exact immutable V_tau
    expansion; R_vis evidence and ordinary C_sigma preparation.
 3. Stable CompilePartner receiver/call-entry pair and canonical inputs;
@@ -325,6 +328,16 @@ effects and failure without publication. Executed coverage and remaining source
 frontiers are reported separately from canonical laws.
 
 ## 9. Lifetime value-program wiring
+
+New-formal entry relations now take the established base default, optional
+type-defined DefaultWorld schema and explicit Pre corrections in that order.
+The resulting requirements must be checked against the actual source-world
+mapping before a call commits. A type-default schema is not a type-wide
+Movable theorem, and it may not reset existing captures/held continuations.
+Specific source declaration syntax and type registration for DefaultWorld
+remain open; the semantic admission boundary and executable Move/Drop
+requirements are fixed. The NW01–NW10 conformance targets are not source
+coverage.
 
 The [lifetime owner](../design/lifetime/lifetime-policy-and-overload-boundary.md)
 now specifies ordinary lifecycle computation, bootstrap responsibilities and

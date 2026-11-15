@@ -147,6 +147,25 @@ normal Error-shaped data delivery has no implicit effect, while explicitly
 requested value/effect adapters retain ordinary contracts. All adapter execution
 is pending; these rows add no Rust coverage claim.
 
+## Named callable, wait-stage and type-default entry acceptance
+
+These are canonical **design targets**; no parser, lifetime source consumer,
+effect execution or proof is claimed as connected by this specification change.
+The type-default declaration spelling is deliberately not yet fixed.
+
+| ID | Admitted or contrasting source | Required relation and negative boundary |
+|---|---|---|
+| NW01 | `P let f = <T>[cap](self,x:T):runtime -> r:R lifetime pre Epre => B` versus `P let <T>[cap](self,x:T) f:runtime -> r:R lifetime pre Epre => B` | Same formed declaration material, actual capture occurrence order, self, Pattern roots, Policy, return, clause, effects and single body. No extra self input, recapture, double initializer or compiler-only restriction |
+| NW02 | Same pair with compile/reify P2, explicit/omitted return and legal implementation tails | General corresponding heads use their existing grammar and semantic rules; no special named restriction or inferred Function Pattern `->` for ordinary closures |
+| NW03 | `P let (self,args) fname::path:runtime => B` versus initializer-free `P let fname::path:t` | Structural target is NameCoord(resolved root(path),fname) with real OpenHere/freshness/Place/initialization. `:runtime` is callable P2, not child Place type; no V_tau/Pattern registration or authority from spelling |
+| NW04 | Runtime callable actually executes wait; compile callable actually executes wait | Request runtime effect in the former and compile effect in the latter; same-stage effect contract is checked at each actual boundary, not inferred from payload Policy |
+| NW05 | Compile function forwards runtime wait unhandled, or runtime function forwards compile wait unhandled | Stage/interface mismatch cannot silently recolor, migrate or reopen; an admitted ordinary handler/wrapper must close it, with actual control/cleanup still checked |
+| NW06 | Reify callable wait versus reverse-dependent compile work | Outward wait/effect shape is runtime and compile-closed; internal reverse-dependent work keeps active-boundary premises. No second E or user-directed effect stage |
+| NW07 | New T formal has DefaultWorld(T) with no extra cross-component relations; no explicit Pre | Entry uses that default plus unchanged base borrow-root/structure/source laws, and only when caller's actual mapped world satisfies it. Default alone supplies no Movable, access or Drop waiver |
+| NW08 | Same T formal with explicit Pre declaring a supported dependent relationship | Explicit Pre overrides the corresponding defaulted relations, and actual caller must prove them. Do not reject merely because T has an independent default or synthesize a different current source |
+| NW09 | Existing InPlace capture, held wait context, or non-default actual instance | Never regenerate established names from type defaults; preserve history and inherited Post, or reject failed mapped Pre. Type equality is no proof of default-instance recovery |
+| NW10 | Anonymous forgetting of type T with a uniform repair or one event-specific Move proof | Preserve required executable Move/Drop and each target's real legality; default-world schema is not a type-wide trivial movement theorem. No implicit Box/clone or unproved generalization |
+
 ## Stage, Policy and two-round calls
 
 | ID | Scenario | Required result |
@@ -387,7 +406,7 @@ executed success.
 | 106-GN03 | Concrete and general generators both apply | Use ordinary specificity, without a separate generator priority. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-GN04 | Incomparable maxima or failure after selection | Ordinary ambiguity/terminal failure; do not reopen generation. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-GN05 | Expression body versus an ordinary enclosing body | Use the same result delivery without inserting a semantic temporary for surface differences. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
-| 106-GN06 | Value/call and Pattern/name forms of one compile declaration | Preserve the established equivalence domain without extending it to arbitrary lexical let. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
+| 106-GN06 | Value/call and Pattern/name forms of a general Ordinary callable declaration | Preserve all legal general head components, P2, capture, output, contracts and implementation tail at the same destination, without extending this correspondence to arbitrary lexical let. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-GN07 | let a=e and let _=e | Remain extraction/binding of an existing RHS, not generation. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-GN08 | let <a> (c Pattern) a | Reach a's layer, then apply the same R_Gamma with compatible valuations. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-GN09 | Intermediate extraction in an unordered layer | At most one whole intermediate extraction, which may contain several named fields. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |

@@ -145,7 +145,9 @@ with mandatory erasure of external structural-source authority on projected
 Function Pattern values, without an inverse theorem or recovery from compile
 Val1. Opaque implementation provenance is not external authority. The
 [lifetime owner](lifetime/lifetime-policy-and-overload-boundary.md#216-call-boundary-summaries)
-consumes ordinary contract programs and implication, retaining U_default for
+consumes ordinary contract programs and implication, retaining base U_default
+plus any proven type-defined DefaultWorld for new formal-name relations, not a
+universal Movable claim, for
 genuinely new entry names, inherited preceding Post for InPlace automatic captures, and
 handwritten Function Pattern omitted-post NoDelta. Implemented bodies instead
 form automatic Post from formed guarded body/operation descriptions before
