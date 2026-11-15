@@ -197,3 +197,17 @@ Obtaining a compile observation from runtime material requires the independently
 admitted reify/migration consumer. `?`, Product context and the spelling `ω`
 grant no reverse-migration authority. An unconnected unpacking or iteration
 consumer is explicitly unavailable; it supplies no guessed runtime residual.
+
+## Anonymous aggregation and lifecycle precision
+
+Val1 relocation does not itself permit loss of lifecycle names. Anonymous
+insertion consumes the lifecycle owner's [N20–N23 rules](../lifetime/lifetime-policy-and-overload-boundary.md#16-anonymous-names-executable-operations-and-partial-recovery):
+Pre must express every special dependency conservatively at whole-aggregate
+granularity and retain executable Move/Drop for all required operations. Unknown
+must be an actual lawful boundary. Normal extraction creates a fresh name with
+all conservative aggregate obligations; it does not subtract them from the
+remaining aggregate or recover an original name by value/index equality.
+Obligations merge conservatively, permissions do not union. An independent
+non-Copy value is admissible when its real ownership/operations suffice; no
+implicit Box or universal Copyable requirement is introduced. Missing F07/F08
+or source/iteration consumers is Unavailable before insertion.

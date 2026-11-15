@@ -370,8 +370,12 @@ name. Value and borrowed lifecycle fields remain distinct.
 
 ### Region generation
 
-A gapless half-open interval delimited by use/move/drop events. A killing move ends the source generation and begins its replacement at one
-continuation cut. Preserve follows its independent narrow proof.
+The discrete use/consume/Move/Drop positions of one actual name/generation in
+fixed normalized K. Parent/child production requires min(parent)<min(child)
+and max(child)<max(parent), without event-set containment. Pure slicing only
+restricts reachable positions. Formation/custody and physical storage are
+separate. A killing Move transfers generations at one commit; Preserve retains
+the subject. Empty/unavailable endpoints supply no fabricated defaults.
 
 ### Pre / Post
 
@@ -635,11 +639,11 @@ name/generation vocabulary; an empty slice therefore has
 Post(K_minus)=Pre(K_plus) in the same world.
 InPlace existing automatic captures inherit that state, rather than generating
 new default origins. Actual handoff proves atomic Move[repair] and publishes
-only a valid successor, with legal name projection and default repair id.
+only a valid successor, with legal name projection and source-derived automatic repair.
 Held handoff material reuses the id law on the mapped successful handoff Post,
-with no fresh defaults. Default repair id preserves its own input; Move[id]
+with no fresh defaults. An actually selected identity repair preserves its own input; Move[id]
 still includes the actual Move and need not preserve the entire source world.
-The suspending side supplies repair; ordinary new resume arguments use entry
+The suspending side forms and validates repair; ordinary new resume arguments use entry
 name rules. See the [lifecycle owner](../design/lifetime/lifetime-policy-and-overload-boundary.md#218-empty-slices-inherited-autopre-and-atomic-move-repair).
 
 ### Effect / Wait / throw
@@ -757,3 +761,19 @@ E revalidation. See the [unified owner](../design/unified-static-name-and-struct
 Region_K(n)=R(NamePosition_K(n)). Current continuation Pre/commit/Post and fixed
 cleanup facts govern execution, independently of when a branch becomes known.
 Future-path analysis is optional O work with E revalidation.
+
+### Automatic repair / anonymous forgetting / atomic version
+
+Automatic repair replays retained selected production expressions for live local
+origin-dependent material, preserving origin-None root values without clone.
+Input/capture repair belongs to the outer handoff; unknown is not None.
+Ordinary initialization remains once per formation. New repair occurrences
+have real effects and cannot reuse old success receipts.
+
+Anonymous forgetting requires conservative whole-aggregate obligations and
+executable Move/Drop. Ordinary extraction inherits those obligations; partial
+default-world recovery in reify cannot restore a hidden non-default dependency.
+An atomic version is a committed event identity, separate from a state number,
+LifeName/generation, origin and rf. Only actual observation imports its Past.
+The [atomic owner](../design/lifetime/atomic-pattern-transitions-and-causality.md)
+defines the one-attempt resource transition and bounded F15 decision.

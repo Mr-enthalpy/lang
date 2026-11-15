@@ -1645,3 +1645,33 @@ no general Boolean difference, arbitrary inverse, or universal result join.
 Product integrity and sum miss remain separate. A sealed extractor's failure
 is terminal, never another derivation or arm. Internal Done is not a Pattern
 constructor and residual escape is a distinct boundary consumer.
+
+## Pattern-layered origin convergence
+
+### N15 — Pattern 分层的 origin 合流 [定义]
+
+在共同结果位置，对由一般 Pattern 关系确定的结果分支分类：
+
+```text
+same observable Pattern:
+    merge origin choices; the result does not distinguish the former source arms
+
+different retained Pattern alternatives:
+    retain each alternative's precise origin information
+```
+
+同模式合并只遗忘来源区分，不合并真实资源身份，不复制权限，不制造新 unknown。源选择与其 Region、有效性、效果等必要事实要保持关联；不能拼接不同来源分支的权限。
+
+“同模式”不是同机器布局、相同值、相同外层容器名或任意重叠谓词。“异模式精确”以实际保留、可由 `R_Γ/Split` 区分的和模式材料为依据，不引入一般补集或另一套模式求解器。
+
+和模式变换与其生命周期伴随投影是语言负责的原子语义。用户重载不得改写这项合流律。源码生产/访问仍走其正常注册和选择，不能从模式变换推出实际对象复制、析构或资源移动。
+
+Input is actual formed alternative Pattern, source/guard and corresponding
+lifecycle relations. The ordinary selected sum transformation retains distinct
+resource custody while the outward summary forgets only distinctions that the
+observable Pattern cannot retain. Actual extraction selects the reached branch;
+Pre checks its source, generation and authority, commit performs its ordinary
+transfer, and Post exports only correlated branch facts. A/Some(Index) and
+B/Some(Index) with indistinguishable payload Pattern never prove specifically A.
+Missing F05/source consumers is Unavailable; no extra complement/join solver
+is introduced.

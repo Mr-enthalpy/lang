@@ -1923,3 +1923,20 @@ This document does not freeze:
 - a complete runtime reflection API;
 - export reopening syntax;
 - unrelated `?`, `*=`, or Pattern-coordinate mechanisms.
+
+## Name-precision migration and partial default recovery
+
+A selected runtime:compile -> runtime:runtime observation migration must retain
+the actual instance's executable Move/Drop plus every required conservative
+dependency, using the [lifetime owner's N20–N24](../lifetime/lifetime-policy-and-overload-boundary.md#16-anonymous-names-executable-operations-and-partial-recovery).
+Type-wide trivial movement, type-wide uniform repair and the actual name's
+protocol-scoped instance proof are distinct sufficient evidence. No mandatory
+Copyable trait, vtable, hidden Box or ABI switch is implied.
+
+Inside an active closed reify boundary, runtime:runtime -> runtime:compile
+default recovery is partial. A legitimately selected operation succeeds only
+for an instance whose dependencies satisfy the default-world recovery condition;
+a hidden non-default instance takes the declared ordinary throw branch.
+Unavailable producer/criterion/consumer is a diagnostic, not that runtime branch.
+Keep ClosedReturn/ClosedInterface and the actual classifier/ownership mapping;
+bidirectional candidates and equal Type do not prove inverse functions.

@@ -174,7 +174,7 @@ must cover ordinary no-wait work and all pending caller contexts, expression/
 control/delivery, cleanup and compile/reify boundaries. This fundamental common-E
 consumer is pending, separately from local cuts and O generation grain.
 Empty slices obey Post=Pre. Actual handoffs use suspending-side atomic
-Move[repair], default id, before exposing the valid successor AutoPre. Self,
+Move[repair], source-derived automatic repair, before exposing the valid successor AutoPre. Self,
 captures and explicit args share call/lifecycle rules without field ownership
 or duplicate Kill. Source-erasing Function Pattern values expose former captures
 as explicit inputs. Throw uses Wait and ordinary Drop of the delivered continuation;
@@ -220,3 +220,25 @@ all non-absent ranks compile, preserving absence. Explicit Hole Policies can
 address individual ranks. Unknown higher observations remain unavailable.
 Type operations use the compile algebra. See the
 [unified owner](unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).
+
+## Lifecycle and memory correspondence
+
+[Discrete lifecycle events and repair](lifetime/lifetime-policy-and-overload-boundary.md)
+preserve actual selected producer/partner mappings. Parent/child Regions use
+strict endpoint order with holes; pure slicing restricts actual reachable
+events. Origin-None root preservation is not clone. Ordinary invocation retains
+initialized sources; a new automatic repair fragment is a new occurrence with
+real effects, admitted only after F02–F04.
+
+[HeapStack](lifetime/heap-stack-and-storage-responsibility.md) fixes current-top
+malloc/free and direct-parent relocation with lazy Pending custody; every
+standard non-root locate requires universal guaranteed submission. Independent
+[containers](control-flow/heterogeneous-computation-containers.md) separately
+check dispatch, Color and return/escape.
+[Atomic](lifetime/atomic-pattern-transitions-and-causality.md) consumes formed
+type material and jointly transfers state/resources at one actual successful
+point. Actual result branches retain their distinct causal histories; ownership
+visibility is a backend duty. F15 extra SeqCst/fence is pending.
+The [unified correspondence](unified-static-name-and-structural-semantics.md#cross-owner-correspondence)
+and [evidence ledger](../planning/lifetime-concurrency-consolidation.md) link these
+owners without another evaluator or duplicated Region definition.

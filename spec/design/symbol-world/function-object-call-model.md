@@ -728,7 +728,7 @@ existing capture material, the identity interval has equal Pre/Post; this
 neither resets entry facts nor declares the closure body's actions to be id.
 Only genuinely new entry parameter names use entry defaults. A real Move/repair
 boundary supplies its validated successor state; held handoff material inherits
-that Post through the same identity law. Default repair id does not make the
+that Post through the same identity law. An identity repair does not make the
 whole Move[id] transaction an identity. Ordinary closure boundaries
 are not empty slices.
 
@@ -1187,3 +1187,28 @@ The [surface contract](../../public/normalized-surface-semantics.md#15-canonical
 owns binding/provenance; the [Product owner](../patterns-overload/product-repetition-and-unpacking.md#2-bare-product-and-context)
 owns empty material versus a present Unit entry. Neither sugar implements
 missing closure/call consumers by an alternate evaluator.
+
+## Source-named call input slots (consumer pending)
+
+### N09 — 调用输入槽允许完整绑定形式 [不变量]
+
+在调用输入材料位置允许 `P let lhs = rhs`，复用 PolicyLet/BindingSlot 的现有构件。RHS 在调用者环境中求值，LHS 给该次位置槽提供可由相应 repair 引用的名字；该位置既交付外部表达式结果，又形成内部使用的名字对应。
+
+这不是按被调用方形参拼写路由的 named argument，不改变 Product 顺序、候选偏好或默认实参机制。不能把调用者写的 lhs 自动作为新的被调用方声明。
+
+源码形状示意：
+
+```text
+(..., P let slot = rhs, ...) |> callee @{ ... slot ... };
+```
+
+`P`、省略号和注释是元占位。解析必须保留绑定、Policy、Pattern、RHS、scope/span 与 repair 关联；语义层才建立来源/传递对应。不得在 Norm 中推导生命周期或预先选择重载。
+
+This target BindingSlot extension has no connected call-input parser/Norm/source
+consumer yet. Capture slots and expression PolicyLet are existing distinct
+syntax; they do not implement a positional binding with RHS in a call Product.
+Missing support is a spanned syntax/unavailable boundary. RHS is evaluated once
+at the actual caller frontier; selected transfer maps the slot to callee input
+once, retaining the source producer/partner for repair. It adds no named-argument
+routing or preference. The lifecycle owner defines automatic replay and its
+F02–F04 admission gates.

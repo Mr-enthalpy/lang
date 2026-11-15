@@ -161,3 +161,18 @@ successful action establishes, under ordinary Pre/commit/Post and the unsafe
 owner. Missing Pre is never repaired by an unsafe assertion. Global capabilities,
 their source realization, and migration remain pending consumers; host-Object
 representation alone supplies no executable global provider.
+
+## Standard heap capability and shared-memory realization
+
+Every standard located non-root Pool must provide lazy acceptance and universal
+guaranteed Submit to its immediate parent across all reachable admitted
+management states, including live allocations and Pending. Check this in locate
+Pre, not at heap Drop. Standard malloc/free enter the current top; relocation
+submits to up(H) without draining Pending. The root terminates its own protocol;
+ordinary custom providers need no standard relocation or shape.
+
+The [atomic owner](../lifetime/atomic-pattern-transitions-and-causality.md)
+requires real backend realization of causal and ownership-transfer visibility.
+Source users supply no relaxed/acquire/release operands to waive it. Coherent
+shared memory does not cover DMA/MMIO/device/persistence domains automatically.
+Extra SeqCst/fence is the open F15 decision; no ISA support is claimed.

@@ -167,3 +167,17 @@ applicability and extraction share one R_Gamma derivation
 generic deduction consumes Hole valuations
 selected failure never reopens extraction overload resolution
 ```
+
+## Correlated source and atomic branch observations
+
+The [Pattern owner's N15](pattern-relations-observation-and-extraction.md#pattern-layered-origin-convergence)
+governs origin summaries: same observable Pattern merges source choice without
+recoverable arm identity; retained distinguishable alternatives preserve their
+precise facts. Split/D uses that actual branch/source/permission correlation,
+never a general complement or union of unrelated authorizations.
+
+Committed/Rejected from an admitted [atomic transition](../lifetime/atomic-pattern-transitions-and-causality.md)
+are ordinary sum branches. Actual branch extraction carries its own custody and
+established version/rf/Past facts into common K; the next commit publishes only
+that path's causal knowledge. General Pattern matching alone neither performs
+a machine CAS nor grants protected payload ownership.

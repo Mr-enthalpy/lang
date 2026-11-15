@@ -149,3 +149,20 @@ An external variant may require real Q/generation validity throughout its finite
 transition interval. Such a fact cannot supply missing initial ownership,
 allocation distinctness/conservation, exclusion or normal ref authority. Returning
 the extracted owned box needs no trusted reconstruction from resource metadata.
+
+## Consolidated resource and atomic admission
+
+Actual validation success establishes the delivered Index name's credential;
+serial validation does not itself add concurrent Color. Option's registered
+Some/None operation and ordinary map lookup remain ordinary library contracts.
+Standard non-root locate requires universal guaranteed direct-parent Submit
+and lazy reception before registration; a successful one-state probe is not that
+proof. This requirement does not constrain arbitrary custom Heap providers.
+
+[Atomic](atomic-pattern-transitions-and-causality.md) registration trusts the
+actual coherent-memory commit facility only within its admitted transition and
+Color domain. Resource closure, same-instance competition and successful
+single-point S_a/S_b exchange must hold before hardware commit. Failed attempts
+retain incoming custody. No unsafe pre, check=true or private ticket constructor
+proves an unrestricted count-changing API enforces ARC. Causal/ownership
+synchronization is fixed; extra SeqCst/fence remains F15 and backend proof pending.

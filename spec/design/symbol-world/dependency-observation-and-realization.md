@@ -331,3 +331,16 @@ Its outward result classifier and input/output/regular-effect/capture/lifecycle
 interface shape satisfy ClosedReturn and ClosedInterface in
 [unified §20](../unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration),
 independently of runtime reverse flow. A fixed sum still admits runtime branch choice.
+
+## Cross-suspension source preservation
+
+Ordinary formation/projection/invocation retains initialized and automatic
+sources without replay. A source-derived repair is a separately formed new
+ordinary occurrence under the [lifecycle plan](../lifetime/lifetime-policy-and-overload-boundary.md#218-empty-slices-inherited-autopre-and-atomic-move-repair).
+Retain the original expression, selected implementation, actual name mapping
+and lifecycle partner. Live dependencies and unfinished Drop duties count even
+without a later source read. Local origin-None roots preserve existing values
+without clone; inputs/captures are repaired at the outer handoff, and actual
+unknown boundaries stop tracing. Shared producer nodes execute once per plan.
+New IO/validation effects and exceptions remain observable. F02–F04 and common-K
+source wiring are pending; missing plan evidence publishes no valid successor.

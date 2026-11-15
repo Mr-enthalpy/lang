@@ -452,3 +452,27 @@ remain normative acceptance targets. The
 routes them to existing consumers. Future implementation PRs must report actual
 connected coverage and failure/unavailable boundaries; document/link checks and
 substrate tests do not establish HA execution.
+
+## 11. Lifecycle/concurrency consolidation
+
+[Current evidence and F01–F18](lifetime-concurrency-consolidation.md) own this
+migration's status; [105 paired targets](lifetime-concurrency-acceptance.md)
+are not executed source coverage. N01–N45 and U01–U12 are distributed across
+actual topic owners, with F15 explicitly unselected.
+
+The implemented D1 slice replaces the continuous Region carrier with discrete
+event sets and actual continuation/generation identity. Event membership is
+separate from custody/liveness. Pure restriction and strict endpoint comparison
+retain holes and report missing endpoints; no parent-event completion is used.
+Unit tests cover interleaving, invalid/empty/foreign endpoints, restriction,
+actual event recording, no serial auto-Color and fixed cleanup. This is not
+complete F01 interpretation or source borrowing/@.
+
+Next dependency gates remain in order: founded producer/partner and common-K
+material; F02–F04 source-driven repair and explicit responsibility; F05–F09
+correlated joins, index, anonymous Move/Drop and recovery; F10 independent
+containers; F11/F12/F17 standard heap/lazy/universal locate; F13/F14/F16/F18
+atomic resource/causal/backend/protocol consumers. Connect new facts to actual
+host dependencies at each step. Missing domains remain unavailable; no id,
+None/default origin, empty Post, cloned owner, hidden Box or backend substitute
+may fill them. F15 alone needs an additional semantic-order decision.

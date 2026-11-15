@@ -6985,11 +6985,15 @@ mod tests {
             name: crate::LifeName(17),
             observed_at: crate::SemanticPosition(4),
             origin: Some(crate::LifeName(3)),
-            region: crate::Region {
-                start: crate::SemanticPosition(1),
-                end: Some(crate::SemanticPosition(9)),
-                generation: 2,
-            },
+            region: crate::Region::from_events(
+                &crate::SemanticContinuation::default(),
+                2,
+                [
+                    crate::SemanticPosition(1),
+                    crate::SemanticPosition(4),
+                    crate::SemanticPosition(9),
+                ],
+            ),
         };
         let policy = crate::compile_literal_policy();
         let a = world

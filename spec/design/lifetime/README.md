@@ -26,3 +26,16 @@ satisfying a missing Pre or granting write authority.
 Lifecycle residue is a projection of the same continuation as machine residue.
 [Continuation rewrites](../static-evaluation/evaluation-residual-and-optimization.md)
 must revalidate all affected projections.
+
+## Lifecycle/concurrency owner map
+
+Region, Color, origin, automatic repair, name forgetting and partial recovery
+are defined only in the [lifetime owner](lifetime-policy-and-overload-boundary.md).
+[HeapStack](heap-stack-and-storage-responsibility.md) owns standard current-top
+routing, lazy duty and universal direct-parent submission at non-root locate.
+[Atomic transitions](atomic-pattern-transitions-and-causality.md) own admitted
+sum-Pattern CAS, resource exchange and branch causality.
+[Heterogeneous containers](../control-flow/heterogeneous-computation-containers.md)
+own ordinary effect-tree transformation and independent dispatch.
+[Status and proof gates](../../planning/lifetime-concurrency-consolidation.md)
+separate all definitions from proof/source/consumer/test/backend evidence.

@@ -299,7 +299,7 @@ compile/reify boundaries must compose faithfully. Local wait splitting, Raw/Norm
 rewriting and a separate async evaluator cannot substitute for this account.
 Heap relocate transfers existing support/release responsibility under a guaranteed
 Pre and preserves live Places; object relocation moves real storage. Wait yields
-a concrete ordinary callable by valid atomic Move[repair], default id. Throw
+a concrete ordinary callable by valid atomic Move[repair], source-derived automatic repair. Throw
 uses that protocol; dropping its continuation cleans ordinarily, without unwind.
 Internal completion and effect Done(v) are distinct. IO/heap need no effect or
 shared stack shape; async needs no implicit Box or uniform state-machine type.
@@ -540,3 +540,32 @@ Ordinary barriers. Keep cropping, Color, origin and name/target identity.
 Regular access, ordinary program recursion and machine slot reuse require
 separate evidence. Existing lifecycle carriers/transaction tests are substrate,
 not proof that `@`, automatic Post or the trusted library source protocols run.
+
+## Lifecycle/concurrency interpretation checks
+
+Use [public §18](normalized-surface-semantics.md#18-lifecycleconcurrency-target-interface-consumers-pending)
+and the [owner/status ledger](../planning/lifetime-concurrency-consolidation.md).
+A child Region need not be a parent subset; strict endpoints permit serial
+parent/child interleaving. Color begins with actual independent access, not async.
+Save live dependencies/cleanup, not merely future reads. Origin-None roots need
+no clone; input/capture repair is outer and derived replay retains selected
+expressions/partners. Missing origin is neither None nor an invented unknown.
+
+Same-Pattern results cannot recover the old source arm. Some establishes its
+actual credential, None has none; the specific Option ? throws only by its
+registered contract. Equal Index copy loses trust. Whole-array dependencies
+survive ordinary extraction, and executable Move/Drop does not make forgetting
+invertible. Default-world recovery can reject an instance through ordinary throw;
+missing consumers remain unavailable.
+
+Standard malloc/free start at current top, relocate goes exactly to the parent
+with Pending unexecuted, and all standard non-root locate requires universal
+guaranteed parent submission plus lazy acceptance. Ordinary custom heaps remain
+allowed. Production Pre owns escape rejection; QS is no language premise.
+
+Atomic is a formed-type consumer with closed held resources; it creates no enum
+Pattern. CAS success jointly transfers S_a/S_b and version/state at one point,
+failure retains incoming custody. Real result-branch causality and resource
+visibility are fixed; extra SeqCst/fence, OOTA proof and backend lowering have
+their precise pending gates. No field-to-outer atomic propagation, payload access
+from peek, automatic retry or arbitrary protocol-subset inference is licensed.

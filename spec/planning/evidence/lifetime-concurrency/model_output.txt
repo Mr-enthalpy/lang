@@ -1,0 +1,8 @@
+ARC: 9 reachable states, 27 transitions; count/ticket invariant HOLDS
+Mutex: 8 reachable states, 8 transitions; one-owner invariant HOLDS
+Slot: 8 reachable states, 8 transitions; exact-once transfer invariant HOLDS
+MP with causal import: 13 states; Y=1 and X=0 FORBIDDEN
+MP without import: 14 states; Y=1 and X=0 REACHABLE
+SB without fence in weak-peek model: 14 states; 0/0 REACHABLE
+Negative: unlicensed count decrement breaks ARC; peek-only lock acquire duplicates guards
+NOT CHECKED: fence ISA behavior, IRIW, OOTA, overflow, weak refs, reclamation, compiler lowering

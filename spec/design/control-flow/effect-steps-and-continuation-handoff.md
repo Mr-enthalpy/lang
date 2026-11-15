@@ -32,14 +32,14 @@ The canonical proposed surfaces are:
 These two wait-specific surfaces have the same Step/MoveRepair contract. The
 resume Pattern introduces actual resumed parameter names. The postfix repair
 attachment covers the complete preceding expression and binds more weakly than
-ordinary full E; grouping delimits its extent. Omission selects id. Raw/Norm
+ordinary full E; grouping delimits its extent. Omission requests source-derived automatic repair, reducing to id only when no replay is required. Raw/Norm
 must preserve these roles/spans without evaluating them. Grammar and semantic
 execution are separately pending in the roadmap.
 
 ## 2. Handoff transaction
 
 Inputs are the actual selected action/activation/cut, yielded value, live
-continuation material, resume Pattern, ordinary dependencies and user repair.
+continuation material, resume Pattern, ordinary dependencies and the actual automatic/explicit repair plan.
 The [lifecycle owner](../lifetime/lifetime-policy-and-overload-boundary.md#218-empty-slices-inherited-autopre-and-atomic-move-repair)
 owns Valid, the id law Pre(id)=Post(id), empty-slice continuity and Move[rho].
 
@@ -67,7 +67,7 @@ delivery interval has Pre(id_H_k)=Post(id_H_k)=H_k, and the held-material part o
 AutoPre(k) is H_k. No fresh entry defaults reset these existing occurrences or
 their cleanup duties. This is equality in the successor's name/generation
 vocabulary, not equality of the original and new self Objects or a guarantee
-that the resumed body preserves state. Default repair id likewise preserves
+that the resumed body preserves state. An actually selected identity repair preserves
 its own input state; the composite Move[id] must still prove every ordinary
 Move and destination Valid premise and may change the source state.
 
@@ -106,8 +106,11 @@ No synthetic residual can stand in for unsupported syntax or a failed Pre.
 
 The suspending/forwarding side proves Valid after actual Move/repair and legal
 renaming to k. The resume side sees this validated AutoPre. User code may change
-construction or use a trusted facility with a genuine successful Post when id
-does not suffice. Neither automatic boxing nor an invented repair is a fallback.
+construction or use a trusted facility with a genuine successful Post when the source-derived automatic plan cannot establish Valid. An automatic
+plan retains selected production partners, saves origin-None local roots without
+clone, recursively delegates inputs/captures and records new effects. F02–F04
+must establish its plan, new-fragment placement and exact automatic/explicit
+responsibility before publication; missing consumers remain Unavailable.
 
 ## 3. Transparent propagation and ordinary handlers
 
@@ -213,3 +216,16 @@ summary and unchanged target-return barriers. The conformance matrix's C/L/A/E/S
 rows distinguish these normative requirements from executable coverage. O may
 choose a different generation grain only under the E owner's observation proof;
 the existence of a cut alone creates no physical Move or object-generation duty.
+
+## Independent execution and Option-specific effects
+
+Wait with unique execution custody introduces no concurrent Color merely by
+suspending or resuming. [Heterogeneous containers](heterogeneous-computation-containers.md)
+introduce actual independent access at dispatch and use the lifetime owner's
+Region/Color Pre; return/escape is separately checked. A handle Drop does not
+kill a still-running subject without its actual protocol.
+
+A specifically registered [Option `?`](../patterns-overload/return-value-extraction-and-implicit-decomposition.md#registered-option-question-operation)
+delivers Some and throws on None. General Product/effect-result extraction
+has no ambient success/error propagation. Repair validation failure follows
+its declared actual effects, without a fabricated successful continuation.

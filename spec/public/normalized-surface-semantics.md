@@ -1600,8 +1600,8 @@ consumers are pending under [LC5](../contracts/lifetime-program-consumers.md#lc5
 Handwritten Function Patterns with
 omitted Post still promise NoDelta. The four
 [walkthroughs](../design/lifetime/lifetime-algebra-walkthroughs.md) show the
-design data flow, including ordinary option extraction by `?` rather than new
-error propagation. Their schematic APIs do not assert executed source coverage.
+design data flow, including the specifically registered Option `?` that
+returns Some's content and throws on None; Product/effect views remain separate. Their schematic APIs do not assert executed source coverage.
 See [LC1–LC8](../contracts/lifetime-program-consumers.md) for the source handoff.
 
 ## 17. Unified resource and effect surface (consumer pending)
@@ -1610,7 +1610,7 @@ The [effect owner](../design/control-flow/effect-steps-and-continuation-handoff.
 defines `(yield_val,resume_pattern) wait @{repair}` and
 `(yield_val) |> wait (resume_pattern)@{repair}` as one handoff contract. Repair
 binds to the complete preceding expression more weakly than full E; parentheses
-delimit it, and omission means id. The lifecycle owner's identity law Pre=Post
+delimit it, and omission requests source-derived automatic repair, reducing to id only when no replay is required. The lifecycle owner's identity law Pre=Post
 also generates InPlace automatic-capture and held handoff-material AutoPre;
 handoff uses the legally mapped successful Move/repair Post, without new defaults.
 Repair id preserves its own input, not the whole Move[id] transaction. These
@@ -1633,3 +1633,57 @@ The original common semantic continuation also requires
 [complete CPS correspondence](../design/static-evaluation/evaluation-residual-and-optimization.md#71-whole-original-continuation-cps-conversion-consumer-pending),
 including nested caller suffixes and all ordinary expression/control consumers.
 This pending common-E work belongs after Raw/Norm, not in syntax normalization.
+
+## 18. Lifecycle/concurrency target interface (consumers pending)
+
+The [lifetime owner](../design/lifetime/lifetime-policy-and-overload-boundary.md)
+uses discrete fixed-K use/consume/Drop positions. Parent/child production checks
+strict min/max order, without requiring child event-set containment. Actual
+continuation advance only restricts reachable events. Existing captures inherit
+Post; only genuinely new entry names default. Serial borrowing and unique
+Wait custody add no independent-access Color; actual independent dispatch does.
+
+Omitted repair forms a source-derived automatic plan from live dependencies and
+unfinished cleanup, preserving origin-None roots without clone, replaying actual
+selected dependent producers/partners once, and delegating inputs/captures to
+outer handoffs. It is id only if no replay is needed. Missing F02–F04/source
+support is unavailable before successor publication. Ordinary initialization
+still occurs once per formation; new replay effects are real.
+
+Target call input P let lhs=rhs is a positional BindingSlot extension,
+preserving RHS, Policy/Pattern, scope/span and repair association. Its complete
+call-input carrier is **pending**; existing PolicyLet/capture syntax does not
+implement it. These examples are target syntax/metanotation.
+
+Same-Pattern origin convergence retains a correlated source choice; distinct
+retained alternatives keep their own facts. Specifically registered Option ?
+delivers Some and throws on None, while ordinary Product/effect ? keeps its
+own extraction protocol. Trust belongs to the actual Index name; equal-number
+copy grants no credential. Ordinary map lookup requires no validate_key phase.
+Anonymous insertion requires whole-aggregate conservative obligations plus
+executable Move/Drop. Ordinary extraction retains the remaining aggregate's
+obligations. Default-instance reify recovery is partial and cannot recover
+hidden non-default dependencies; missing wiring is unavailable, not an exception.
+
+[HeapStack](../design/lifetime/heap-stack-and-storage-responsibility.md)
+has no preference parameter: malloc/free enter current top and standard
+relocate submits to up(H) without executing Pending. All standard non-root
+locate operations prove universal guaranteed parent submission and lazy
+acceptance before registration. Custom heaps remain ordinary permitted providers.
+Escape fails at production Pre, not by a last-minute reader check at heap Drop.
+
+[Atomic](../design/lifetime/atomic-pattern-transitions-and-causality.md)
+consumes ordinary $-formed type material with no held external-origin dependency.
+One successful CAS jointly changes Pattern/state, delivers old S_a and installs
+S_b; Rejected retains S_b. State count, version and lifecycle identity differ.
+Actual branches publish/import real causal histories; ownership visibility
+must be implemented by the backend. No per-operation relaxed/acquire/release
+operand, implicit retry, outer atomic propagation or arbitrary safe-subset proof
+is implied. Only extra SeqCst/fence is undecided at F15.
+
+[Independent containers](../design/control-flow/heterogeneous-computation-containers.md)
+transform ordinary effect trees and separately check dispatch, Color and escape.
+[Status and paired acceptance](../planning/lifetime-concurrency-consolidation.md)
+distinguish definitions, proofs, syntax, consumers, tests and backends. This
+section changes no lexer/parser/Norm/diagnostic behavior and claims no source
+implementation of these pending protocols.

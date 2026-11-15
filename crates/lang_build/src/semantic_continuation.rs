@@ -26,6 +26,26 @@ impl PartialEq for ContinuationIdentity {
 
 impl Eq for ContinuationIdentity {}
 
+// Collection ordering/hash only: allocation identity establishes no temporal
+// ordering or comparability between events of different continuations.
+impl PartialOrd for ContinuationIdentity {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ContinuationIdentity {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        Arc::as_ptr(&self.0).cmp(&Arc::as_ptr(&other.0))
+    }
+}
+
+impl std::hash::Hash for ContinuationIdentity {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        std::hash::Hash::hash(&Arc::as_ptr(&self.0), state);
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SemanticActionIdentity {
     pub continuation: ContinuationIdentity,

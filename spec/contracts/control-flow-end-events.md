@@ -135,12 +135,12 @@ The [effect owner](../design/control-flow/effect-steps-and-continuation-handoff.
 defines wait as an expression cut, yielding Wait(y,k), and normal effect
 completion as matchable Done(v). These are ordinary effect sum branches, not
 the internal completion in §5. A repair attachment applies to the complete
-expression; the suspending side proves atomic Move[repair], default id, before
+expression; the suspending side proves atomic Move[repair], source-derived automatic repair, before
 exposing k. Resume is an ordinary new call of that concrete callable.
 Lifecycle id has Pre=Post. The held handoff material therefore inherits the
 legally mapped successful Move/repair Post as its identity-delivery interface
 and AutoPre, just as existing InPlace automatic captures inherit their preceding
-Post. Default repair id preserves only its own input; the full Move[id] still
+Post. An actually selected identity repair preserves only its own input; the full Move[id] still
 needs ordinary Move and destination Valid evidence. New resume names are not
 existing handoff material and retain ordinary entry rules.
 

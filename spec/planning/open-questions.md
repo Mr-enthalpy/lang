@@ -350,3 +350,28 @@ Callable reify P2, scoped bidirectional same-Type migration, runtime-policy type
 independently closed return classifiers and dependency-cone materialization are
 closed in the unified/Policy/E owners. Active-boundary witness encoding and
 continuation layout remain representation questions; consumer work is in roadmap.
+
+## Lifecycle/concurrency proof and remaining decision boundary
+
+The [ledger](lifetime-concurrency-consolidation.md) records F01–F18 with their
+actual proof/consumer status. The following are fixed semantics with pending
+proof/implementation: discrete Region/endpoint order and pure slicing; independent
+Color; source-driven repair and exact automatic/explicit responsibility;
+Pattern-correlated origins; name-bound Index credentials; aggregate forgetting
+with executable Move/Drop; partial default recovery; current-top heap routing,
+lazy custody and universal guaranteed direct-parent relocation at **every**
+standard non-root locate; atomic single-point Pattern/state/resource transition,
+branch causal closure and ownership-derived visibility synchronization.
+
+F02–F04 need founded fragment generation, supported replay domain and deterministic
+single responsibility before automatic/explicit repair can execute. Missing
+proof is unavailable, not permission to choose a convenient success semantics.
+F17 is not an open capability-policy decision. Root termination and ordinary
+custom heaps remain distinct from the standard non-root contract.
+
+**F15 is the sole open extra-memory-order decision:** determine whether stronger
+SeqCst cross-object guarantees are necessary, and only then the minimal optional
+fence form/axioms and supported litmus outcomes. Bilateral SB exclusion is not
+currently promised. F14 no-thin-air/causal-preservation and F16 per-ISA/IR lowering
+are unproved obligations, not source order operands users must select. Concrete
+recipe/descriptor/metadata/cache/ABI encodings remain representation choices.

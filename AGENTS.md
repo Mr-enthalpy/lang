@@ -321,9 +321,9 @@ name/generation vocabulary. Empty slices, existing InPlace automatic-capture
 AutoPre and held suspension handoff material reuse this law; existing material
 inherits its established Post, while genuinely new input names use entry defaults.
 For handoff, equality is on the legally mapped successful Move/repair Post.
-Default repair id preserves its own input, but the full Move[id] is not thereby
+An actually selected identity repair preserves its own input, but the full Move[id] is not thereby
 identity and still requires ordinary Move/destination Valid evidence.
-Wait hands off a new concrete callable by atomic Move[repair], default id,
+Wait hands off a new concrete callable by atomic Move[repair], source-derived automatic repair,
 validated by the suspending side before exposure. Self/captures/args are equal
 call/lifecycle material, with no field-ownership premise or duplicate Kill.
 Heap locate is ordinary single-linked context formation; heap relocate submits
@@ -410,3 +410,46 @@ all non-absent ranks compile, preserving absence. Explicit Hole Policies can
 address individual ranks. Unknown higher observations remain unavailable.
 Type operations use the compile algebra. See the
 [unified owner](spec/design/unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration).
+
+## Lifecycle and concurrency rules
+
+The [lifetime owner](spec/design/lifetime/lifetime-policy-and-overload-boundary.md)
+defines discrete event Regions and strict parent/child endpoint order without
+set containment. Pure advance restricts actual reachable events and preserves
+established production facts. Serial borrowing adds no independent-access Color;
+async/unique Wait custody alone is not concurrent dispatch. Only actual independent
+access checks and establishes the relevant Color.
+
+Omitted repair requests source-derived automatic repair: preserve live origin-None
+local roots without clone, replay actual selected derived producers/partners once,
+delegate inputs/captures outward, and stop at actual unknown boundaries. Ordinary
+initialization remains once; new replay occurrences retain real effects. Missing
+F02–F04 plan/proof/consumer is unavailable before exposing a successor.
+
+Same-Pattern convergence forgets arm distinction while retaining correlated
+source/permission obligations. The specific Option ? delivers Some and throws on
+None; other views keep their own protocols. Index credentials bind names, not equal
+integers. Ordinary Index copy loses trust; map lookup needs no forced validation
+phase. Anonymous insertion requires conservative whole obligations and executable
+Move/Drop, and extraction does not subtract the remaining aggregate's obligations.
+Default-world reify recovery is partial; hidden non-default instances throw their
+declared exception, and missing consumers remain unavailable.
+
+Standard malloc/free enter current top. Every standard non-root locate requires
+universal guaranteed direct-parent Submit and lazy acceptance across all admitted
+reachable management states. Relocate targets up(H), transfers Pending without
+executing it, and Drop performs its unique ordered duty. Escape is rejected at
+production Pre. Ordinary custom heaps are permitted under their own contracts.
+
+[Atomic](spec/design/lifetime/atomic-pattern-transitions-and-causality.md)
+consumes $-formed ordinary type material with no held external-origin dependency.
+Its single successful CAS jointly changes branch/state and S_a/S_b custody;
+Rejected keeps incoming S_b. Actual branch versions publish/import causal closure,
+and backend realization must honor ownership-transfer visibility. Atomic fields
+do not make an atomic outer type; safe primitives do not prove arbitrary protocol
+subsets. No implicit retries or per-operation relaxed/acquire/release operands.
+Only extra SeqCst/fence remains undecided at F15; F17 standard locate is fixed.
+
+Read the [owner map](spec/design/README.md) and
+[status/proof ledger](spec/planning/lifetime-concurrency-consolidation.md).
+D/P/S/C/T/B are separate; finite carrier/model tests are not source or ISA proof.

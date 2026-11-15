@@ -237,9 +237,9 @@ Failure leaves the fixed Drop executable at its original cut; neither the cut
 nor the ordinal advances. At its own fixed endpoint, Use/Preserve fail; Drop
 and a Kill replacing that Drop must follow the fixed sequence. Kill before
 its future scheduled Drop still discharges that obligation without borrowing
-the future cut's ordering. An ending action cannot close a half-open Region
-at a cut already containing Use/Preserve of that subject, even without a
-scheduled Drop. Action ordinals do not enlarge Region membership.
+the future cut's ordering. Without a scheduled Drop, an already ordered Use/Preserve and later ending
+may share a cut: both actual events remain recorded, and that position belongs
+to the discrete Region. This grants no right to preempt scheduled cleanup.
 Preserve discharges no cleanup obligation.
 
 `commit_action` enforces this boundary before projection Pre for every action,
@@ -294,3 +294,27 @@ value formed at 0 with cleanup fixed at 9 cannot be exposed as `[0,?)`.
 Reification does not solve placement or move cleanup points.
 NLL/with point derivation, source events and atomic decomposition/destructor
 continuations are not implemented by these substrate interfaces.
+
+## Discrete Region and source-derived handoff preservation
+
+Region event membership is not liveness. Operational generation custody records
+formation and ending separately; formation alone is not use. Closed reached-path
+Regions record actual use/Move/Drop positions with holes. A full @ observation
+still needs fixed-K future event/branch/activation material and remains unavailable.
+Instruction positions retain both the semantic cut and its fixed action ordinal;
+two events at one cut remain distinct and endpoint order observes that order.
+Each Region retains its own generation and K identity. Parent and child need
+not have equal generation numbers; actual name/producer and branch/activation
+correspondence are separate requiring-consumer premises. Supplied set operations
+grant no such authority or reachability evidence.
+Supplied event-set endpoint tests establish a carrier slice only, not F01's
+branch/recursion theorem or source borrowing. A pure slice restricts events,
+retaining generation, prior production facts and Color. Parent/child production
+checks strict min/max order, never event-set containment.
+
+Common source wiring must retain producer expression/selected partner, repair
+responsibility, Pattern-correlated origins, aggregate summaries and executable
+Move/Drop, recovery conditions, heap parent/Pending duties and actual atomic
+branch/version/causal facts when consumed. Atomic hardware commit must already
+be authorized to publish its joint resource Post; scratch rollback cannot undo
+a real CAS. Missing F02–F18 consumers publish no fictional Post/Residual.

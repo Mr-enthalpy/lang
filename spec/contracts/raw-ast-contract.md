@@ -794,3 +794,19 @@ belong after Norm, never in parser decisions. Complex design programs and
 `unsafe post` notation in the [surface note](../public/normalized-surface-semantics.md#16-lifetime-programs-and-contract-surface-consumer-pending)
 are not a claim of additional parser coverage. This documentation revision
 changes no parser shape, diagnostics or golden contract.
+
+## Target call-input BindingSlot extension (consumer pending)
+
+The call owner's N09 requires positional input material P let lhs=rhs,
+retaining Policy, Deduce/Pattern, RHS, scope/span and repair association.
+This is target syntax. Existing expression PolicyLet and capture BindingSlot
+do not preserve that complete call-Product form: its parser/Norm and source
+consumer remain pending. It is not named-argument routing or a callee declaration.
+Missing support remains an ordinary spanned diagnostic; no successful repair
+association may be inferred from partial recovery.
+
+Postfix ? preservation selects no Option/validation semantics. Explicit @{...}
+still reports UnsupportedEffectRepair until its low-binding carrier connects.
+Atomic/fence/thread source consumers and the extra F15 fence decision are not
+implemented by names or normalizer nodes. This migration changes no parser,
+normalizer or diagnostic behavior.
