@@ -2269,6 +2269,11 @@ Internal chain/target Done remains separate and unmatchable.
 
 ## 12. Structural type formation and registered children
 
+Actual Pattern/structure formation also establishes sufficient lifecycle
+companion material for the already selected legal field operations to commute
+with lifecycle projection. The [lifetime owner](../lifetime/lifetime-policy-and-overload-boundary.md#212-nameview-origin-and-finite-observation)
+defines that correspondence; [LC1](../../contracts/lifetime-program-consumers.md#lc1-pattern-and-structure-companion-formation)
+records its inputs and atomic boundary. This obligation belongs to the actual
  is still an interpretation-polarity flip, not an
 extra lifecycle action at every written occurrence. Neither a field signature
 nor a generated name substitutes for registered structural evidence.
@@ -2276,8 +2281,8 @@ nor a generated name substitutes for registered structural evidence.
 ### 12.1 Pattern-local `lifetime default`
 
 A structural Pattern node in RHS structural interpretation may carry a
-`lifetime default E` annotation. The provisional surface placement is inside
-the Pattern material consumed by `(...)# Pattern Relations, Observation, and Extraction
+`lifetime default E` annotation. The provisional placement is inside the
+Pattern material consumed by `(...)# Pattern Relations, Observation, and Extraction
 
 **Status: canonical semantic authority.**
 
@@ -3410,8 +3415,12 @@ Internal chain/target Done remains separate and unmatchable.
 
 ## 12. Structural type formation and registered children
 
-, attached to the particular named
-node:
+Actual Pattern/structure formation also establishes sufficient lifecycle
+companion material for the already selected legal field operations to commute
+with lifecycle projection. The [lifetime owner](../lifetime/lifetime-policy-and-overload-boundary.md#212-nameview-origin-and-finite-observation)
+defines that correspondence; [LC1](../../contracts/lifetime-program-consumers.md#lc1-pattern-and-structure-companion-formation)
+records its inputs and atomic boundary. This obligation belongs to the actual
+, attached to a particular named node:
 
 ```lang
 let srt = (
@@ -3420,40 +3429,20 @@ let srt = (
 )$;
 ```
 
-The annotation belongs to the `srt` Pattern node, not to the surrounding
-expression as a whole and not to a separate type-associated trait. It is
-retained as part of that node's Pattern material in the complete formed type.
-It does not change `R_Gamma` matching, create a Pattern child, register a
-member, or grant a Path/access/borrow capability. The example's
-`depends_on` and `..` are ordinary lifecycle-relation material; their API
-and operator spellings remain with the lifecycle algebra/API boundary.
+The annotation is local metadata of the `srt` Pattern node. It is retained
+with that node in the complete formed Pattern/type material; it does not alter
+`R_Gamma` matching, add a structural child, register a member, or grant
+access/borrow authority. The relation expression is ordinary compile
+lifecycle material, not an actual-instance observation during type formation.
 
-The annotation's Pattern-name scope consists of the annotated node's own
-bound name and its structural descendants. It cannot refer to a Pattern name
-of an ancestor or sibling. Only actual registered structural Pattern names
-and their lifecycle companions are addressable; ordinary `Val2` presence
-alone is insufficient. The source spelling is not the identity: binding and
-substitution use the actual Pattern/name identities.
+Its name scope is the node's own bound name and structural descendants only;
+it cannot refer to ancestors or siblings. Thus when nested under `wrapper`,
+the inner `srt` annotation can refer to `srt`, `val`, and `ref`, but not
+`wrapper` or `others`. A `lifetime default` on `wrapper` can refer to
+its own name and all descendants, and can override a conflicting default
+relation contributed by `srt`.
 
-For example, if the same `srt` Pattern occurs as a child of:
-
-```lang
-let wrapper = (
-    (
-        (uint8 val, uint8 ref ref)srt
-            lifetime default (srt@.ref .. depends_on(srt@.val)),
-        (uint8 others)
-    )wrapper
-)$;
-```
-
-the inner annotation still sees only `srt`, `val` and `ref`. It cannot
-refer to `wrapper` or `others`. An annotation attached to the outer
-`wrapper` node can refer to its own name and its descendants, including
-both child structures, and can override a relation contributed by the inner
-`srt` annotation.
-
-For a node n with child nodes n_i, composition is depth-first and bottom-up:
+For a node n with children n_i, defaults compose depth-first, bottom-up:
 
 ```text
 PatternDefault(n)
@@ -3463,34 +3452,27 @@ PatternDefault(n)
     )
 ```
 
-The right-hand/current-node patch has precedence over conflicting descendant
-defaults. An absent `LocalDefault(n)` is the empty patch, not a reset of
-descendant defaults. Consequently the complete type's default is the
-recursive composition of all attached node-local annotations. Sibling
-contributions compose in their disjoint Pattern-name scopes; if actual
-substitution makes a required relation non-unique or inconsistent, ordinary
-relation evidence is required and no traversal-order winner is invented.
+An absent local annotation is the empty patch, not a reset. The current
+(shallower) node's patch is applied after descendants and overrides only the
+relations it explicitly replaces. Sibling patches retain their local scopes;
+overlap after mapping must be resolved by ordinary relation consistency, not
+traversal order.
 
-The expression E is a name-parameterized ordinary compile lifecycle program,
-not an actual-instance observation performed during type formation. At a new
-formal's default Pre, the selected Pattern/structural mapping substitutes each
-Pattern name with the corresponding actual name expression. Thus a root
-`srt@` maps to `object@`, while a nested `srt@` maps to
-`object@.srt`; suffix projections use the established lifecycle field
-companions. This mapping uses binder/structural identity, not equal values,
-string spelling or a fresh lookup. If the used name cannot be uniquely
-determined (or shown invariant across all successful relational derivations),
-the default is Unavailable.
+At a genuinely new formal's default Pre, Pattern binders are substituted by
+the corresponding actual name expressions using the selected Pattern/
+structural mapping. This is identity-based substitution, not textual spelling
+replacement or resident-value lookup: a root `srt@` maps to `object@`, while
+a nested `srt@` maps to `object@.srt`. Further `.ref` and `.val`
+projections use already established lifecycle field companions. Every used
+Pattern name must be uniquely determined, or invariant across all successful
+relational derivations; otherwise the required default is Unavailable.
 
-The recursively composed result contributes to the base default entry world
-for genuinely new names. A function's explicit `lifetime pre` may replace
-the corresponding default relations it explicitly states; the actual caller
-must still satisfy the resulting Pre. Existing captures and held continuation
-names inherit their preceding Post and are never regenerated from a Pattern
-default. The [lifecycle owner](../lifetime/lifetime-policy-and-overload-boundary.md#212-nameview-origin-and-finite-observation)
-owns this Pre instantiation and its authority boundary.
-
-For:
+The complete Pattern default contributes to the entry default world for
+genuinely new names. Explicit `lifetime pre` replaces only the corresponding
+default relations it states; actual caller evidence must satisfy the resulting
+Pre. Existing captures and held continuation names inherit preceding Post and
+are never regenerated from Pattern defaults. The lifecycle owner controls
+this instantiation and actual-world validation.
 
 ```lang
 let t = ((uint8 inner)t)$;
