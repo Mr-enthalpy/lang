@@ -459,34 +459,520 @@ provide the applicable name companion or lifecycle post. The general default
 therefore does not classify an ordinary non-borrow value as origin-free merely
 because no borrow-root rule applies to it.
 
-Genuinely new function-entry parameter names begin from a default universe and
-apply the written lifetime precondition as a finitely described correction.
-Existing names at an empty slice, including InPlace automatic captures, inherit
-the established state under §2.1.8; they are not default-generated again:
+Genuinely new function-entry parameter names begin from the established base
+default universe and the recursively composed `lifetime default` annotations
+carried by their complete structural Pattern material. Existing names at an
+empty slice, including InPlace automatic captures, inherit the established
+state under §2.1.8; they are not default-generated again:
 
 ```text
 U_entry_newnames(F,theta)
     = U_default_base(theta)
-      ⊕ TypeDefault(F,theta)
+      ⊕ PatternDefault(P_tau,theta)
       ⊕ Delta_pre(F,theta)
 |Delta_pre| < infinity
 ```
 
-`TypeDefault(F,theta)` instantiates any type-defined DefaultWorld(tau)
-description for each genuinely new formal name of complete type tau. Missing
-type-specific description contributes no extra relation: the existing base
-U_default remains. These type-specific descriptions are ordinary compile
-lifecycle relation material over the actual registered internal name/structure
-roles, not a new Object axis, separate evaluator or authority-bearing type trait.
-The eventual declaration/registration spelling is still to be selected.
+`lifetime default E` is provisionally the source spelling for an annotation
+attached to a particular node of RHS structural Pattern material, e.g.
+`(...)# Lifetime Values, Bootstrap and Library Facilities
 
-DefaultWorld(tau) is a *default entry hypothesis*, not a theorem that all
-actual instances of tau are trivially Movable at every future frontier. It
-does not reconstruct existing captures, producer history or already held
-continuation material. Explicit Pre replaces only the default relations it
-specifies; all remaining relations retain the applicable default. The resulting
-entry requirement is checked against the actual selected caller-world name,
-generation, target and source correspondence **before** input/action commit:
+Status: canonical semantics for `@`, the lifetime value algebra, and the
+lifetime/ordinary-overload boundary, ordinary contract programs, boundary
+transforms and library protocol effects. [Walkthroughs](lifetime-algebra-walkthroughs.md)
+apply these rules; [consumer contracts](../../contracts/lifetime-program-consumers.md)
+record wiring, and [acceptance targets](../../planning/canonical-semantic-conformance.md#lifetime-value-computation-and-library-design-acceptance)
+are specifications rather than executed coverage. `LifecycleState` stores LifeName, Region,
+Color and lifecycle observations; it checks Pre and consumes the shared
+`SemanticContinuation` transaction's committed-action witness for Post.
+Linearization and Pre boundaries of already fixed cleanup points are implemented.
+The common transaction checks earlier cleanup for every action through a
+continuation-relative observation relation. Outstanding or unavailable facts
+block commit even when the action has no lifecycle projection.
+The substrate fixes continuation-relative cleanup prefixes, leaving future
+generations' suffix placements available. Use/Preserve cannot preempt their scheduled cleanup; Drop and boundary Kill
+follow fixed order. Regions retain actual discrete events, including ending events.
+Roster discovery supplies stable names, not formation/origin facts. Full
+generation-continuation reification, source operations, cleanup point derivation,
+access-tree construction and the complete E consumer remain pending.
+
+This document is the canonical owner of `@`. The object model, the value/place
+split, and the `ref` / `share` / `rebind` operations are owned by
+[`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md);
+construction authority (`OpenHere_Σ(value)`) is owned by
+[`../symbol-world/structural-type-formation-and-composition.md`](../symbol-world/structural-type-formation-and-composition.md).
+
+## 1. `@` is continuation-relative name observation
+
+N@ is a name iff N is a name. N@ is rank-0 ordinary lifecycle material with
+its own type, fields and associated operations, independently of N's rank.
+Origin and region are ordinary fields of lifecycle Objects; Color belongs to
+region. They use Object = <Val1?, Pattern, Val2>, not a fourth business-Object
+coordinate or a higher-rank constraint layer. Lifecycle computation knows
+names and these relations, not special integer/container/business-type meaning.
+Type punning's legality remains with the actual conversion's other consumers.
+
+Reification preserves name interpretation; value observations and borrowed
+lifecycle fields remain distinct. Safe code may observe origin/region/Color.
+Ordinary boundary admit uses the checked boundary's limited world-update
+authority (§9); constructing a contract grants no such authority. Raw writeback
+of otherwise underivable external knowledge additionally requires
+[unsafe admission](unsafe-semantic-admission.md), ordinary borrowing, Writable
+and applicable construction premises. Neither route permits arbitrary history
+replacement or a missing Pre. This does not make @ a borrow constructor.
+
+`@` is a normal overloaded operation. It is not a syntax-only marker, not a
+reserved lexical territory without semantics, and not exempt from overload
+resolution:
+
+```text
+Apply(@, E):
+  n := NameOf(E)
+  k := Pos(SemanticContinuation)
+  return ReifyLife(n, k)
+```
+
+`@` still applies to an expression syntactically, but its builtin action switches
+from value interpretation to the semantic name observed at the current
+continuation position. It neither exposes a user-callable `PlaceOf(E)` nor reads
+hidden residency metadata from the value. Lifetime facts already follow from
+the continuation; applying `@` reifies them and does not launch a second
+analysis.
+
+`@` is **not** a borrow constructor. It yields a lifetime value, never a borrow
+view. Borrow formation belongs to `ref` and `share`, which may be privileged
+actual-place builtins (`PrivilegedActualPlace(ref-family)`,
+`PrivilegedActualPlace(share-family)`) when the overload needs the actual's
+place (§2). A freshly computed temporary may receive a generated semantic
+LifeName even when it has no writable or borrowable Place, so
+`NoCarrierPlace(actual)` is not a general failure condition for `@`.
+
+`@` is not a Stage atom. `@` is evaluated at a stage; it
+does not name one.
+
+## 2. Privileged place acquisition belongs to `ref` and `share`
+
+`ref` and `share` are builtin applications that may, for some overloads, be
+granted privileged access to the place of their actual argument:
+
+```text
+PrivilegedActualPlace(ref-family)
+PrivilegedActualPlace(share-family)
+```
+
+This does not make them one callable family. `@` remains a normal overloaded
+operator whose selected builtin performs name/continuation reification; `ref`
+and `share` each have a type-forming overload (producing `type ref` /
+`type share` as type values) and a borrow-forming overload (producing `t ref` /
+`t share` as borrow instances). Place permission attaches to each borrow
+family's builtin identity, not to ordinary function parameters. An ordinary
+user function that spells the same formal head still cannot obtain the
+actual's place.
+
+The operators produce different results through different semantic premises:
+
+```text
+@      -> ReifyLife(NameOf(actual), Pos(K))
+ref    -> borrow instance | TypeValue (type formation)
+share  -> borrow instance | TypeValue (type formation)
+```
+
+Phase order for a place-sensitive `ref` / `share` member:
+
+```text
+ordinary candidate preparation
+  (Pattern / type / Policy matching on the actual value)
+-> ordinary overload selection
+-> unique selected builtin/default
+-> if SelectedBuiltinRequiresActualPlace:
+       p := PrivilegedActualPlace(actual)
+       if p absent:
+           InvocationFailure(NoCarrierPlace(actual))
+           -- post-selection precondition failure, not candidate
+              removal / overload reopening / fallback
+-> execute default
+```
+
+`ref` and `share` are privileged actual-place builtins
+(`PrivilegedActualPlace(ref-family)`, `PrivilegedActualPlace(share-family)`).
+There is no global `E ref = Ref(Read(E))` law: the selected overload determines
+the result, and the builtin default may acquire `PrivilegedActualPlace(actual)`
+(canonical owner [`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
+§5.1). For `let t:type:: = uint8`, `t ref` is the **type-forming** overload: it
+yields the TypeValue `uint8 ref` (the borrow type of `t`), not a borrow
+instance. The borrow instance over the type-level place is produced by invoking
+that borrow type:
+
+```lang
+t |> (type ref)    // invocation: borrow instance r : type ref, Target(r) = place(t)
+t |> (type share)  // invocation: share instance over the type-level place
+```
+
+`type ref` is the ordinary type construction `type |> ref`, and `type share` is
+`type |> share`; they are not special tokens and not produced by `@`. A
+`type ref` is a type value; an instance `r : type ref` carries the borrow
+content (target place, capability, lifetime relation) as a borrow instance, not
+as the type value itself.
+
+The builtin `ref` / `share` callables have two overload roles. The
+type-forming member makes `type |> ref` / `type |> share` a well-formed
+ordinary type construction through the ordinary type-as-callee / overload
+machinery; no `RefType` primitive is introduced:
+
+The `ref`/`share` family is not a single compile stage: the **type-forming**
+member is a **compile** member (`T : U_n ⊢ T |> ref = RefTy(T)`, producing the
+borrow TypeValue), while the **borrow-forming** member inside the formed
+borrow type's callspace has ordinary concrete-stage builtin/default realizations and
+is the only family member that may obtain `PrivilegedActualPlace`. The
+declarations below are the type-forming members; the borrow-forming members
+live inside each formed borrow type's callspace (canonical owner
+`../symbol-world/type-values-places-and-borrow-views.md` §5.1).
+
+```lang
+let ref =
+    <n>(self, t: n type):
+    compile
+    => default;
+
+let share =
+    <n>(self, t: n type):
+    compile
+    => default;
+```
+
+The general type-forming rule takes the **operand type** `T` itself as the
+parameter to `RefTy` / `ShareTy` — not the universe `U_n` in which `T` resides:
+
+```text
+T : U_n
+----------------------------
+T |> ref   = RefTy(T)   : U_n
+T |> share = ShareTy(T) : U_n
+```
+
+When the operand **is itself a universe object** `U_n`, the rule
+mechanically specializes:
+
+```text
+U_0          = type
+U_1          = type_1
+U_n |> ref   = RefTy(U_n)        (n ≥ 0)
+U_n |> share = ShareTy(U_n)      (n ≥ 0)
+```
+
+In particular:
+
+```text
+type |> ref   = RefTy(U_0) = type ref
+type |> share = ShareTy(U_0) = type share
+```
+
+This is **not** `RefTy(U_1)`: `type` is `U_0`, and `U_1` is merely the
+universe that classifies `type`. Confusing the operand with its classifier
+would collapse distinct types (`uint8 ref`, `uint16 ref`) into one.
+
+(`n type ref` / `n type share` are pure mathematical metavariable notation
+for `RefTy(U_n)` / `ShareTy(U_n)`; they are **not** a legal source LHS and
+**not** a source-parser `n type ref` / `n type share` expression.) The
+universe-uniform routing — `type : type_1` being the instance that makes
+`U_n |> ref/share` well-formed at every level `n ≥ 0` — is frozen, not
+future work:
+
+```text
+rank(t ref)   = rank(t)
+rank(t share) = rank(t)
+
+CallSpace(RefTy(T))
+  contains
+    T -> RefTy(T)
+
+CallSpace(ShareTy(T))
+  contains
+    T -> ShareTy(T)
+```
+
+Specialized to universe objects:
+
+```text
+CallSpace(RefTy(U_n))
+  contains
+    U_n -> RefTy(U_n)              (n ≥ 0)
+
+CallSpace(ShareTy(U_n))
+  contains
+    U_n -> ShareTy(U_n)            (n ≥ 0)
+```
+
+The base case is immediate — no off-by-one recursion is needed:
+
+```text
+R_1 = RefTy(U_0) = type ref
+
+CallSpace(type ref)
+  contains
+    type -> type ref
+```
+
+This is the instance needed for `t |> (type ref)` / `t |> (type share)`.
+
+The type-forming members need no privileged actual-place access. Only the
+selected borrow-forming defaults inside these borrow-type callspaces possess
+actual-place privilege (`PrivilegedActualPlace(ref-family)`,
+`PrivilegedActualPlace(share-family)`). Policy details remain schematic.
+
+The borrow-forming member's source formal head is not ordinary move-in
+parameter semantics:
+
+```lang
+mut let ref =
+    (self, mut let object: t):
+    s -> _: t ref
+    => default;
+```
+
+Here s is schematic for one admitted concrete stage, not a resolved union;
+projection and readiness obey the ordinary Policy owner.
+
+The head's `object : t` displays the candidate head, Pattern, and policy so the
+member participates in ordinary overload resolution. It must not be read as
+`Read(actual) -> move/copy -> fresh ordinary parameter object`: at application
+the builtin member may obtain the corresponding place from the actual. This is
+the explicit formalization of the privileged actual-place semantics that the
+generated/builtin `ref` / `share` callables already had, not a new arbitrary
+place-reflection facility.
+
+#### 2.0.1 Group and named-type observations
+
+An ordinary OverloadGroup reference observes the actual group Place. It does
+not implicitly borrow a candidate type or manufacture an OpenHere target.
+A structural name denotes its named type, whose type reference and member
+projections use ordinary Place, policy and capability rules.
+
+Call projection uses the singleton type embedding into a candidate group.
+Neither group callability nor an absent call candidate creates name freshness.
+Type selection, borrowing and lifecycle observation retain their independent
+relations; they do not recover a source Place from equal type values.
+
+### 2.1 `@` yields a lifetime value, uniformly
+
+```text
+E@ : LifetimeValue
+E@ = ReifyLife(NameOf(E), Pos(SemanticContinuation))
+```
+
+`@` is never a bridge from a hidden carrier slot to a `type ref`. A type-valued
+binding evaluates to the complete closure `tau`; an ordinary/namespace consumer observes the projection `Core(tau)=Q`. Reaching the type-level
+place is done explicitly with `t |> (type ref)`, including for a structural
+named type, never by `@`. NameBinding is a binding relation and has no borrowable
+wrapper or `.type` field. A by-value type projection followed by `@` does not
+recover a Place.
+
+`LifeName` is not a source spelling, NameBinding, Place, or ordinary
+value identity. It is the semantic name whose lifecycle is observed. A bound
+value normally has a stable LifeName; a temporary may receive a generated one.
+This keeps place identity and lifecycle identity distinct.
+
+#### First-class `LifetimeValue`
+
+A value observation of `ReifyLife` produces an ordinary first-class semantic value, not an ephemeral
+observation-only expression species:
+
+```text
+FirstClassLifetimeValuePrinciple:
+
+ReifyLife(n, k) : LifetimeValue
+
+LifetimeValue participates in the ordinary value formation machinery:
+  binding
+  storage in an ordinary value slot
+  argument passing
+  return
+  Move or a clone-derived route when admitted by its ordinary Type/callspace
+```
+
+Each use remains subject to the same Type, Policy, capability, lifecycle, and
+destination-legality judgments that apply to another value at that point.
+First-class therefore does not mean unrestricted storage, implicit copying, or
+automatic runtime availability. Binding or transporting `E@` carries the value
+already reified at `Pos(SemanticContinuation)`; it does not silently re-run `@`
+at the later destination and does not turn the destination into a hidden
+LifeName, Place, or borrow view.
+
+```text
+StageDoesNotChangeLifetimeValueOntology:
+
+TypeOf(ReifyLife(n, k)) = LifetimeValue
+  independent of the stage at which the value is known
+
+compile-known LifetimeValue
+  =/= a distinct CompileLifetimeValue species
+```
+
+Whether a `LifetimeValue` can make a same-Type static-to-runtime transition is
+therefore decided by the ordinary materialization theorem, not by first-class
+status and not by a lifetime special case:
+
+```text
+RuntimeMaterializable(LifetimeValue)
+iff exists an ordinary non-deleted callable realizing
+    a legal same-Type static -> runtime transition of LifetimeValue
+```
+
+This is the general `RuntimeMaterializable(T)` rule owned by
+[`../symbol-world/type-values-places-and-borrow-views.md`](../symbol-world/type-values-places-and-borrow-views.md)
+§4.1. Applying `@` is still not an automatic mechanical pass. Once `@` has
+produced a `LifetimeValue`, ordinary transport of that result uses the same
+admitted Move and ordinary clone realization as another value.
+
+#### 2.1.1 One semantic continuation
+
+All compile, runtime and lifetime activity is projected from one
+semantic continuation:
+
+```text
+SemanticContinuation K
+
+pi_runtime(K)
+pi_compile(K)
+pi_life(K)
+
+Life : LifeName × Pos(K) -> LifetimeValue
+```
+
+Compile-known and runtime-known values do not inhabit different lifetime
+species. Stage says when a fact is known; it does not change the lifecycle
+calculus or numeric/value identity.
+
+K as a whole projects to lifecycle computation, forgetting the **business
+Policy's Stage dimension**. It does not create compile and runtime lifecycle
+timelines. The projection retains already selected operations and MoveEffect,
+names, dependencies, activation, control, cleanup and delivery correspondence.
+It never selects again after forgetting Stage. Compile evaluation is the
+ordinary hosting of this value program, not another stage axis inside its world.
+Reify resumes the same E/K and creates no separate lifecycle world.
+
+Current established names and structural material can be computed before their
+machine action runs; unknown business values remain unknown. E uses the actual
+legal frontier and guarded continuation, without future-path enumeration.
+Constructing guarded branch material does not commit both branches' effects
+or permit lifecycle code to prune paths using unknown business values. A legal
+O path rewrite revalidates affected projections at their new positions.
+
+`lifetime pre/post` programs are projection-complete regions. Their ordinary
+evaluation and check/admit boundaries remain, but transcription adds neither
+another @ nor another companion layer to their lifecycle-side operations.
+Established projected material must retain that completion provenance through
+composition; it is not inferred by matching names or traversing source text.
+
+#### 2.1.2 NameView, origin, and finite observation
+
+`NameView<T>` below is mathematical notation for the structured companion of
+T carried by **ordinary rank-0 lifecycle Objects**. It does not prescribe a
+source type constructor, introduce another Object category or type axis, or
+define a lifecycle-specific object ontology. Origin, region and operation
+material use the same unified Object/Pattern/Policy mechanism as §2; an
+implementation may choose ordinary representations and API names.
+
+For every semantic value operation `f_V : T -> U` that is name-projectable,
+there exists a unique semantic name-level companion:
+
+```text
+NameView<T> {
+  origin,
+  region,
+  name-observable field/operation companions
+}
+
+NameProjectable_T(f)
+  => exists unique f_N : NameView<T> -> NameView<U>
+```
+
+Value and name projection must commute:
+
+```text
+@(f_V*(x))     = f_N*(x@)
+@(field_V*(x)) = field_N*(x@)
+(x.field*)@   = x@.field_lifetime*
+```
+
+The stars mark the original selected operation and its corresponding partner;
+they are metanotation, not a source operator or second overload selection.
+The name-level companion does not re-execute the runtime field operation.
+Companion existence, uniqueness, and commutation are closed semantic
+requirements. How companions are generated, stored, or represented in an IR or
+registry remains implementation-open. Actual Pattern/structure formation must
+synchronously establish sufficient companion material for this law. A missing
+consumer is Unavailable, never permission to fabricate the partner or silently
+waive the law. Dot still enters field::adl, and any forwarding is real ordinary
+registration or Pattern extraction, not a private field resolver.
+
+`origin` observes a LifeName link, explicit None, or an actual unknown boundary.
+It records semantic provenance rather than
+source text or an address. Origin ancestry is generated coinductively by the
+default generator of the semantic construction that produced the name;
+omission is not `None`. `None` is an explicit termination proposition. Each
+`ReifyLife(n, k)` is nevertheless a finite structural observation. A later
+`.origin` projection issues a new request; `@` never eagerly unfolds the whole
+chain.
+
+Unknown marks the information boundary of established material. A missing
+producer/observation is instead Unavailable; it establishes neither a fresh
+unknown root nor None. Boundary programs perform the necessary available
+origin.origin traversal (§10); callers need not manually spell an arbitrary
+number of links in from/live_with.
+
+```text
+OriginDefaultPrinciple:
+  if no explicit origin(n) = None fact applies,
+  origin(n) continues through the default origin generator
+  of the semantic construction that produced n
+
+  origin(n) = None is a terminating fact,
+  not the interpretation of missing origin information
+```
+
+Construction, field projection, copy, move, and call-result formation may each
+provide the applicable name companion or lifecycle post. The general default
+therefore does not classify an ordinary non-borrow value as origin-free merely
+because no borrow-root rule applies to it.
+
+. It is not a type-associated trait or a detached `DefaultWorld(tau)`
+field. The Pattern owner defines its node attachment, subtree name scope and
+recursive composition. Its expression is an ordinary compile lifecycle
+program retained with that Pattern node as a name-parameterized template;
+forming the type does not execute it against a particular instance.
+
+For a Pattern tree P, each annotated node n contributes a local relation patch
+`D_n`. Its Pattern-name scope contains n and its structural descendants,
+not its ancestors or siblings. An unannotated node contributes the empty local
+patch; it does not erase defaults contributed by descendants or the base
+universe. The complete Pattern default is composed bottom-up: first compose
+the children's defaults, then apply the current node's patch. Thus a
+shallower/ancestor annotation overrides a deeper/descendant default only on
+the relations it explicitly replaces. Sibling scopes remain local; any
+overlap after actual mapping must be resolved by ordinary relation consistency,
+never by accidental traversal order.
+
+At a new formal's default Pre, the template's Pattern-name binders are
+substituted by the corresponding actual name expressions from the selected
+input/structural mapping. This is identity-based substitution, not textual
+replacement by spelling or a read of equal-valued residents. For example, a
+root Pattern binder `srt` maps as `srt@ -> object@`; the same binder nested
+inside a `wrapper` Pattern maps as `srt@ -> object@.srt`. Its `.ref` and
+`.val` projections then use the already established lifecycle field
+companions. The Pattern owner's relational derivations must uniquely
+determine each name used by the template, or establish that all successful
+derivations give the same observation; otherwise the required default is
+Unavailable. An ordinary missing member/companion is never reconstructed from
+Val2 presence or spelling.
+
+`PatternDefault(P_tau,theta)` is the recursive composition of these
+instantiated local patches for the complete Pattern material of tau. The
+explicit function `lifetime pre` then supplies `Delta_pre`: it replaces only
+the default relations it explicitly declares, while all unmentioned defaults
+remain. The resulting entry requirement is checked against the actual selected
+caller-world name, generation, target and source correspondence **before**
+input/action commit:
 
 ```text
 CallerPreOK(K,F,actual,theta)
@@ -497,9 +983,9 @@ CallerPreOK(K,F,actual,theta)
 A default or explicit correction cannot create a name or capability, delete
 fixed Color/history/Drop, alter registered access or source facts, or make an
 invalid Region/borrow valid. A proved false requirement rejects; missing
-required evidence is Unavailable. The simplest value-like type default
-describes *no additional cross-component name dependencies*, while preserving
-all actual structural/name-companion dependencies, fixed exclusive/shared
+required evidence is Unavailable. The simplest value-like Pattern default
+contributes no additional cross-component name dependencies, while preserving
+actual structural/name-companion dependencies, fixed exclusive/shared
 borrow-root defaults and independent resource/capability Pre. In particular,
 it does not declare every origin=None or every shared root distinct.
 
@@ -538,7 +1024,7 @@ DefaultOriginUniverse:
     -> additionally receive the exclusive/shared default-root rules above
 
 PreDoesNotConstructUniverseFromZero:
-  Delta_pre is a finite patch over U_default_base and TypeDefault,
+  Delta_pre is a finite patch over U_default_base and PatternDefault,
   not the complete origin universe
 ```
 
@@ -629,7 +1115,7 @@ Rust 载体的 `contains_event` 只查询完整 `(cut, action ordinal)`，`conta
 
 ### N04 — 默认入口世界与已有名字的继承 [不变量]
 
-一般函数的新入参在省略 Pre 时按既有基础默认世界及其类型参数化 DefaultWorld 生成；显式 Pre 在其指定关系上替换默认假设，随后由真实调用端映射和 Pre 检验，而非改写既有事实。默认世界不凭空建立两个独占入参之间的父子关系。共享根的既有默认规则继续有效，不能改写成“所有入参的所有来源均两两不同”。类型默认关系本身不证明 Movable。
+一般函数的新入参在省略 Pre 时按既有基础默认世界及其完整结构 Pattern 上递归合成的 `lifetime default` 生成；显式 Pre 在其指定关系上替换默认假设，随后由真实调用端映射和 Pre 检验，而非改写既有事实。默认世界不凭空建立两个独占入参之间的父子关系。共享根的既有默认规则继续有效，不能改写成“所有入参的所有来源均两两不同”。Pattern 默认关系本身不证明 Movable。
 
 已有名字不重新默认生成。InPlace 自动捕获继承上一刻的 Post；空动作切片满足同一观察词汇下的 `Pre(id)=Post(id)`。实际交接之后，后续续体持有材料的 AutoPre 由成功交接 Post 经合法名字对应形成。
 
@@ -791,8 +1277,8 @@ For a Function Pattern LHS interface F and actual callable contract A,
 omission and compatibility have these meanings:
 
 ```text
-Entry_new_parameters(F) = U_default_base op_plus TypeDefault(F) op_plus Delta_pre
-omitted pre  => Delta_pre = empty  // typed defaults for genuinely new input names
+Entry_new_parameters(F) = U_default_base op_plus PatternDefault(P_tau) op_plus Delta_pre
+omitted pre  => Delta_pre = empty  // Pattern defaults for genuinely new input names
 omitted post => Post_F = NoDelta(S_before,S_after)
 NoDelta = unchanged state on every lifecycle observation of the contract
 
@@ -2337,13 +2823,13 @@ Move/Drop 的可执行性不等于已遗忘的精确名字关系可以恢复；�
 
 | 材料 | 含义 |
 |---|---|
-| `DefaultWorld(tau)` | 对新的 tau 形式实例内部名字关系的类型定义默认假设，在显式 Pre 未覆盖的关系上应用；不是所有实际实例可移动的全称命题 |
+| `PatternDefault(P_tau)` | 完整结构 Pattern 上所有节点局部 `lifetime default` 的递归合成；仅为新名字的默认 Pre 提供关系假设，不是 Movable 证明 |
 | 普通统一 repair | 类型或具体续体可以提供适用于其已证明输入域的统一修复程序，但每次仍要检验实际源、伙伴、Pre、Region、Color、目的地与资源责任 |
 | 当前名字的实例证明 | `Movable_K(n,m)` 对当前真实名字/动作的合法证明，以及该承载协议所需的实际 Move/Drop 可执行材料 |
 
 即使某个受约束实例族可以**另外证明**其默认世界及普通
 移动前提蕴涵某类无 repair 移动，这也只是带有明确假设与
-动作域的定理；不能由 `DefaultWorld(tau)` 声明本身推出。
+动作域的定理；不能由 Pattern 默认关系声明本身推出。
 不符合默认关系的实例并非类型错误：合法显式 Pre 可描述其
 额外关系，只要实际调用映射和动作均满足该 Pre。缺少证据
 不能当作独立性，不能凭声明覆盖真实 origin、历史或权限。
@@ -2355,7 +2841,7 @@ Copyable。
 
 ### N24 — 默认世界反向恢复是部分操作 [不变量]
 
-在 reify 内，已依法选择的 `runtime:runtime -> runtime:compile` 恢复，只接受能够按其类型已确定的默认世界（若无类型自定义则按基础默认世界）重建实例名字依赖的对象。已经遗忘并隐藏了非默认依赖的实例，不因持有正确 Type、移动子或析构子而取得该恢复能力。
+在 reify 内，已依法选择的 `runtime:runtime -> runtime:compile` 恢复，只接受能够按其完整结构 Pattern 的递归 `lifetime default`（连同基础默认世界）重建实例名字依赖的对象。已经遗忘并隐藏了非默认依赖的实例，不因持有正确 Type、移动子或析构子而取得该恢复能力。
 
 ```text
 RecoverDefault(x):
