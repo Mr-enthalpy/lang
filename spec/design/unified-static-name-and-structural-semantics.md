@@ -812,7 +812,7 @@ held successor material:
 
 “类型规定全部准入实例满足某性质”和“具体名字在具体事件上合法”可以同时存在。前者为后者提供证据，后者仍消费当前外部 Region、Access、Color 及目的地条件。
 
-同理，无外部 origin 是 atomic 持有资源的准入约束，不给外部 Cell 借用永久存活；保存 Move/Drop 操作给遗忘对象可执行性，不给 reify 可逆性。
+同理，无外部 origin 是 atomic 全部保留状态名字（含保留的 I/Index 与 S）的准入约束，不给外部 Cell 借用永久存活；只有合法普通生产 Post 能建立真正闭合的新名字，状态数角色不清除旧依赖。保存 Move/Drop 操作给遗忘对象可执行性，不给 reify 可逆性。
 
 ## U06 — 合流、压缩、SCC 与名字遗忘各有职责
 

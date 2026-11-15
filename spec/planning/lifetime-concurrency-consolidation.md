@@ -131,7 +131,7 @@ were reviewed together; prohibitions/counterexamples are not obsolete positives.
 | M21 | [heap-stack-and-storage-responsibility.md:90](../design/lifetime/heap-stack-and-storage-responsibility.md) | Exact direct-parent submit including Pending, feasible universal completion — N29：保证向直接父层原样提交 |
 | M22 | [lifetime-policy-and-overload-boundary.md:605](../design/lifetime/lifetime-policy-and-overload-boundary.md) | Logical end/custody transfer distinguished from physical destruction in lifecycle/heap/effect — N30：普通延迟析构续体与单次托管 |
 | M23 | [heap-stack-and-storage-responsibility.md](../design/lifetime/heap-stack-and-storage-responsibility.md) | Production/allocation escape Pre, structured windows and no language QS; no QS consumer found — N31–N32：结构化窗口，生产 Pre 拒绝 |
-| M24 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | New formed-type consumer owner; structural/Pattern interfaces linked — N34–N35：`$` 后消费者、资源外部 origin 闭合 |
+| M24 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | New formed-type consumer owner; structural/Pattern interfaces linked — N34–N35：`$` 后消费者、全部保留状态名字（含 I/Index 与 S）的外部 origin 闭合 |
 | M25 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | New atomic domain/associated API rules; no field-to-outer certification — N36–N37：不向外传播；关联 ref/share 普通注册 |
 | M26 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | Protocol-subset closure and F18 explicit; no prior atomic consumer — N37、N40、N45：内部不变量保持与特定协议分别证明 |
 | M27 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | I/S/version/name/generation/rf identities separated; host dependencies extended — N38–N42：各类身份与来源分离 |
@@ -168,7 +168,7 @@ already required. Finite endpoint tests establish neither full F01 nor F02–F04
 
 | ID | Required argument / consumer | Boundary while incomplete |
 |---|---|---|
-| F01 | 离散 Region 在固定事件、分支、循环/递归及 activation 下的解释；min/max 偏序及纯切片保持性 | 不用连续区间或 SupportClosure 顶替；缺端点证据不可用 |
+| F01 | 离散 Region 在固定事件、分支、循环/递归及 activation 下的解释；min/max 偏序及纯切片保持性；生产者/父子来源和当前 E/K 修订对应的独立准入 | 不用连续区间或 SupportClosure 顶替；缺端点、来源或修订证据不可用；纯端点为真或相同 K 身份不发放借用权限 |
 | F02 | 析构先定、生成新增修复片段与生产 Pre 的无循环衔接 | 不通过移动旧 cleanup 迭代到成功 |
 | F03 | 自动 repair 的来源切片、外层责任递归、根值保留、共享生产节点和支持的 SCC 重演 | 不重复所有者、不无限展开，不造未知根 |
 | F04 | 显式与自动 repair 的确定组合/替代责任；异常与 IO 重演路径的真实效果 | 无精确计划时不发布成功后继；不能默认双执行 |
@@ -180,7 +180,7 @@ already required. Finite endpoint tests establish neither full F01 nor F02–F04
 | F10 | 独立容器的 effect 树变换、调用材料、Region/Color 和逃逸 | 无普通来源/同步关系不能并行发射或逃逸 |
 | F11 | Heap 顶层接收、逐层补充/提交、单次责任守恒、Pending 顺序和保证完成资源条件 | 无能力不能登记/提交后丢责任；不偷扫原始 pool |
 | F12 | Region 上界回收在生产 Pre 的逃逸证明，包括异常、挂起与 deferred destructor 的依赖 | 不把证明推迟到 drop；不靠 QS 语言事实 |
-| F13 | Atomic 准入；CAS 的 A(I_a;S_a)→B(I_b;S_b) 单点变换、成功旧资源取出与新资源写入、失败保留输入；无字段/keep/同态 RMW 变体及 Color 受控域 | 普通 safe 接口不能绕过同实例竞争或分离资源提交；不宣称所有 Pattern 可用 |
+| F13 | Atomic 对全部 RetainedStateNames 的外部来源闭合准入（含保留 I/Index、S）；CAS 的 A(I_a;S_a)→B(I_b;S_b) 单点变换、成功旧资源取出与新资源写入、失败保留输入；无字段/keep/同态 RMW 变体及 Color 受控域 | I 角色不洗掉来源；新闭合名字须有真实普通生产 Post，未保留比较输入仍按普通 Pre；普通 safe 接口不能绕过竞争或分离资源提交；不宣称所有 Pattern 可用 |
 | F14 | 版本/rf/mo、成功与失败结果分支的因果差异、后继提交发布/观察继承闭包、所有权交接推导的同步及 no-thin-air；强/弱失败观察 | 基本因果/同步已定但机器与 OOTA 保持性待证；不得由用户选 relaxed 等替代所需保障 |
 | F15 | 是否仍需 SeqCst 级更强保证；若需要，决定是否采用独立 fence 及完整公理，检查双边/单边 SB、IRIW、2+2W、累积性与 lowering | **唯一保留的额外内存序设计问题**；在选定前不得把双边 SB 目标或完整 fence 说成源级已保证 |
 | F16 | 后端对所选源内存模型的正确性；x86-TSO/AArch64/RVWMO/LLVM 分别验证 | 有限模型不是 ISA 或编译证明；未接后端不宣称支持 |
@@ -194,6 +194,9 @@ repair successor is published. No general purity whitelist, implicit clone/Box,
 unknown root, missing Post or hardware-CAS-then-rollback substitutes for a gate.
 
 ## Actual verification record
+
+The following initial submission checks apply to commit `6972f865e1f1efbece0e3eb7d5ff0352834b993d`.
+The audit follow-up and its separate validation record are described below.
 
 - Targeted Rust command: `cargo test -p lang_build --lib lifecycle::tests`:
   37 passed, 0 failed after the carrier migration and same-cut refinement.
@@ -270,6 +273,35 @@ F10 independent containers, F11/F12/F17 standard heap and F13/F14/F16/F18 atomic
 host and backend chains. The 105 source scenarios have not executed, and no
 general proof or backend B is claimed. Their missing prerequisites remain
 Unavailable before action/success, not temporary alternative success semantics.
+
+## PR 120 semantic audit corrections
+
+Audit snapshot: `6972f865e1f1efbece0e3eb7d5ff0352834b993d`.
+The user supplied three P2 findings; the correction preserves the original
+specification-migration/finite-carrier scope and F01–F18 pending boundaries.
+
+| Finding | Correction | Executable or normative evidence |
+|---|---|---|
+| Event/cut ambiguity | Remove From<SemanticPosition> and implicit ordinal zero; from_events requires full RegionEventPosition; separate contains_event and contains_cut | The new membership test covers (3,5), rejects (3,0)/(3,6), and checks empty/missing cuts. Committed-event tests also cover an actual nonzero ordinal |
+| Endpoints are not authority | Rust docs, N03, scoped initialize_bounded_region, LC2/LC3, host handoff and current entry/public summaries require independently established selected producer/source, names/generations, activation/guarded branch and current E/K revision correspondence | Strengthened same-identity forked-snapshot regression has a true endpoint query but rejects reuse of the other snapshot's Pre without mutation. REG02/REG05 specify the still-pending source admission; no new Region/K or proof Object is introduced |
+| Atomic state-number origins | N35 applies to every RetainedStateNames entry, including retained I/Index and S; actual ordinary producer Post may establish a fresh closed name. Temporary comparison-only unretained inputs retain ordinary Pre | N38/N39 and current summaries/handoffs updated; ATOM03/ATOM04/ATOM16 distinguish retained dependent I_b from a genuinely closed new state name. These are defined targets, not executed Atomic or F13 proofs |
+
+Acceptance IDs remain 105 and all complete-source P/S/C/T/B statuses remain
+pending. The unchanged bounded model does not test the new retained-Index rule.
+The existing counterexamples/proof gates are strengthened in place; no general
+borrow authorization or Atomic consumer is connected by these corrections.
+
+Correction verification: `cargo fmt --all -- --check`,
+`cargo check --all-targets`, and `cargo test --workspace` pass. The workspace
+reports 974 passed, 0 failed across 53 test-suite summaries; the focused
+lifecycle run reports 38 passed. The committed consolidation audit reports
+41 Markdown files, 962 local links with no broken destination, 45 unique N
+owners, 12 U, 31 M, 18 F and 105 unique paired cases. Both original bounded-model
+hashes match, the model exits successfully, and its stdout matches the committed
+output. Independent read-only Region and admission reviews were reconciled,
+including the explicit endpoint/authority boundary in the public summaries.
+These checks validate the finite carrier and documentation/evidence structure;
+they do not execute the 105 source targets or discharge F01–F18.
 
 ## Input provenance and bounded evidence
 

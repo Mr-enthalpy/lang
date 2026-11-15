@@ -547,6 +547,11 @@ Use [public §18](normalized-surface-semantics.md#18-lifecycleconcurrency-target
 and the [owner/status ledger](../planning/lifetime-concurrency-consolidation.md).
 A child Region need not be a parent subset; strict endpoints permit serial
 parent/child interleaving. Color begins with actual independent access, not async.
+The endpoint relation alone grants no borrow/access authority: Pre independently
+requires actual selected producer/source, names/generations, activation/guarded
+branch and lawful current E/K revision correspondence. A supplied set or equal
+K identity across forked snapshots proves none of that mapping; true endpoints
+with missing correspondence remain unavailable before production/access.
 Save live dependencies/cleanup, not merely future reads. Origin-None roots need
 no clone; input/capture repair is outer and derived replay retains selected
 expressions/partners. Missing origin is neither None nor an invented unknown.
@@ -563,8 +568,12 @@ with Pending unexecuted, and all standard non-root locate requires universal
 guaranteed parent submission plus lazy acceptance. Ordinary custom heaps remain
 allowed. Production Pre owns escape rejection; QS is no language premise.
 
-Atomic is a formed-type consumer with closed held resources; it creates no enum
-Pattern. CAS success jointly transfers S_a/S_b and version/state at one point,
+Atomic is a formed-type consumer requiring external-origin closure of all retained
+state names, including I/Index and S; it creates no enum Pattern. A real ordinary
+copy/formation can establish a fresh closed name, but state-number role or equal
+content cannot erase an existing dependency. Comparison-only, unretained input
+still satisfies ordinary access Pre. CAS success jointly transfers S_a/S_b and
+version/state at one point,
 failure retains incoming custody. Real result-branch causality and resource
 visibility are fixed; extra SeqCst/fence, OOTA proof and backend lowering have
 their precise pending gates. No field-to-outer atomic propagation, payload access

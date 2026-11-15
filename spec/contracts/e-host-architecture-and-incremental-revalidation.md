@@ -1062,6 +1062,15 @@ summaries, executable Move/Drop and default recovery qualifications, immediate
 heap parent/universal Submit/lazy Pending custody, and atomic authority,
 versions/rf/mo/Past plus path causal knowledge.
 
+Region queries retain data provenance without granting authority. Equal original
+K identity, including cloned snapshots, proves neither common branch/activation
+interpretation nor lawful revision correspondence for a current producer/access
+Pre. The consumer must independently validate those existing E/K premises;
+numeric endpoint success cannot fill them. Invalidation also tracks the actual
+retained-state-name closure used by Atomic admission, including I/Index, S and
+their retained dependencies, plus any ordinary producer Post establishing a
+fresh closed name. Parameter role or equal numeric content is no reuse proof.
+
 Retain the actual supporting names/generations, guard/branch, action/mapping,
 Pre/commit/Post and completeness support for each consumer. Changed content
 invalidates its consumers despite equal signature/layout. Pure slicing retains

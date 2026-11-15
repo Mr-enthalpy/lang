@@ -28,19 +28,24 @@ Cell(T)   = atomic(Form$(P_Cell(T)))
 
 输入模式可以结构化复用既有 atomic 类型和普通语言材料，形成合法递归组合。一次一般模式构造/提取的“原子完整提交”不自动等于跨执行主体的机器 CAS。
 
-### N35 — Atomic 资源准入要求没有外部 origin 依赖 [不变量]
+### N35 — Atomic 所有保留状态名字均须对外来源闭合 [不变量]
 
-atomic 不无差别接受所有类型材料。其持有资源角色必须满足：
+atomic 不无差别接受所有类型材料。对实际状态 A 及其 atomic 资源边界，准入条件覆盖全部保留状态名字：
 
 ```text
-ExternalOriginDeps(held resource, atomic resource boundary) = empty
+for every n in RetainedStateNames(A):
+    ExternalOriginDeps(n, atomic resource boundary) = empty
 ```
 
-这对应资源所有权的实际语义条件，而不是看到 Rust 风格 `Owned<T>` 名称就接受。条件必须覆盖后续允许放入状态的资源，包括原始 CAS 的目标分支输入资源 `S_b`，并由相应形成/转换 Pre 维持。资源的内部 origin 可以合法递归，但未知/已遗忘的非默认外部依赖不得冒充为闭合。
+`RetainedStateNames(A)` 是实际状态存储、保留或继续依赖的普通值名字及其真实保留依赖闭包的数学记号，不是新内建集合、Region/K 本体或证明 Object。它包含状态数/Index `I`、资源 `S` 及其实际保留组成，不能按 `I`/`S` 角色或业务类型免检。该条件对应真实来源与所有权，而不是看到 Rust 风格 `Owned<T>` 名称就接受；注册须约束全部准入状态，初始形成及每个状态转换 Pre 必须维持它，包括将被保留的 `I_b`、`S_b`，以及 keep/同态 RMW 后仍保留的全部名字。
+
+例如，可信 Index 可以保持普通 Index 业务类型而带有对外部聚合的 origin。若 CAS 将这个名字作为 `I_b` 保留，其外部依赖就必须接受闭合检查，不能因它是“状态数”而被抹去。调用者可以通过一个已经合法选择并实际完成的普通复制/形成动作取得真正无外部依赖的新状态数名字，再将该名字交付给 CAS；其生产 Post 必须证明闭合。平凡 Index copy 的新名字可以 origin=None，但不带原凭证，这不是所有 copy/clone 的普遍无来源定理，也不是 atomic 的隐式 copy、擦除、回退或重选机制。
+
+只在一次比较/匹配中读取且未被结果状态保留、也不成为其依赖的临时输入，不仅因参与 CAS 就加入 `RetainedStateNames`；它仍须满足真实访问、来源有效性和普通 Pre。比较输入是否被保留取决于实际选定操作及交付对应，不能只靠 API 参数名判定。
 
 它不等于所有内部 origin 都为 None；内部合法结构关系仍可存在。但隐藏外部借用的 unknown 不等于没有外部依赖。不能用名字遗忘洗掉该准入要求。
 
-该限制使 atomic 的状态资源不需要依靠外部挂起点的自动 repair 来恢复借用关系；atomic 事务不引入“重演旧 CAS 以修复内部资源”的特殊机制。外部持有的 Cell ref/share 及凭证仍是普通依赖名字，遵守自己的交接规则。
+该限制使 atomic 的全部保留状态材料不需要依靠外部挂起点的自动 repair 来恢复借用关系；atomic 事务不引入“重演旧 CAS 以修复内部资源”的特殊机制。闭合检查在真实硬件提交前完成，失败不能先安装 `I_b`/`S_b` 再修复来源。外部持有的 Cell ref/share 及凭证仍是普通依赖名字，遵守自己的交接规则。
 
 ### N36 — 受信任的重叠独占染色只覆盖注册协议 [不变量]
 
@@ -79,6 +84,8 @@ n/g : ordinary lifetime name and generation
 
 `I` 不隐式拥有、解引用或转换成 S。更新 I 不要求搬动 S。相同 P、相同 I、相同业务值都不意味着同一个提交事件或 generation。
 
+`I` 仍是有真实名字/generation 和生产 Post 的普通语言值；可比较、数值相等或状态数角色都不证明 origin=None。它若被状态保留，就和 `S` 一样受 N35 的全部保留状态名字闭合条件约束。
+
 数值 ABA 不被默认禁止；需要“自观察以后绝无改变”的协议必须另外提供版本/世代判定。无需把语义事件身份实现为无限增长机器整数，也不从名字等同性推出物理地址相等。
 
 ### N39 — 原始 CAS：受信任和模式变换、资源交接及结果和模式 [不变量]
@@ -99,7 +106,7 @@ on failure:       atomic state is NOT changed by this attempt
                   result = Rejected(S_b, actual observation if any)
 ```
 
-`A/B` 是原有和 Pattern 分支；`I_a/I_b` 是相应分支中实际可比较或更新的状态数；`S_a/S_b` 是分支实际持有的资源位置。成功条件要求**当前模式确实为 A**且满足本次提交所声明的 `I_a` 匹配条件，同时满足资源准入、访问、Generation、Color 和生命周期 Pre。仅与某个旧观察数值相等不能证明提交版本身份不变（允许数值 ABA）。
+`A/B` 是原有和 Pattern 分支；`I_a/I_b` 是相应分支中实际可比较或更新的状态数；`S_a/S_b` 是分支实际持有的资源位置。成功条件要求**当前模式确实为 A**且满足本次提交所声明的 `I_a` 匹配条件，同时满足 N35 对目标状态全部保留名字（含 `I_b`/`S_b`）的闭合准入、访问、Generation、Color 和生命周期 Pre。仅临时比较且不保留的输入依其普通 Pre 处理。仅与某个旧观察数值相等不能证明提交版本身份不变（允许数值 ABA）。
 
 一次成功提交把 `A` 的资源 `S_a` 与其合法持有责任移交给调用方，把调用方提供的 `S_b` 与其责任移交给新状态 `B`，并形成新提交事件版本；这些都是**同一个原子提交点的契约效果**，不允许先成功机器 CAS 再试着用可能失败的普通 Post 补全所有权。失败不取得 `S_a`，不消耗/遗失 `S_b`，不发布成功凭证。结果是一般语言已经支持的 `Committed(...) | Rejected(...)` 和模式材料，生命期 Post 分别由实际分支建立；回执是普通受控仿射对象而非新资源本体。`Committed` 分支还须承担对其新事件的真实因果描述。
 
@@ -203,7 +210,8 @@ Mutex 的安全样例是通过状态转换唯一交接一般资源，不能由 p
 Input is the actual admitted cell/version, selected transition, candidate/frame,
 source names, incoming resource custody, Region/Color and established branch
 causality. Ordinary registered calls form the declared result Pattern. Pre
-checks all those premises and closed resource dependencies before the actual
+checks all those premises and external-origin closure of every retained state
+name, including stored I and S, before the actual
 hardware commit. Committed transfers S_a/S_b and publishes one version/Post;
 Rejected retains S_b and supplies only its actual observation. Contract checking
 and scratch computation are not a post-CAS rollback scheme. Missing registration,

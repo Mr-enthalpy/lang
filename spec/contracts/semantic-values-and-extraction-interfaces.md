@@ -307,6 +307,15 @@ Each Region retains its own generation and K identity. Parent and child need
 not have equal generation numbers; actual name/producer and branch/activation
 correspondence are separate requiring-consumer premises. Supplied set operations
 grant no such authority or reachability evidence.
+`from_events` requires complete RegionEventPosition items. `contains_event`
+tests exact cut/ordinal membership; `contains_cut` deliberately projects away
+the ordinal and cannot identify an occurrence. No production conversion fills
+in ordinal zero from a cut. Endpoint comparison, either membership query and
+supplied construction are pure data operations, not borrow authorization.
+Equal K identity across cloned snapshots proves no revision/branch/activation
+correspondence. Future source Pre must independently validate its actual
+producer/source/name mapping against the current E/K and ordinary access;
+missing correspondence is unavailable before mutation, even with true endpoints.
 Supplied event-set endpoint tests establish a carrier slice only, not F01's
 branch/recursion theorem or source borrowing. A pure slice restricts events,
 retaining generation, prior production facts and Color. Parent/child production

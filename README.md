@@ -224,6 +224,12 @@ established production facts. Serial borrowing adds no independent-access Color;
 async/unique Wait custody alone is not concurrent dispatch. Only actual independent
 access checks and establishes the relevant Color.
 
+Endpoint order is only a pure relation. Borrow/access Pre independently requires
+the actual selected producer/parent-child source, names/generations, activation/
+guarded branch and lawful current E/K revision correspondence. Supplied event
+sets, true endpoints or equal K identity across forks grant no permission;
+missing correspondence is unavailable before production or access.
+
 Omitted repair requests source-derived automatic repair: preserve live origin-None
 local roots without clone, replay actual selected derived producers/partners once,
 delegate inputs/captures outward, and stop at actual unknown boundaries. Ordinary
@@ -246,7 +252,10 @@ executing it, and Drop performs its unique ordered duty. Escape is rejected at
 production Pre. Ordinary custom heaps are permitted under their own contracts.
 
 [Atomic](spec/design/lifetime/atomic-pattern-transitions-and-causality.md)
-consumes $-formed ordinary type material with no held external-origin dependency.
+consumes $-formed ordinary type material whose every retained state name has no
+external-origin dependency, including retained state/count/Index I as well as S.
+Only a real ordinary producer Post can establish a fresh closed name; neither
+an I role nor equal numeric content erases a retained dependency.
 Its single successful CAS jointly changes branch/state and S_a/S_b custody;
 Rejected keeps incoming S_b. Actual branch versions publish/import causal closure,
 and backend realization must honor ownership-transfer visibility. Atomic fields

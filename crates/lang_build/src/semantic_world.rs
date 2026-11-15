@@ -6988,11 +6988,12 @@ mod tests {
             region: crate::Region::from_events(
                 &crate::SemanticContinuation::default(),
                 2,
-                [
-                    crate::SemanticPosition(1),
-                    crate::SemanticPosition(4),
-                    crate::SemanticPosition(9),
-                ],
+                [(1, 0), (4, 1), (9, 2)]
+                    .into_iter()
+                    .map(|(cut, action_ordinal)| crate::RegionEventPosition {
+                        cut: crate::SemanticPosition(cut),
+                        action_ordinal,
+                    }),
             ),
         };
         let policy = crate::compile_literal_policy();

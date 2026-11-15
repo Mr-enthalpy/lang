@@ -25,15 +25,6 @@ pub struct RegionEventPosition {
     pub action_ordinal: u64,
 }
 
-impl From<SemanticPosition> for RegionEventPosition {
-    fn from(cut: SemanticPosition) -> Self {
-        Self {
-            cut,
-            action_ordinal: 0,
-        }
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Region {
     pub continuation: ContinuationIdentity,
@@ -42,28 +33,40 @@ pub struct Region {
 }
 
 impl Region {
-    /// Supplied event material, not a source producer or a liveness proof.
-    pub fn from_events<P: Into<RegionEventPosition>>(
+    /// Supplied complete event positions, not a source producer or a liveness
+    /// proof. Construction establishes no actual name, activation, branch or
+    /// revision correspondence and grants no borrow/access authority.
+    pub fn from_events(
         continuation: &SemanticContinuation,
         generation: u64,
-        events: impl IntoIterator<Item = P>,
+        events: impl IntoIterator<Item = RegionEventPosition>,
     ) -> Self {
         Self {
             continuation: continuation.identity().clone(),
-            events: events.into_iter().map(Into::into).collect(),
+            events: events.into_iter().collect(),
             generation,
         }
     }
 
-    pub fn contains(&self, position: impl Into<RegionEventPosition>) -> bool {
-        self.events.contains(&position.into())
+    /// Exact occurrence membership, including the fixed action ordinal.
+    pub fn contains_event(&self, position: RegionEventPosition) -> bool {
+        self.events.contains(&position)
     }
 
-    /// Compare endpoints in one already established interpretation of K.
+    /// Whether any recorded occurrence occupies this cut, regardless of ordinal.
+    /// This projection supplies neither exact event identity nor authority.
+    pub fn contains_cut(&self, cut: SemanticPosition) -> bool {
+        self.events.iter().any(|position| position.cut == cut)
+    }
+
+    /// Pure endpoint relation, not validation of a borrow-producing action.
     /// No parent events are inserted and no subset relation is required.
     /// Each operand retains its own generation; parent and child need not have
     /// equal generation numbers. Actual producer/name correspondence and the
     /// common branch/activation interpretation remain consumer premises.
+    /// Equal continuation identity is insufficient: cloned or rewritten K
+    /// snapshots still need lawful current-revision correspondence at the
+    /// requiring consumer. Ok(true) creates no LifecyclePreProof or permission.
     pub fn strictly_within(&self, parent: &Self) -> Result<bool, LifecycleFailure> {
         if self.continuation != parent.continuation {
             return Err(LifecycleFailure::ForeignContinuation);
@@ -82,7 +85,8 @@ impl Region {
     }
 
     /// Pure restriction preserves the established name/generation context.
-    /// Choosing `reachable` requires actual control evidence from the consumer.
+    /// Choosing `reachable` requires actual control/current-revision evidence
+    /// from the consumer; the supplied set establishes none of that evidence.
     pub fn restrict_reachable(&self, reachable: &BTreeSet<RegionEventPosition>) -> Self {
         Self {
             events: self.events.intersection(reachable).copied().collect(),
@@ -874,6 +878,28 @@ mod tests {
         events.iter().map(|event| event.cut).collect()
     }
 
+    fn supplied_event(cut: u64, action_ordinal: u64) -> RegionEventPosition {
+        RegionEventPosition {
+            cut: SemanticPosition(cut),
+            action_ordinal,
+        }
+    }
+
+    #[test]
+    fn region_membership_distinguishes_exact_nonzero_event_from_its_cut() {
+        let k = SemanticContinuation::default();
+        let event = supplied_event(3, 5);
+        let region = Region::from_events(&k, 0, [event]);
+        assert!(region.contains_event(event));
+        assert!(region.contains_cut(SemanticPosition(3)));
+        assert!(!region.contains_event(supplied_event(3, 0)));
+        assert!(!region.contains_event(supplied_event(3, 6)));
+        assert!(!region.contains_cut(SemanticPosition(2)));
+        let empty = Region::from_events(&k, 0, []);
+        assert!(!empty.contains_event(event));
+        assert!(!empty.contains_cut(SemanticPosition(3)));
+    }
+
     #[test]
     fn same_cut_endpoint_order_distinguishes_instruction_occurrences() {
         let k = SemanticContinuation::default();
@@ -885,7 +911,7 @@ mod tests {
         let child = Region::from_events(&k, 99, [point(2), point(3)]);
         assert_eq!(child.strictly_within(&parent), Ok(true));
         assert!(!child.events.is_subset(&parent.events));
-        assert!(!child.contains(point(1)));
+        assert!(!child.contains_event(point(1)));
         let slice = child.restrict_reachable(&BTreeSet::from([point(3)]));
         assert_eq!(slice.events, BTreeSet::from([point(3)]));
         assert_eq!(slice.generation, 99);
@@ -900,13 +926,13 @@ mod tests {
     fn discrete_region_parent_order_accepts_interleaving_without_subset() {
         let k = SemanticContinuation::default();
         let region = |points: &[u64]| {
-            Region::from_events(&k, 0, points.iter().copied().map(SemanticPosition))
+            Region::from_events(&k, 0, points.iter().map(|cut| supplied_event(*cut, 0)))
         };
         let parent = region(&[1, 4, 9]);
         let child = region(&[3, 6]);
         assert_eq!(child.strictly_within(&parent), Ok(true));
         assert!(!child.events.is_subset(&parent.events));
-        assert!(!parent.contains(SemanticPosition(2)));
+        assert!(!parent.contains_cut(SemanticPosition(2)));
         assert_eq!(region(&[3, 10]).strictly_within(&parent), Ok(false));
         assert_eq!(region(&[1, 6]).strictly_within(&parent), Ok(false));
         assert_eq!(region(&[3, 9]).strictly_within(&parent), Ok(false));
@@ -921,7 +947,7 @@ mod tests {
         let foreign = Region::from_events(
             &SemanticContinuation::default(),
             0,
-            [SemanticPosition(3), SemanticPosition(6)],
+            [supplied_event(3, 0), supplied_event(6, 0)],
         );
         assert_eq!(
             foreign.strictly_within(&parent),
@@ -936,20 +962,17 @@ mod tests {
             &k,
             7,
             [
-                SemanticPosition(1),
-                SemanticPosition(4),
-                SemanticPosition(9),
+                supplied_event(1, 0),
+                supplied_event(4, 0),
+                supplied_event(9, 0),
             ],
         );
         assert_eq!(before.restrict_reachable(&before.events), before);
-        let reachable = [
-            SemanticPosition(4),
-            SemanticPosition(8),
-            SemanticPosition(9),
-        ]
-        .into_iter()
-        .map(RegionEventPosition::from)
-        .collect();
+        let reachable = BTreeSet::from([
+            supplied_event(4, 0),
+            supplied_event(8, 0),
+            supplied_event(9, 0),
+        ]);
         let after = before.restrict_reachable(&reachable);
         assert_eq!(
             event_cuts(&after.events),
@@ -979,7 +1002,10 @@ mod tests {
                 SemanticPosition(9)
             ])
         );
-        assert!(!region.contains(SemanticPosition(6)));
+        assert!(!region.contains_cut(SemanticPosition(6)));
+        assert!(region.contains_event(supplied_event(4, 1)));
+        assert!(region.contains_cut(SemanticPosition(4)));
+        assert!(!region.contains_event(supplied_event(4, 0)));
         assert!(state.observed_colors(name).unwrap().is_empty());
         assert_eq!(
             state.events().last().unwrap().kind,
@@ -1198,7 +1224,7 @@ mod tests {
             BTreeSet::from([SemanticPosition(6)])
         );
         assert!(
-            !region.contains(SemanticPosition(1)),
+            !region.contains_cut(SemanticPosition(1)),
             "formation is not use"
         );
     }
@@ -2466,6 +2492,17 @@ mod tests {
                 .freeze_cleanup_through(SemanticPosition(100))
                 .unwrap();
         }
+        // The numeric endpoint relation can hold across cloned K snapshots;
+        // it grants no authority to reuse a Pre from the other revision.
+        let parent = Region::from_events(&k, 0, [supplied_event(1, 0), supplied_event(9, 0)]);
+        let child = Region::from_events(
+            &other_snapshot,
+            0,
+            [supplied_event(3, 0), supplied_event(6, 0)],
+        );
+        assert_eq!(k.identity(), other_snapshot.identity());
+        assert_ne!(k, other_snapshot);
+        assert_eq!(child.strictly_within(&parent), Ok(true));
         let action = LifecycleAction::Drop(b);
         let facts = validation(&state, &action);
         let proof = state

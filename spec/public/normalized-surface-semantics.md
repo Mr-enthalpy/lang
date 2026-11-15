@@ -1643,6 +1643,13 @@ continuation advance only restricts reachable events. Existing captures inherit
 Post; only genuinely new entry names default. Serial borrowing and unique
 Wait custody add no independent-access Color; actual independent dispatch does.
 
+Endpoint order is a pure relation, not sufficient borrow/access admission.
+Pre independently requires actual selected producer/parent-child source,
+name/generation, activation/guarded branch and lawful current E/K revision
+correspondence. Supplied events, true endpoints or equal original K identity
+across forks establish none of those premises. Missing correspondence is
+unavailable before production/access; the relation grants no permission.
+
 Omitted repair forms a source-derived automatic plan from live dependencies and
 unfinished cleanup, preserving origin-None roots without clone, replaying actual
 selected dependent producers/partners once, and delegating inputs/captures to
@@ -1673,7 +1680,10 @@ acceptance before registration. Custom heaps remain ordinary permitted providers
 Escape fails at production Pre, not by a last-minute reader check at heap Drop.
 
 [Atomic](../design/lifetime/atomic-pattern-transitions-and-causality.md)
-consumes ordinary $-formed type material with no held external-origin dependency.
+consumes ordinary $-formed type material with no external-origin dependency in
+any retained state name, including stored I/Index and S. A selected ordinary
+copy/formation may supply a genuinely closed new name; I's role never erases
+origin. A comparison-only input not retained by the state keeps its normal Pre.
 One successful CAS jointly changes Pattern/state, delivers old S_a and installs
 S_b; Rejected retains S_b. State count, version and lifecycle identity differ.
 Actual branches publish/import real causal histories; ownership visibility

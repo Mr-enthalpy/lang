@@ -585,6 +585,10 @@ R_C = {3, 6}
 
 子借用生产时，其 Region 已由该次续体材料决定；相应偏序在生产 Pre 检查。后续纯切片保留已建立的生产事实及观察对应关系，不把每个剩余集合重新当成新借用生产来测试或生成 origin。
 
+端点偏序只是纯关系计算，不是借用生产的充分性证明。`initialize_bounded_region` 及任何访问/借用 Pre 必须独立取得：真实已选生产动作与父子来源、实际名字/generation、该次 activation/守卫分支解释，以及输入 Region 对当前 K 的合法来源和修订对应。外部提供的事件集合、同一 continuation 身份、同样的数值端点或 `strictly_within = true` 都不建立这些事实。共用原始 K 身份的分叉快照不能据此互相发放权限；K 改写后，消费者须验证现有 E/K 对应及其依赖仍适用于当前动作，不能原样采用旧位置证明。所需事实为假则在提交前拒绝，缺失则 Unavailable；端点查询不产生 `LifecyclePreProof`、origin 或访问权限。
+
+Rust 载体的 `contains_event` 只查询完整 `(cut, action ordinal)`，`contains_cut` 只查询该 cut 是否有任意记录事件。原始 cut 不隐式补 ordinal=0；`from_events` 只接受完整事件位置。两种成员查询及集合构造都不建立上段的消费者准入证据，也不是第二种 Region/K 本体。
+
 该条件不免除具体操作的其他 Pre，例如资源版本、有效索引凭证或实际访问权限。不得以“独占借用”名义另加一个无 Color 的普遍父冻结规则。
 
 ### N04 — 默认入口世界与已有名字的继承 [不变量]
@@ -1693,7 +1697,7 @@ host bootstrap code and later source code must obey the same premises.
 |---|---|---|---|
 | initialize_empty_root | Current InvokeName(I), independently authorized fresh formation window, declared complete-type target, live one-shot initialization authority and ordinary formation/lifecycle Pre | A complete empty structural type at that actual I, with its real roles/callspace; consume that target's initialization authority. No foreign root, read of an absent resident or world-writing privilege | Its own ordinary complete-formation commit, under the construction owner |
 | initialize_borrow_origin | Selected fresh producer/name/generation, its still-pending source-formation responsibility, actual authorized source target/generation and ranges, and legal dependency-formation Pre | Exactly the origin relation prescribed for that new name by the selected source action. No rewriting an older name or inventing termination/unknown material | Stage in that producer's scoped companion storage; publish only with its complete action and joint Post |
-| initialize_bounded_region | Same actual fresh producer/name and source; fixed generation events and strict source/child endpoint order | The actual bounded region constraint, without extending the target or changing a cut | Same producer boundary |
+| initialize_bounded_region | Same actual fresh producer/name/generation and authorized parent/child source, actual activation/guarded branch, fixed events and lawful current-K revision correspondence, plus strict source/child endpoint order and ordinary access Pre | Only that producer's actual bounded Region; a supplied event set or true endpoint query grants no proof, origin or authority and changes no cut | Same producer boundary; missing correspondence is Unavailable before publication |
 | begin_shared_dependency | Same producer/name/source, actual bounded Region and protected endpoints, existing access/validation/validity premises; independently executing access additionally proves its required directed Color relation | Exactly the shared dependency on those endpoints with its actual validity obligations. Serial production adds no exclusionary Color; any independent-access Color retains inheritance/history. No new access and no recoloring the past | Same producer boundary |
 | adopt_origin | Live entry/success-scoped boundary view with actual K/action/activation/cut/generation/result mapping; established permitted source relation and the origin operation's own Pre | Only its corresponding mapped origin consequence; transfer of the same scoped view, not another view with broader authority | Stage in that boundary's storage; all components publish jointly |
 
