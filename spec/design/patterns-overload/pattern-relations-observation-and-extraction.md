@@ -366,7 +366,9 @@ and preserves, up to alpha-renaming / canonical binder renaming:
 
 - successful derivation structure;
 - the observable and extractable interface;
-- direct structural incidence.
+- direct structural incidence;
+- attached node-local `lifetime default` expression material, scope/binder
+  identity and its complete recursively composed relation observation.
 
 Therefore:
 
@@ -375,7 +377,12 @@ P ~=R Q => P ~=sat Q
 ```
 
 but not conversely. Two Patterns may accept the same content while exposing
-different structural or extraction evidence.
+different structural, extraction or lifecycle-default evidence. Even if
+`Sat_Gamma(P,c)` agrees with `Sat_Gamma(Q,c)` for all c, differing
+node-local lifetime defaults are observable Pattern materials and cannot
+be erased by Pattern equivalence or by `Norm_P`. The equivalent description
+must preserve the entire default relation template under legal alpha-renaming,
+not just the ordinary content classifier.
 
 Pattern normalization is sound in one direction:
 
@@ -385,7 +392,10 @@ Norm_P(P) = Norm_P(Q)
 ```
 
 The converse is not required. Canonical normal form may refine relational
-equivalence rather than solve equivalence completely.
+equivalence rather than solve equivalence completely. Pattern canonicalization,
+`*` composition and type identity/equality consumers must retain each formed
+node's lifecycle-default observation; neither identical field layouts nor
+equal resident values prove equality of the whole formed Pattern.
 
 Object normalization composes the three coordinates without copying either
 content axis into `P`:

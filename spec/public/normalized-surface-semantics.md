@@ -1631,7 +1631,10 @@ child-first and ancestor-last. At new-formal Pre it is substituted by real
 Pattern name expressions; `lifetime pre` then serially evaluates ordinary
 lifecycle expression material and incrementally changes only the stated
 relations, before check/admit. Existing captured/held names are never reset;
-Pattern default is no Movable proof. The lifecycle path relation interface
+Pattern default is no Movable proof. Raw/Norm must preserve node attachment,
+Pattern binder identity and entire relation-expression material; equal layout
+or match applicability cannot cause the default to be erased from the complete
+Pattern identity. The lifecycle path relation interface
 also admits schematic indexed `[i]` / `[0:n]` / `[0:ω]` material; ordinary
 `in` and `origin ||=` relations are not compiler Hoare-logic intrinsics.
 See [LC1–LC8](../contracts/lifetime-program-consumers.md) for the source handoff.
