@@ -43,9 +43,11 @@ A dash is incomplete, never a default success. Carrier/model evidence is named
 as a narrower slice. This work migrates the normative specification and D1's
 finite event carrier; it does **not** complete lifecycle/concurrency execution.
 
-All N01–N45 constraints are distributed to unique topic owners. N43 defines
-the boundary of the still-open F15 decision rather than choosing SeqCst/fence.
-No F01–F18 general proof or backend support is claimed. The paired source
+Current normative owners include N01–N50: N46–N50 extend atomic with
+shareable protected reads, one-point retirement, clone-and-publish writers,
+and deferred reader-safe reclamation. N43 remains only the extra SeqCst/fence
+ordering decision (F15); F19 is a distinct pending proof/consumer gate, not
+a new ordering choice. No F01–F19 general proof or backend support is claimed. The paired source
 acceptance rows remain pending; parser/token preservation alone does not complete
 their S/C/T chain.
 
@@ -98,6 +100,11 @@ their S/C/T chain.
 | N43 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | source/semantic consumer pending |
 | N44 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | source/semantic consumer pending |
 | N45 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | source/semantic consumer pending |
+| N46 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | shareable Boxlike/read/forgetable protocol registration pending |
+| N47 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | protected share acquisition and guard/retire race pending |
+| N48 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | CAS retired-custody/keep-share contract and machine commit pending |
+| N49 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | selected clone/COW/CAS/effect library source pending |
+| N50 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | reader-safe deferred Drop/visible published snapshot pending |
 
 ## M replacement map and actual baseline hits
 
@@ -164,7 +171,8 @@ contains U01–U12 and consumes, rather than duplicates, the individual owners.
 
 These are not proof-complete claims. Every gate is pending proof/source wiring;
 F15 additionally needs a semantic decision, while F17's universal guarantee is
-already required. Finite endpoint tests establish neither full F01 nor F02–F04.
+already required; F19 adds proof/consumer obligations for the newly defined
+shareable reading and retirement protocol without deciding memory-order F15. Finite endpoint tests establish neither full F01 nor F02–F04.
 
 | ID | Required argument / consumer | Boundary while incomplete |
 |---|---|---|
@@ -180,18 +188,32 @@ already required. Finite endpoint tests establish neither full F01 nor F02–F04
 | F10 | 独立容器的 effect 树变换、调用材料、Region/Color 和逃逸 | 无普通来源/同步关系不能并行发射或逃逸 |
 | F11 | Heap 顶层接收、逐层补充/提交、单次责任守恒、Pending 顺序和保证完成资源条件 | 无能力不能登记/提交后丢责任；不偷扫原始 pool |
 | F12 | Region 上界回收在生产 Pre 的逃逸证明，包括异常、挂起与 deferred destructor 的依赖 | 不把证明推迟到 drop；不靠 QS 语言事实 |
-| F13 | Atomic 对全部 RetainedStateNames 的外部来源闭合准入（含保留 I/Index、S）；CAS 的 A(I_a;S_a)→B(I_b;S_b) 单点变换、成功旧资源取出与新资源写入、失败保留输入；无字段/keep/同态 RMW 变体及 Color 受控域 | I 角色不洗掉来源；新闭合名字须有真实普通生产 Post，未保留比较输入仍按普通 Pre；普通 safe 接口不能绕过竞争或分离资源提交；不宣称所有 Pattern 可用 |
-| F14 | 版本/rf/mo、成功与失败结果分支的因果差异、后继提交发布/观察继承闭包、所有权交接推导的同步及 no-thin-air；强/弱失败观察 | 基本因果/同步已定但机器与 OOTA 保持性待证；不得由用户选 relaxed 等替代所需保障 |
+| F13 | Atomic 对全部 RetainedStateNames 的外部来源闭合准入（含保留 I/Index、S）；同一 CAS/Color 实例上分别证明独占交接式旧 S 取出、shareable 退休式旧 S 单次托管、keep/RMW 不移动 S、失败保留输入；目标状态闭合且单点发布 | shareable 不能同时开放普通 safe take；Boxlike/forgetable 标签不能藏外部 origin、复制资源或从失败构造已退休旧 S；不宣称所有 Pattern 可用 |
+| F14 | 版本/rf/mo、成功与失败结果分支的因果差异、后继提交发布/观察继承闭包、所有权与 shareable 发布-订阅快照可见性同步及 no-thin-air；强/弱失败观察 | 基本因果与合法读者的已发布初始化可见性已定但机器/OOTA 保持性待证；未保护的 peek 不产生 T share |
 | F15 | 是否仍需 SeqCst 级更强保证；若需要，决定是否采用独立 fence 及完整公理，检查双边/单边 SB、IRIW、2+2W、累积性与 lowering | **唯一保留的额外内存序设计问题**；在选定前不得把双边 SB 目标或完整 fence 说成源级已保证 |
-| F16 | 后端对所选源内存模型的正确性；x86-TSO/AArch64/RVWMO/LLVM 分别验证 | 有限模型不是 ISA 或编译证明；未接后端不宣称支持 |
+| F16 | 后端对所选源内存模型的正确性，包括 shareable 发布读、原子退休与 Drop 顺序；x86-TSO/AArch64/RVWMO/LLVM 分别验证 | 有限模型、现成 ARC/RCU 库经验或 relaxed CAS 不能代替机器/IR 保持性证明；未接后端不宣称支持 |
 | F17 | 标准 locate 在构造 Pre 对所有非根 Pool 验证普遍保证式父层提交、lazy 接收和非根/根边界；保证不依赖无限内存 | **规范已定，消费者与证明待接通**；不可注册仅在部分状态偶然可迁移的标准层 |
-| F18 | 库组合的不变量保持、受控入口与目标协议的精确差别 | 不传播整体 Atomic/Color，不由基础 safe 推出任意更窄子集 |
+| F18 | 库组合的不变量保持、受控入口与目标协议的精确差别，包括真实 clone 后独立可变候选、竞争 CAS 及用户自主 retry/effect | 不传播整体 Atomic/Color，不从 share 内部修改资源，不由基础 safe 推出任意更窄子集/自动进展 |
+| F19 | N46–N50 读保护在并发发布/退休竞态中的无 UAF 证明；Boxlike->T share 真实来源与 Region/不可变 Color，lazy/free 接收的原子单次责任与保证容量，合法读者结束前不 Drop；旧快照发布可见性、StorageSupport/跨 heap Submit 义务及所需 producer/source/backend 对应 | lazy-free 能接收不意味着能保护正在登记的读者；裸 peek + 指针、迟到 guard、CAS 成功后 fallible retire、retire 后立即析构、缺读者保护的 false success 均不可用/拒绝 |
 
 The dependency order is event/source material → correlated join/index/forget
 → founded repair → standard heap/lazy responsibility → atomic/causal backend
-→ actual E-host dependency integration. F02–F04 must all hold before a real
+and shareable protected-retirement proof F19 → actual E-host dependency integration. F02–F04 must all hold before a real
 repair successor is published. No general purity whitelist, implicit clone/Box,
 unknown root, missing Post or hardware-CAS-then-rollback substitutes for a gate.
+
+## Draft shareable-atomic extension (not part of the historical audit snapshot)
+
+N46–N50 and F19 are new normative design/proof targets added after the
+historical N01–N45/F01–F18 audit. The preceding evidence record and its
+974 existing Rust tests **have not** been rerun for this extension and
+do not cover shareable source registration, guard-versus-retire, COW/CAS,
+heap lazy-freedom or machine publication. The original ARC bounded-model
+cases remain illustrative *counted-protocol* evidence only; they cannot
+establish non-ARC protected concurrent reads. Source syntax for shareable,
+Boxlike/forgetable roles and ordinary library API names is deliberately
+not frozen. F15 remains the only extra SeqCst semantic-design decision.
+This update is documentation/acceptance only.
 
 ## Actual verification record
 
@@ -263,13 +285,14 @@ The audit follow-up and its separate validation record are described below.
 | 12 Atomic material | Consume admitted $-formed type; no new Pattern/enum and no arbitrary resource admission |
 | 13 Composition | Atomic fields do not certify outer Atomic; safe actions do not enforce arbitrary narrower protocols |
 | 14 CAS | One successful point exchanges state/S_a/S_b; Rejected retains S_b; scheduling is ordinary composition |
-| 15 Memory | Branch causal closure and ownership visibility fixed; F15 extra order undecided; OOTA/backend proofs pending |
+| 15 Memory | Branch causal closure and ownership/share-publication visibility fixed; F15 extra order undecided; OOTA/backend proofs pending |
+| 16 Shareable atomic | Registered Boxlike-to-share protected observation, retirement via lazy responsibility, COW conditional write; no mandatory ARC/lock/retry; F19 source/proof/backend pending |
 
 No contradictory current positive rule was found in the stated audits. Their
 inspection is not a universal absence proof. Specific unimplemented source
 domains remain those in the N/F table: full normalized-K/activation interpretation,
 producer/partner material and F02–F04 replay, F05–F09 join/index/forget/recovery,
-F10 independent containers, F11/F12/F17 standard heap and F13/F14/F16/F18 atomic,
+F10 independent containers, F11/F12/F17 standard heap and F13/F14/F16/F18/F19 atomic/shareable,
 host and backend chains. The 105 source scenarios have not executed, and no
 general proof or backend B is claimed. Their missing prerequisites remain
 Unavailable before action/success, not temporary alternative success semantics.
