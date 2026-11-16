@@ -249,9 +249,15 @@ standard non-root locate requires universal guaranteed submission. Independent
 [containers](control-flow/heterogeneous-computation-containers.md) separately
 check dispatch, Color and return/escape.
 [Atomic](lifetime/atomic-pattern-transitions-and-causality.md) consumes formed
-type material and jointly transfers state/resources at one actual successful
-point. Actual result branches retain their distinct causal histories; ownership
-visibility is a backend duty. F15 extra SeqCst/fence is pending.
+type material and jointly changes state/resources at one real successful
+point. Exclusive CAS may transfer old S to the caller; a separately admitted
+shareable protocol atomically retires old S to guaranteed lazy custody and
+produces T share only through a real protected observation/Region guarantee.
+Shareable writers clone a valid read view into privately owned mutable
+material and compete on the same atomic state; retry/Wait scheduling is ordinary
+library/effect composition. Actual result branches retain different causal
+histories, while publication visibility and reader-safe retirement remain
+backend/proof obligations (F14/F16/F19). F15 extra SeqCst/fence remains open.
 The [unified correspondence](unified-static-name-and-structural-semantics.md#cross-owner-correspondence)
 and [evidence ledger](../planning/lifetime-concurrency-consolidation.md) link these
 owners without another evaluator or duplicated Region definition.

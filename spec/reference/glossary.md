@@ -787,5 +787,13 @@ executable Move/Drop. Ordinary extraction inherits those obligations; partial
 default-world recovery in reify cannot restore a hidden non-default dependency.
 An atomic version is a committed event identity, separate from a state number,
 LifeName/generation, origin and rf. Only actual observation imports its Past.
-The [atomic owner](../design/lifetime/atomic-pattern-transitions-and-causality.md)
-defines the one-attempt resource transition and bounded F15 decision.
+A shareable atomic state is a **registered stable read-and-retirement protocol**,
+not automatic ARC/lock or a mutable T share. It requires a real Boxlike-to-T
+share formation, protected reader Region and an atomic one-shot transfer of
+replaced old S into a forgetable deferred Drop duty. Keep/observing operations
+may return a share only when protection is established; writers clone and
+conditionally replace privately mutated owned copies. Lazy free capacity and
+reader-safe reclamation are separate obligations; actual old share views may
+survive a later atomic state replacement. The
+[atomic owner](../design/lifetime/atomic-pattern-transitions-and-causality.md)
+defines the one-attempt resource transition, F19 proof and bounded F15 decision.

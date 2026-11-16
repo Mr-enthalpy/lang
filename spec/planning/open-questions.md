@@ -182,6 +182,14 @@ Persistent dependency/source encoding remains open, not the propagation law.
 - Which ordinary API names (including depends_on/live_with), argument packaging,
   namespaces, regular-material encodings, caches and boundary-transform
   algorithms implement the closed lifecycle relations?
+- Which syntax/registration expresses a shareable atomic payload protocol,
+  its Boxlike-to-T share producer and its forgetable deferred Drop duty?
+  The N46–N50 semantics already require stable immutable published T, actual
+  guard/version/source admission against concurrent retirement, guaranteed
+  single-point lazy custody and independent reader Region. Implementations
+  may use epoch, hazard, region support or other proven methods; no single
+  ARC/lock/RCU mechanism is mandated. F19 is an unproved safety/consumer gate,
+  not another open SeqCst question; F15 alone retains the extra-order choice.
 - Which representations/algorithms realize the fixed name-item SCC collapse
   to original paired regular forms at Ordinary boundaries and participating
   InPlace exits, including preserved contribution/incidence mappings after an

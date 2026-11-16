@@ -581,9 +581,16 @@ Atomic is a formed-type consumer requiring external-origin closure of all retain
 state names, including I/Index and S; it creates no enum Pattern. A real ordinary
 copy/formation can establish a fresh closed name, but state-number role or equal
 content cannot erase an existing dependency. Comparison-only, unretained input
-still satisfies ordinary access Pre. CAS success jointly transfers S_a/S_b and
-version/state at one point,
-failure retains incoming custody. Real result-branch causality and resource
-visibility are fixed; extra SeqCst/fence, OOTA proof and backend lowering have
-their precise pending gates. No field-to-outer atomic propagation, payload access
-from peek, automatic retry or arbitrary protocol-subset inference is licensed.
+still satisfies ordinary access Pre. CAS success changes state at one point: the original exclusive protocol
+transfers old S_a to the caller, while a registered shareable protocol
+atomically retires it to guaranteed lazy custody without returning S_a.
+Failure retains incoming custody. Stable Boxlike-to-T-share access needs a real
+protected read with source, Region and release/retire race proof; normal share
+has no internal mutation. A writer can clone an actual T share to an independent
+owned candidate and conditionally publish through the same CAS domain, with
+retry/Wait left to ordinary code. Lazy free alone proves no reader guard,
+and ARC count atomicity alone proves no safe business read. Actual branch
+causality, ownership and read-publication visibility are required; F19 reader
+protection/retirement and F14/F16 backend/OOTA remain pending. Extra SeqCst
+is still F15. No field-to-outer atomic propagation, payload from ordinary
+peek, automatic retry or arbitrary subset proof is licensed.

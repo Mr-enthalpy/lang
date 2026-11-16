@@ -34,7 +34,10 @@ are defined only in the [lifetime owner](lifetime-policy-and-overload-boundary.m
 [HeapStack](heap-stack-and-storage-responsibility.md) owns standard current-top
 routing, lazy duty and universal direct-parent submission at non-root locate.
 [Atomic transitions](atomic-pattern-transitions-and-causality.md) own admitted
-sum-Pattern CAS, resource exchange and branch causality.
+sum-Pattern CAS, exclusive resource exchange or shareable deferred retirement,
+protected T share observations, COW conditional updates and branch causality.
+[HeapStack](heap-stack-and-storage-responsibility.md) owns lazy reception,
+not the read-protection proof itself (atomic F19).
 [Heterogeneous containers](../control-flow/heterogeneous-computation-containers.md)
 own ordinary effect-tree transformation and independent dispatch.
 [Status and proof gates](../../planning/lifetime-concurrency-consolidation.md)

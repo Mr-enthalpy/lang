@@ -34,7 +34,7 @@ that the corresponding source semantics is implemented.
 | Standard current-top malloc/free, direct-parent submission, universal non-root locate capability, lazy Drop and storage responsibility | [heap protocols](lifetime/heap-stack-and-storage-responsibility.md) |
 | Step/Done/Wait, transparent propagation, handlers, throw and forced PatternMiss | [effect steps](control-flow/effect-steps-and-continuation-handoff.md) |
 | Ordinary lifecycle programs, whole-K projection, rank-0 @, Region/Color, Killable/MoveEffect/Movable, contract formation/defaults, boundary compression, regular access and library protocols | [lifecycle](lifetime/lifetime-policy-and-overload-boundary.md) |
-| Atomic formed-type registration, one-attempt Pattern/state/resource CAS, causal memory and bounded extra-order decision | [atomic transitions](lifetime/atomic-pattern-transitions-and-causality.md) |
+| Atomic formed-type registration, one-attempt Pattern/state CAS, exclusive custody or shareable protected reads and retirement, causal memory and bounded extra-order decision | [atomic transitions](lifetime/atomic-pattern-transitions-and-causality.md) |
 | Heterogeneous effect-tree containers, independent dispatch and ordinary escape | [computation containers](control-flow/heterogeneous-computation-containers.md) |
 | SafetyPolicy, external admission and trusted semantic base | [unsafe admission](lifetime/unsafe-semantic-admission.md) |
 | Serial unit/fallthrough, separate return-event/target inference and internal completion | [control flow](control-flow/targeted-return-and-d-reduction.md) |
@@ -97,9 +97,9 @@ Type operations use the compile algebra. See the
 
 ## Lifecycle/concurrency implementation evidence
 
-The [N01–N45/M01–M31/U01–U12/F01–F18 ledger](../planning/lifetime-concurrency-consolidation.md)
+The [N01–N50/M01–M31/U01–U12/F01–F19 ledger](../planning/lifetime-concurrency-consolidation.md)
 records actual ownership, baseline, carrier/source coverage and proof gates.
-The [105 paired cases](../planning/lifetime-concurrency-acceptance.md) are
-normative source targets. Definitions do not imply proofs or connected consumers;
+The [original 105 paired cases and the added shareable-atomic targets](../planning/lifetime-concurrency-acceptance.md) are
+normative source targets, not all executed tests. Definitions do not imply proofs or connected consumers;
 extra SeqCst/fence alone remains an undecided ordering rule, while standard
 non-root locate's universal direct-parent relocation is already mandatory.

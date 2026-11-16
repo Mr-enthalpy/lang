@@ -1724,12 +1724,26 @@ consumes ordinary $-formed type material with no external-origin dependency in
 any retained state name, including stored I/Index and S. A selected ordinary
 copy/formation may supply a genuinely closed new name; I's role never erases
 origin. A comparison-only input not retained by the state keeps its normal Pre.
-One successful CAS jointly changes Pattern/state, delivers old S_a and installs
-S_b; Rejected retains S_b. State count, version and lifecycle identity differ.
-Actual branches publish/import real causal histories; ownership visibility
-must be implemented by the backend. No per-operation relaxed/acquire/release
-operand, implicit retry, outer atomic propagation or arbitrary safe-subset proof
-is implied. Only extra SeqCst/fence is undecided at F15.
+One successful CAS jointly changes Pattern/state. In the original exclusive
+custody protocol it delivers old S_a to the caller and installs S_b; in a
+separately admitted shareable/forgetable protocol it **does not deliver owned
+S_a** but transfers that resource and its Drop duty to guaranteed lazy
+retirement in the same commit. Rejected retains S_b. Resource-preserving
+keep/RMW/observe may deliver a real T share **only** via registered protected
+observation of stable Boxlike storage and proven reader Region; plain peek
+still supplies no payload access. Protected readers may continue reading
+retired immutable snapshots. Shared reads do not permit ordinary mutation:
+writers need a real selected clone of a T share, a separately modifiable
+owned candidate, and a competing selected resource-replacement CAS.
+Scheduling, retry, suspension and retirement implementation are library/effect
+choices, not new locks, ARC or a forced CAS loop. State number, commit version,
+LifeName and read protection remain distinct. Actual branches publish/import
+real causal histories; ownership and snapshot-publication visibility plus
+reader-safe deferred Drop require F14/F16/F19 proof/backend consumers. No
+per-operation relaxed/acquire/release operand, implicit retry, outer atomic
+propagation or arbitrary safe-subset proof is implied. Only extra
+SeqCst/fence is undecided at F15; shareable/Boxlike/forgetable source spelling
+remains a design target.
 
 [Independent containers](../design/control-flow/heterogeneous-computation-containers.md)
 transform ordinary effect trees and separately check dispatch, Color and escape.
