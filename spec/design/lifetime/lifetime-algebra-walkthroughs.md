@@ -1099,7 +1099,7 @@ let try_trust =
         unsafe post {
             let (ok_role, err_role) = out@ |> outcome_roles::trust;
             let s = ok_role share |> success_id_role::trust;
-            let validated = s .. in(v@);
+            let validated = s .. in(v@);  // s is the projected lifecycle Index role
             let no_fact = () |> empty_rows::lifetime;
             ((ok_role, validated), (err_role, no_fact))
                 |> guarded_rows::lifetime |> form_post return;
@@ -1224,6 +1224,14 @@ equality between another integer t and s supplies none of this mapping.
 An actual Move of s preserves only the relations granted by its selected
 Post and MoveEffect. A selected clone or arithmetic transformation needs its
 own Post; it cannot inherit trust merely by producing an equal integer.
+
+Here `s` in the successful `unsafe post` is already the projected lifecycle
+role for the delivered Index name, so `s .. in(v@)` is the same name-parametric
+shape as the public example `index@ .. in(array@)`; applying `@` again to
+that lifecycle role would instead observe the name of the lifecycle value.
+The qualified source `v@` remains the actual validated container view.
+A different library may choose different names/registration while preserving
+the same ordinary contract and actual source mapping.
 
 The library may protect `capacity` and a range, but must cover **every** action
 that can falsify validation: shrinking length, reallocating/reordering storage,

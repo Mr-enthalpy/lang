@@ -1173,7 +1173,23 @@ structural descendants, never ancestor or sibling Pattern names. When the
 same `srt` node is nested under a `wrapper` with another child `others`,
 its expression still cannot reference `wrapper` or `others`; an annotation
 on the wrapper may address its own subtree. Binder identities, not text
-spelling, determine references.
+spelling, determine references. For the same scoped seed:
+
+```lang
+let wrapper = (
+  (
+    (uint8 val, uint8 ref ref)srt
+      lifetime default (srt@.ref .. depends_on(srt@.val)),
+    (uint8 others)
+  )wrapper
+)$;
+```
+
+The inner `srt@` is mapped to the actual `object@.srt` at a wrapper
+formal's new-entry Pre, not to `object@` or a compile-time resident in
+the wrapper formation. A wrapper-local default can refer to both `.srt`
+and `.others`, but its changes must obey whole-relation-item ancestor
+override rather than extracting hidden authority from sibling placement.
 
 Local defaults are **complete relation declarations** for their node:
 redeclaring a node discards its old local relation description rather than

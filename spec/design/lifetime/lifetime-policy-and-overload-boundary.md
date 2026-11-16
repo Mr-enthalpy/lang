@@ -532,9 +532,15 @@ Region(handle) strictly-within Region(origin(handle))
 Here strictly-within means the established strict min/max endpoint relation,
 not event-set inclusion. Different independently introduced `ref` defaults
 have distinct origin roots by default, subject to explicit lawful local
-Pattern defaults or explicit Pre. `share` defaults are *may-alias*: they assert
-neither distinctness nor equality between share origins. A share source
-cannot obtain exclusive access from this loss of alias precision.
+Pattern defaults or explicit Pre. `share` defaults are *may-alias*: the entry Pre deliberately **forgets**
+any distinction/equality that would not be needed by that interface, by
+ordinary lawful lifecycle relation abstraction. This forget step neither
+asserts that two share origins are identical nor destroys established
+caller provenance; it simply requires neither equality nor inequality for
+a fresh formal share pair. The real caller-to-formal map must still justify
+the weaker relation, and the body cannot regain a forgotten distinction
+without actual additional producer evidence. A share source cannot obtain
+exclusive access from this loss of alias precision.
 Known source/caller name/region evidence substitutes for an exterior unknown
 where available; otherwise the already formed, boundary-scoped unknown and
 its region/access/check obligations are forwarded outward, never silently
@@ -2012,6 +2018,13 @@ the description is `[0:ω]`, not an attempt to enumerate infinitely many
 objects or to manufacture any given bound. Policy overloads may select the
 known-index and unknown-index ordinary operations without special syntax
 dispatch or a second execution model.
+
+The lifecycle element path step `[i]` is distinct from the existing ordinary
+Path-value operation `p[i]`, whose [Path owner](../symbol-world/structured-path-algebra-and-interpretation-polarity.md#26-segment-observation-and-indexing)
+returns a rootless relative one-segment `path_pattern`. The common `[]`
+spelling is contextual/selected ordinary operation material, not a coercion
+between those two representations. It never recovers resident values,
+authorizes an element borrow, or equates unlike name identities.
 
 `[0:n]` and `[0:ω]` denote sets of *possible element paths*, not
 permissions to operate on all of them or equal identities for their members.

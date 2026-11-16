@@ -23,13 +23,14 @@
 |---|---|---|---|---|---|---|---|---|
 | DFLT01 | Pattern-local lifetime default 完整声明当前节点，子先父后；Pre 通过普通表达式分号串行只增量修改已形成默认材料 | 不是全局约束求解或字段级隐式默认合并 | D | — | — | — | — | — |
 | DFLT02 | 不另写 default 的 ref 指向当前访问树外的可追溯 unknown，且严格 Region 小于其 origin | unknown 不代表无限寿命、None、自动有效 access | D | — | — | — | — | — |
-| DFLT03 | 独立 ref 默认 origin 不同；share 默认 mayalias；外层真实名字代入或向外续传义务 | 不得从 share 名字不同推断独立性 | D | — | — | — | — | — |
+| DFLT03 | 独立 ref 默认 origin 不同；share 默认 Pre 主动经普通关系遗忘为 mayalias；外层真实名字代入或向外续传义务 | 不得从 share 名字不同推断独立性，亦不得删除 caller 的实际来源历史 | D | — | — | — | — | — |
 | DFLT04 | [i]/[0:n]/[0:ω] 三类普通生命周期路径形成，遵循实际 Policy/长度/注册材料 | 不授予全数组操作权限或隐式范围验证 | D | — | — | — | — | — |
 | DFLT05 | array@.origin ||= out_lines 保留保守外部来源和 Region，取出继承而余数组不扣减 | 不按值或索引恢复原名，不合并权限 | D | — | — | — | — | — |
 | DFLT06 | try_trust 的成功 unsafe post 可用普通 index@ .. in(array@)，访问 Pre 用同一关系材料 | 无真实验证不能凭 bool/同值建立 in；无通用 Hoare 推理内建 | D | — | — | — | — | — |
 | DFLT07 | HeapStack 用 mut let heap_locate = heap .. locate(pool); let heap = heap_locate ref，外层 heap 由 borrow 捕获 | 不 Move 外层 heap，不能让挂起遗失外部来源偏序 | D | — | — | — | — | — |
 | DFLT08 | malloc 成功实际新 origin 和更短 Region，Box storge 与 heap 用普通 live_with 关系 | unsafe post 仅真实外部成功后，不能虚构无限堆 | D | — | — | — | — | — |
 | DFLT09 | Wait/退出分别在真实请求 Pre、Post 名字压缩处拒绝不合法 heap/local 借用 | 不先汇聚约束求解、不移动析构点或把本地依赖改成外部 unknown | D | — | — | — | — | — |
+| DFLT10 | 现有 Path 对象 `p[i]` 提取一段相对 path_pattern；生命周期 `[i]` 则为数组元素路径表达式 | 同形 `[]` 不得合并语义、索引信任、根/名字或访问能力 | D | — | — | — | — | — |
 
 ## Color 与独立执行
 

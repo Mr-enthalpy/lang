@@ -179,7 +179,9 @@ Hoare-logic engine is claimed.
 | NW18 | Borrowed heap-stack locate with mut let heap_locate = heap .. locate(pool); let heap = heap_locate ref | Parent heap remains borrowed, not moved through capture; actual source has strict Region order and unknown duties propagate to caller | 
 | NW19 | malloc and Box storge dependency | Allocation has real fresh independent origin and Region less than supporting heap; boxobject@.storge .. live_with(heap@) is ordinary relation; actual top source known or exterior unknown | 
 | NW20 | Wait or exit with captured borrowed heap | At request Pre reject fixed future Region/Color conflict; at Post local compression reject uneliminated local heap_locate dependency; legal Wait inherits valid Post without rerunning a global solver |
-| NW21 | Two Patterns match identical contents with distinct node-local lifetime defaults | Preserve distinct default expression observations in complete Pattern/Norm identity; do not merge by matching, field layout, Core or cached TypeValueId alone | 
+| NW21 | Two Patterns match identical contents with distinct node-local lifetime defaults | Preserve distinct default expression observations in complete Pattern/Norm identity; do not merge by matching, field layout, Core or cached TypeValueId alone |
+| NW22 | A pair of share formals with distinct known caller roots enters may-alias default Pre | The interface forgets the distinction through an ordinary lawful relation abstraction without rewriting caller history; no equality or inequality becomes an assumption |
+| NW23 | Path p[i] segment extraction and lifecycle [i]/[0:n] route construction | Keep ordinary Path-relative-segment and lifecycle path-route meanings distinct under their actual selected operation and evidence; neither creates index trust or access permission | 
 
 ## Stage, Policy and two-round calls
 
