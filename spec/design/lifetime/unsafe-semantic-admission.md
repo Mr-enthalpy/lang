@@ -164,5 +164,15 @@ actual coherent-memory commit facility only within its admitted transition and
 Color domain. Resource closure, same-instance competition and successful
 single-point S_a/S_b exchange must hold before hardware commit. Failed attempts
 retain incoming custody. No unsafe pre, check=true or private ticket constructor
-proves an unrestricted count-changing API enforces ARC. Causal/ownership
-synchronization is fixed; extra SeqCst/fence remains F15 and backend proof pending.
+proves an unrestricted count-changing API enforces ARC. A shareable atomic
+protocol is not mere atomic reference counting: its stable owned resource
+requires a lawful Boxlike-to-`T share` producer and a real deferred-retirement
+duty. Every protected reader must have an actual version/source/generation
+and a guard established safely against concurrent retire before payload use.
+Replacement CAS success atomically installs the old unique resource and
+Drop duty in a guaranteed lazy-accepting manager; fallible late registration
+cannot salvage a previous CAS. Ordinary `unsafe post` describes only real
+successful external validation/protection, not a missing guard, closed-source
+Pre or false Region relationship. Causal/ownership and share-publication
+visibility are source/backend obligations; extra SeqCst/fence remains F15
+and N46–N50/F19 proof support is pending.
