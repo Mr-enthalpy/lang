@@ -1099,7 +1099,7 @@ let try_trust =
         unsafe post {
             let (ok_role, err_role) = out@ |> outcome_roles::trust;
             let s = ok_role share |> success_id_role::trust;
-            let validated = (v@, num@, s) |> validated_index_rows::trust;
+            let validated = s .. in(v@);
             let no_fact = () |> empty_rows::lifetime;
             ((ok_role, validated), (err_role, no_fact))
                 |> guarded_rows::lifetime |> form_post return;
@@ -1258,14 +1258,9 @@ are illustrative; none denotes a compiler shortcut.
 let range_access =
     (self, v:VectorShare$, index:Index::):runtime -> _:Word::
         lifetime pre {
-            let source = (v@, index@) |> require_validation_source::trust;
-            let generations = (v@, index@) |> require_validation_generations::trust;
-            let shared = (v@, index@) |> require_active_shared_dependency::trust;
-            let interval = (v@, index@) |> require_access_interval::trust;
-            let operations = (v@, index@) |> require_range_read_and_moves::trust;
-            (source, generations, shared, interval, operations)
-                |> concatenate_rows::lifetime
-                |> required_contract_pattern::trust |> form_post return;
+            let relation = index@ .. in(v@);
+            relation |> required_contract_pattern::trust
+                |> form_post return;
         }
         => {
             let element = (v, index) |> element_share_at::vector;
@@ -1276,9 +1271,11 @@ let value = (vector share, safeid) |> range_access;
 ```
 
 The runtime Index enters the compile contract through **index@**, not by
-evaluating its integer in the lifecycle world. These are ordinary typed
-requirement rows consumed by the same W2 self-root constructor and its
-associated check/admit. Their registered ordinary component checks must test:
+evaluating its integer in the lifecycle world. The `in` expression is ordinary
+compile lifecycle material; the enclosing contract constructor/check/admit
+are also ordinary consumers. No compiler-provided Hoare logic is assumed.
+The library's justified `in` relation must itself maintain or consume the
+following specific source/validation/interval observations:
 
 | Requirement / W2 check component | Actual material which must match |
 |---|---|
@@ -1289,9 +1286,10 @@ only when present; historical Color alone or absence of conflict is insufficient
 | Interval / region_fits | This access and its temporary element observation lie in the credential's maintained interval and actual target validity; no invalidating resource/index action has intervened |
 | Range/read/transfers / access_is_subset and effects_match | The selected element endpoint is in both the validated range and v's permitted read structure; actual input Moves, temporary borrowing, clone and cleanup satisfy their own Pre |
 
-The row constructors create descriptions, not validation facts. Missing evidence
-makes the required check false or unavailable at its actual consumer; a true
-user check cannot substitute for any operation's independent Pre.
+The registered `in` operation and contract constructor describe/check a real
+source protocol; they do not manufacture validation facts. A failed or
+unavailable required observation rejects or remains unavailable at its actual
+consumer. A user-written true check cannot substitute for independent Pre.
 
 | Call position | Name/credential mapping |
 |---|---|

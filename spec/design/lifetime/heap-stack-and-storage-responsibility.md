@@ -54,6 +54,7 @@ express its dependence as ordinary lifecycle relation material:
 boxobject@.storge .. live_with(heap@)
 ```
 
+`storge` follows the illustrative field spelling of the Box example.
 `storge` and `live_with` here are library spellings, not new language
 primitives. The current-top route identifies either the actual externally
 known heap source or the scoped outside-tree unknown whose Pre must

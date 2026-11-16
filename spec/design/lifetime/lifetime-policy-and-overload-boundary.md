@@ -564,7 +564,10 @@ commit; needed unavailable evidence is Unavailable. No default or Pre
 expression can create a name, replace historical origin, extend a region, or
 manufacture access/Move/Drop authority.
 
-`|Delta_pre|` measures the finite **description material** delivered by one
+The serial explicit Pre expression has finite completed description material
+when its actual computation terminates; any notation `Delta_pre` below is
+shorthand for the resulting change material, not a primitive unordered
+constraint patch. `|Delta_pre|` measures the finite **description material** delivered by one
 completed formation/observation: its ordinary bound names, relation rows and
 finite regular descriptor graph. It is not the cardinality of the descriptor's
 path denotation. A finite descriptor using repetition may describe infinitely
