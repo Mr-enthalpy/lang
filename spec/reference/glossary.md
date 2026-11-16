@@ -787,13 +787,23 @@ executable Move/Drop. Ordinary extraction inherits those obligations; partial
 default-world recovery in reify cannot restore a hidden non-default dependency.
 An atomic version is a committed event identity, separate from a state number,
 LifeName/generation, origin and rf. Only actual observation imports its Past.
-A shareable atomic state is a **registered stable read-and-retirement protocol**,
-not automatic ARC/lock or a mutable T share. It requires a real Boxlike-to-T
-share formation, protected reader Region and an atomic one-shot transfer of
-replaced old S into a forgetable deferred Drop duty. Keep/observing operations
-may return a share only when protection is established; writers clone and
-conditionally replace privately mutated owned copies. Lazy free capacity and
-reader-safe reclamation are separate obligations; actual old share views may
-survive a later atomic state replacement. The
+Atomic's ordinary `$` Pattern may have named `Status`, `own` or
+`share` structural members: the resource role is bound to the
+source slot; I or S may be absent. Ordinary typed numeric
+`Product |> slice` material, for example `(1u32:)`, can describe
+Status patterns without a special Atomic counter ontology.
+A successful CAS atomically changes the selected Pattern and
+resource/Status consequences. If S leaves an `own` slot, the
+result gets owned S; if S leaves a `share` slot, its ownership
+goes to lawful Forget and the result gets actual `S share`.
+Keep means S remains in its slot and does not itself guarantee
+another share. Changing `own/share` needs a Pattern-changing
+CAS; `share -> own` requires proof that no conflicting live
+share remains, not mere count equality. Failed CAS returns
+formed proposed Status/resource material without silent Drop.
+Specific reader-count, clone/COW, ARC/RCU/GC/Mutex, lazy
+reclamation or scheduler protocols are library choices; the
+language fixes only the safety/proof obligations.
+The
 [atomic owner](../design/lifetime/atomic-pattern-transitions-and-causality.md)
 defines the one-attempt resource transition, F19 proof and bounded F15 decision.

@@ -82,26 +82,23 @@ not historical origin.
 
 若队列匿名承载不同具体类型的析构续体，须按 N20–N24 保留其 Drop/Move 实现与全部必要依赖；不能只保存一个裸入口而遗失捕获或名字资格。
 
-**Atomic shareable retirement is a client of, not a consequence of, N28.**
-A resource removed from a shareable atomic state may transfer its unique
-owned value and Drop continuation to `PendingDrop(H)` at the successful
-single-point transition, without returning it to a writer. The receiving
-manager must be admitted and its needed metadata/storage must be reserved
-or guaranteed **before** that commit; successful CAS followed by fallible
-lazy-free registration is invalid. No pending duty may be lost or doubled.
+**An Atomic `S share` exit may use this ordinary lazy reception protocol,
+but is not defined by it.** A successful CAS that actually removes S from a
+`share` source slot must deliver unique owned S custody to some lawful Forget
+receiver while simultaneously returning a valid `S share`. If the selected
+ordinary receiver is a standard heap manager, its accepted pending duty
+must preserve real Drop/Move, storage support and every outstanding legal
+share Region, without a fallible *post-commit* attempt to discover ownership
+or allocate missing registration resources. The same atomic/source law can
+be realized by other ordinary protocols; no particular lazy list, ARC or
+reader-guard representation is required by Atomic.
 
-Lazy reception does not by itself establish concurrent reader safety. Each
-issued `T share` needs a real publication/observation/guard contract, and
-the retired resource must stay valid for every share's admitted Region,
-including the guard-versus-retire race. The actual manager retains storage
-support and reader dependencies until lawful Drop. The old version no
-longer being current is not a sufficient reclamation criterion; nor does
-N32's absence of language-visible QS discharge a read obligation. A lawful
-immediate Drop when no protected readers remain still requires proof.
-Standard direct-parent submission transfers the **whole** guarded pending
-duty, not permission to free early. The [atomic owner](atomic-pattern-transitions-and-causality.md)
-N46–N50 fixes the corresponding acquisition/retirement protocol.
-
+HeapStack's ability to accept Pending does **not** prove that concurrent
+share acquisition, source-to-own mode recovery or eventual invalidating
+Drop is safe. Those are independent real Pre/Post, Region/Color and
+protocol-maintenance obligations; the selected library must prove them.
+The [atomic owner](atomic-pattern-transitions-and-causality.md) N47–N50
+defines only the resource handoff and access-right proof boundary.
 
 ## 3. Historical origin and current duties
 

@@ -1725,30 +1725,46 @@ acceptance before registration. Custom heaps remain ordinary permitted providers
 Escape fails at production Pre, not by a last-minute reader check at heap Drop.
 
 [Atomic](../design/lifetime/atomic-pattern-transitions-and-causality.md)
-consumes ordinary $-formed type material with no external-origin dependency in
-any retained state name, including stored I/Index and S. A selected ordinary
-copy/formation may supply a genuinely closed new name; I's role never erases
-origin. A comparison-only input not retained by the state keeps its normal Pre.
-One successful CAS jointly changes Pattern/state. In the original exclusive
-custody protocol it delivers old S_a to the caller and installs S_b; in a
-separately admitted shareable/forgetable protocol it **does not deliver owned
-S_a** but transfers that resource and its Drop duty to guaranteed lazy
-retirement in the same commit. Rejected retains S_b. Resource-preserving
-keep/RMW/observe may deliver a real T share **only** via registered protected
-observation of stable Boxlike storage and proven reader Region; plain peek
-still supplies no payload access. Protected readers may continue reading
-retired immutable snapshots. Shared reads do not permit ordinary mutation:
-writers need a real selected clone of a T share, a separately modifiable
-owned candidate, and a competing selected resource-replacement CAS.
-Scheduling, retry, suspension and retirement implementation are library/effect
-choices, not new locks, ARC or a forced CAS loop. State number, commit version,
-LifeName and read protection remain distinct. Actual branches publish/import
-real causal histories; ownership and snapshot-publication visibility plus
-reader-safe deferred Drop require F14/F16/F19 proof/backend consumers. No
-per-operation relaxed/acquire/release operand, implicit retry, outer atomic
-propagation or arbitrary safe-subset proof is implied. Only extra
-SeqCst/fence is undecided at F15; shareable/Boxlike/forgetable source spelling
-remains a design target.
+consumes already `$`-formed sum Pattern material, just like the ordinary
+`struct` consumer. Branches may use named ordinary members
+`(I Status, S own)` or `(I Status, S share)`, with I/S independently
+omissible. All named members preserve ordinary unordered Product
+rules, and roles are established through real structural/Pattern
+evidence, not bare-slot order or accidental Val2 name equality.
+`Status` can use ordinary numeric slice Patterns such as
+`NotZero = ((1u32:) NotZero)$`, with ordinary `Product |> slice` and
+no Atomic-only range grammar. Full retained I/S source closure
+remains mandatory; numeric values never create origin, authority
+or version identity.
+
+One successful CAS atomically matches/transforms the actual state.
+When the old resource *leaves* its slot, source `S own` returns
+owned S to Committed while source `S share` transfers sole owned
+S to lawful Forget custody **and** returns an actual S share.
+If old S stays in the slot, Keep is distinct from both exit
+outcomes; only a specifically admitted successful operation
+creates new shared access. No source state may safely choose
+both exit dispositions. Changing between `own` and `share`
+requires a state-Pattern-changing CAS, not only a Status update;
+a later take is a separate CAS. `share -> own` requires actual
+proof that all conflicting old shares have legally ended:
+`n=1`/`n=0` alone does not prove it.
+
+The concrete CAS API family is not predetermined. Needed mechanisms
+include Pattern/slice matching, mode transition, optional I/S,
+incremental Status updates and preservation of unobservable
+Status components, Keep/exit/resource replacement and lawful
+share issuance. A rejected attempt leaves the atomic state
+unchanged and returns its **actually formed proposed new Status
+and resource** to Rejected, not silently Drop or Lose them.
+Actual result branches carry distinct causal histories and
+resource visibility commitments. No generic ARC/RCU/Mutex/GC,
+Boxlike, clone/COW, lazy-free receiver or retry policy is part
+of Atomic's definition; such libraries can be composed subject
+to their real Pre/Post proofs (F13/F14/F16/F18/F19). No
+per-operation relaxed/acquire/release operands, implicit retry,
+outer Atomic propagation or arbitrary safe-subset theorem is
+implied. Only extra SeqCst/fence remains undecided at F15.
 
 [Independent containers](../design/control-flow/heterogeneous-computation-containers.md)
 transform ordinary effect trees and separately check dispatch, Color and escape.

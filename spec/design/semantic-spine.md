@@ -248,16 +248,21 @@ malloc/free and direct-parent relocation with lazy Pending custody; every
 standard non-root locate requires universal guaranteed submission. Independent
 [containers](control-flow/heterogeneous-computation-containers.md) separately
 check dispatch, Color and return/escape.
-[Atomic](lifetime/atomic-pattern-transitions-and-causality.md) consumes formed
-type material and jointly changes state/resources at one real successful
-point. Exclusive CAS may transfer old S to the caller; a separately admitted
-shareable protocol atomically retires old S to guaranteed lazy custody and
-produces T share only through a real protected observation/Region guarantee.
-Shareable writers clone a valid read view into privately owned mutable
-material and compete on the same atomic state; retry/Wait scheduling is ordinary
-library/effect composition. Actual result branches retain different causal
-histories, while publication visibility and reader-safe retirement remain
-backend/proof obligations (F14/F16/F19). F15 extra SeqCst/fence remains open.
+[Atomic](lifetime/atomic-pattern-transitions-and-causality.md) consumes
+ordinary `$`-formed sum Pattern material with named optional
+`Status` and `S own/share` roles (not positional bare Product
+slots). Ordinary numeric slice Patterns can match Status values.
+Each actual CAS is one conditional atomic transition. On old
+resource exit, `own` gives the result owned S, or `share`
+transfers S to lawful Forget and yields S share; Keep has no
+exit and does not intrinsically mint a borrow. Failure returns
+the new Status/resource candidates, rather than Dropping them.
+Changing the slot's own/share role requires Pattern change,
+and share-to-own requires actual absence-of-conflicting-shares
+proof, not count matching alone. Library protocols and their
+reclamation/wait/retry choices remain open; source/causal
+visibility and proof gates F13/F14/F16/F18/F19 are pending.
+F15 extra SeqCst/fence remains the bounded decision.
 The [unified correspondence](unified-static-name-and-structural-semantics.md#cross-owner-correspondence)
 and [evidence ledger](../planning/lifetime-concurrency-consolidation.md) link these
 owners without another evaluator or duplicated Region definition.

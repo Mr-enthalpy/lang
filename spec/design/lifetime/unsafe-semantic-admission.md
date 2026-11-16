@@ -159,20 +159,29 @@ Standard non-root locate requires universal guaranteed direct-parent Submit
 and lazy reception before registration; a successful one-state probe is not that
 proof. This requirement does not constrain arbitrary custom Heap providers.
 
-[Atomic](atomic-pattern-transitions-and-causality.md) registration trusts the
-actual coherent-memory commit facility only within its admitted transition and
-Color domain. Resource closure, same-instance competition and successful
-single-point S_a/S_b exchange must hold before hardware commit. Failed attempts
-retain incoming custody. No unsafe pre, check=true or private ticket constructor
-proves an unrestricted count-changing API enforces ARC. A shareable atomic
-protocol is not mere atomic reference counting: its stable owned resource
-requires a lawful Boxlike-to-`T share` producer and a real deferred-retirement
-duty. Every protected reader must have an actual version/source/generation
-and a guard established safely against concurrent retire before payload use.
-Replacement CAS success atomically installs the old unique resource and
-Drop duty in a guaranteed lazy-accepting manager; fallible late registration
-cannot salvage a previous CAS. Ordinary `unsafe post` describes only real
-successful external validation/protection, not a missing guard, closed-source
-Pre or false Region relationship. Causal/ownership and share-publication
-visibility are source/backend obligations; extra SeqCst/fence remains F15
-and N46–N50/F19 proof support is pending.
+[Atomic](atomic-pattern-transitions-and-causality.md) consumes formed
+`$` Pattern roles (`Status` and a resource named `own` or `share`),
+rather than deriving ownership from positions or from a library label.
+The trusted scope is the actual one-point conditional state transition
+and its joint access/ownership Post: on source `own` exit, old S is
+returned owned; on source `share` exit, old S is transferred to a lawful
+Forget owner and an actually valid `S share` is returned. Keeping a
+resource is distinct from either exit, and successful Keep need not issue
+a share unless that operation expressly admits it. Failure returns all
+already-formed proposed new Status/resource material without silently
+Dropping it or issuing unproved rights.
+
+The source Pattern, real I/S origin closure, Region/Color, active
+shares, same-instance competition and actual incoming custody are
+checked before the hardware commit. A share-to-own mode change
+requires proof that conflicting old shares ended and new issuance is
+closed; a numeric count alone cannot provide that fact. Ordinary
+Pre/Post may supply a proof, or a compatible externally established
+`unsafe post` may report real trusted success evidence. There is no
+`unsafe pre`, and neither an `unsafe` marker nor `check=true` can
+mint permission or repair a failed transition. Counted reader,
+snapshot/reclamation, COW/clone, ARC/Mutex and waiting implementations
+remain optional library examples. N46–N50/F19 define necessary proof
+and consumer obligations, not a mandatory Boxlike, reader guard or
+lazy retirement implementation. F15 remains the sole extra-order
+design decision; F14/F16 still require causal and backend validation.
