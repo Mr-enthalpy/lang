@@ -364,9 +364,11 @@ actual Move/repair, Valid and the three separate transfer proofs remain required
   substitution evidence, plus the actual original-resource disposition for a
   consuming projection; no projection-site CaptureValueProduct is required.
   Also supply the exposed full input/capture contract,
-  expected Function Pattern, mapped base U_default, type-defined new-formal
-  DefaultWorld and explicit Pre assumptions (validated against the actual
-  caller world), actual Pre/Post and ordinary Type/Policy evidence. RHS requests supply only explicit args/output/
+  expected Function Pattern, base exterior-unknown/ref-distinct/share-mayalias
+  defaults, recursively composed Pattern-local default expressions, real
+  Pattern-name-to-actual-name mapping and serial explicit Pre modifications
+  (validated against actual caller facts or forwarded outer obligations),
+  actual Pre/Post and ordinary Type/Policy evidence. RHS requests supply only explicit args/output/
   Policy; no capture/lifetime request slots are added.
 - **Existing action that determines it:** Pattern owner's FnExtract/FnRequest
   and ordinary selection; projected Function Pattern erases external

@@ -167,14 +167,14 @@ Persistent dependency/source encoding remains open, not the propagation law.
 
 ## Lifetime, Color, and access
 
-- What concrete source declaration/registration expresses a complete
-  type's `DefaultWorld(tau)`? One candidate is a type-associated
-  `lifetime default E` whose E is ordinary compile lifecycle material.
-  The spelling, registration/snapshot rules and actual structural home
-  remain open; this is not an invitation to create a new trait ontology.
-  The lifetime owner already fixes the semantics of a type-parameterized
-  fallback relation on genuinely new formals, explicit Pre override and
-  caller-world validation, distinct from Movable.
+- `lifetime default E` provisionally attaches to a specific RHS structural
+  Pattern node inside `(...)$`. It completely declares that node's local
+  relation items; descendants compose before ancestors; `lifetime pre` then
+  performs ordinary serial incremental relation modifications. Remaining
+  library syntax/representation questions include the exact `depends_on`,
+  `live_with`, `in` and `[]`/`||=` APIs, origin-line packaging and relation
+  overlap evidence. None authorizes a new type-wide Movable trait or a
+  generic Hoare-logic solver.
 - What concrete IR represents LifeName, NameView, LifetimeValue, Region
   generations, and cleanup placement?
 - What source/storage syntax names an open Color vocabulary?
@@ -196,9 +196,12 @@ Persistent dependency/source encoding remains open, not the propagation law.
   an uncached judgment or an explicit requirement summary?
 
 Cleanup is fixed before observation; Pre precedes mutation; Post describes only
-committed success. Type-defined DefaultWorld affects only new-formal fallback
-relations; explicit Pre can state a different lawful relation and caller evidence
-must prove it, without universal movement permission. Killable is instance-local,
+committed success. Recursive Pattern-local defaults provide relation expression
+material, while explicit Pre serially modifies it. Ref/share origins are
+exterior scoped unknowns by default; caller evidence or outward obligations
+validate them. Arrays conservatively aggregate their origin lines and index
+paths; HeapStack borrow captures and actual allocation/Box origins retain
+Region ordering. Killable is instance-local,
 MoveEffect is fixed, and Movable
 is frontier legality. A killing move ends and starts generations at one cut;
 preserving moves require the narrow proof. Directed with placement, default NLL,

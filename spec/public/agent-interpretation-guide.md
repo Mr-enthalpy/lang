@@ -416,10 +416,11 @@ and optimizer structures cannot introduce program facts.
   a residual continuation. Only an actual remaining-continuation fact can do so;
   never infer hidden work from a generic no-candidate failure or absent diagnostic.
 - Killable is instance-local; MoveEffect is fixed before observation; Movable
-  is frontier legality. A type-defined DefaultWorld is a fallback internal-name
-  relation for new formal parameters, not a type-wide Movable certificate;
-  explicit Pre can state other lawful relations, and actual caller evidence
-  must validate whichever applies. Equal types and ZST layout prove no blanket exemption.
+  is frontier legality. Pattern-node `lifetime default` is a complete local
+  declaration composed recursively; `lifetime pre` runs ordinary serial
+  modifications on that material. Ref defaults have distinct exterior origins,
+  shares may alias; scoped unknowns carry obligations outward. Equal types and
+  ZST layout prove no blanket exemption.
   with placement precedes @; killing move adds no old-generation destructor.
 - Split/D is restricted residualization, internal Done_chi/Done_Return is boundary completion,
   effect Done(v) is an ordinary matchable normal-result branch,

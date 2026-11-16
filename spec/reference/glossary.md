@@ -620,11 +620,13 @@ spread. Projected Function Pattern values necessarily erase external structural-
 source authority and cannot recover it, even from compile Val1; opaque internal
 provenance is not permission to navigate/reselect source candidates. Former
 captures become explicit input positions of the projected Function Pattern value.
-LHS lifetime omission preserves the base U_default plus any type-defined
-DefaultWorld for genuinely new input names, with explicit Pre replacing
-only stated default relations and actual caller-world satisfaction required.
-A type default is not universal Movable evidence. Existing captures retain
-their real continuation history. The ordinary LHS/RHS distinction still
+LHS lifetime omission preserves the scoped outside-tree ref/share origin
+assumptions and recursively composed Pattern-node `lifetime default`
+expressions. At each annotated node local defaults are complete; explicit
+function `lifetime pre` incrementally modifies the material through ordinary
+serial expression evaluation. Caller Pre must validate known names/Regions or
+forward lawful exterior-unknown obligations. Neither default grants Movable.
+Existing captures retain their real continuation history. The ordinary LHS/RHS distinction still
 promises NoDelta on omitted Post; existing InPlace automatic captures instead
 inherit preceding Post under the empty-slice law;
 compatibility checks Pre_F implies Pre_A and Post_A implies Post_F immediately.

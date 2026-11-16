@@ -146,10 +146,11 @@ Function Pattern values, without an inverse theorem or recovery from compile
 Val1. Opaque implementation provenance is not external authority. The
 [lifetime owner](lifetime/lifetime-policy-and-overload-boundary.md#216-call-boundary-summaries)
 consumes ordinary contract programs and implication. Genuinely new entry
-names use base U_default plus any type-defined DefaultWorld relation assumption,
-never a universal Movable claim; existing InPlace automatic captures inherit
-preceding Post, and
-handwritten Function Pattern omitted-post NoDelta. Implemented bodies instead
+names use the base exterior-origin ref/share relations and recursively
+composed Pattern-node `lifetime default` expression material, then serial
+explicit `lifetime pre` modifications; no universal Movable is inferred.
+Existing InPlace automatic captures inherit preceding Post, and handwritten
+Function Pattern omitted-post remains NoDelta. Implemented bodies instead
 form automatic Post from formed guarded body/operation descriptions before
 contract use; actual exits separately validate that their mapped Post implies
 the summary, without future-path execution. The complete

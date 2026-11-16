@@ -329,15 +329,16 @@ frontiers are reported separately from canonical laws.
 
 ## 9. Lifetime value-program wiring
 
-New-formal entry relations now take the established base default, optional
-type-defined DefaultWorld schema and explicit Pre corrections in that order.
-The resulting requirements must be checked against the actual source-world
-mapping before a call commits. A type-default schema is not a type-wide
-Movable theorem, and it may not reset existing captures/held continuations.
-Specific source declaration syntax and type registration for DefaultWorld
-remain open; the semantic admission boundary and executable Move/Drop
-requirements are fixed. The NW01–NW10 conformance targets are not source
-coverage.
+New-formal Pre uses ordinary lifecycle expression material: scoped exterior
+ref/share defaults; recursively composed Pattern-node `lifetime default`;
+then serial `lifetime pre` changes. The last modifies only its explicitly
+addressed relations, while each node's default declaration is complete.
+Compile-known/runtime/omega index paths, conservative aggregate origin-line
+summaries, ordinary `in` contracts and HeapStack borrowed outer-context
+relations require source consumers, proof and matching tests. Actual
+Pre/commit/Post and boundary compression, not a global solver, decide
+success. Movable, Move/Drop executability, Color and identity remain
+independent. The NW/REG/H acceptance targets are not executable coverage.
 
 The [lifetime owner](../design/lifetime/lifetime-policy-and-overload-boundary.md)
 now specifies ordinary lifecycle computation, bootstrap responsibilities and

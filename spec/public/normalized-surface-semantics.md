@@ -1625,11 +1625,15 @@ omitted Post still promise NoDelta. The four
 [walkthroughs](../design/lifetime/lifetime-algebra-walkthroughs.md) show the
 design data flow, including the specifically registered Option `?` that
 returns Some's content and throws on None; Product/effect views remain separate. Their schematic APIs do not assert executed source coverage.
-A type-defined default-world description, if available, supplies only
-fallback internal-name relations for newly introduced formal names at Pre.
-Explicit Pre may replace those defaulted relations; existing captured/real
-source facts are never reset. This is not a type-wide Movable certificate.
-Its exact source declaration spelling is not yet frozen in the lifetime owner.
+Inside RHS structural `(...)$`, an attached `lifetime default E` is a
+complete local Pattern-node relation declaration, recursively composed
+child-first and ancestor-last. At new-formal Pre it is substituted by real
+Pattern name expressions; `lifetime pre` then serially evaluates ordinary
+lifecycle expression material and incrementally changes only the stated
+relations, before check/admit. Existing captured/held names are never reset;
+Pattern default is no Movable proof. The lifecycle path relation interface
+also admits schematic indexed `[i]` / `[0:n]` / `[0:ω]` material; ordinary
+`in` and `origin ||=` relations are not compiler Hoare-logic intrinsics.
 See [LC1–LC8](../contracts/lifetime-program-consumers.md) for the source handoff.
 
 ## 17. Unified resource and effect surface (consumer pending)

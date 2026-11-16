@@ -808,9 +808,9 @@ held successor material:
 
 换了 self/activation/名字 generation 时使用真实映射，不把旧 self 和新 self 当成同一对象。新 resume 入参仍在真正调用时形成；未绑定 RequiredCapture 仍是声明，不因手握一个后继续体提前获取来源。
 
-## U05 — 类型全称命题是具体判断的证明，不是替代
+## U05 — Pattern 默认关系不替代实际名字判断
 
-“类型为新形式实例提供默认内部名字关系”和“具体名字在具体事件上合法”必须分开。DefaultWorld 是可由显式 Pre 在其声明关系上替换的入口假设，不是所有实际实例 Movable 的类型级全称命题；实际调用端仍须证明其当前名字关系满足所选默认/显式 Pre。即便另有带前提的类型族移动定理，每次具体 Move 仍检查当前外部 Region、Access、Color、来源及目的地条件。
+Pattern 节点内的 `lifetime default` 是普通表达式材料，按子到父递归合成完整局部关系声明；`lifetime pre` 在默认表达式之后串行规约，只增量修改它明确表达的关系。普通 Pre/check/admit 消费最终形成的关系与真实调用映射，不存在另一个全局约束求解器。ref/share 默认外部来源是当前名字访问树之外的有根 unknown，已知来源代入，仍未知则沿调用边界递归传递带严格 Region 的义务；ref 默认来源互异，share 默认 may-alias。Pattern 默认不证明任何具体实例的 Movable，真实事件仍验证 Region、Access、Color、来源与目的地。
 
 同理，无外部 origin 是 atomic 全部保留状态名字（含保留的 I/Index 与 S）的准入约束，不给外部 Cell 借用永久存活；只有合法普通生产 Post 能建立真正闭合的新名字，状态数角色不清除旧依赖。保存 Move/Drop 操作给遗忘对象可执行性，不给 reify 可逆性。
 
@@ -819,7 +819,8 @@ held successor material:
 - Pattern 合流决定来源选择是否仍由结果模式区分。
 - 边界 origin 压缩移除已经退出的局部中间名，保留实际外部依赖。
 - SCC 在既定 closure 边界坍缩到原始正则材料，不凭类型重新重建名字身份。
-- 匿名名字遗忘主动降低精度，只在默认可恢复或保守摘要充分时准入。
+- 匿名名字遗忘主动降低精度，只在默认可恢复或保守摘要充分时准入。`[]` 路径表示已知 `[i]`、运行期区间 `[0:n]` 和重复 `[0:ω]`；元素外部来源以 `array@.origin ||= out_lines` 的普通关系表达式汇总并保留 Region 义务，取出新名继承、剩余数组不扣减。
+- runtime:compile 到 runtime:runtime 保留非默认 origin 与 Move/Drop 可执行材料；闭合 reify 的反向恢复必须让真实实例满足完整 Pattern 默认，偏离进入已声明失败。
 
 四者均不能提高权限或伪造 None/unknown。它们不是同一个“把看不懂的东西变 unknown”的操作。生产式重演也不得穿过已合法遗忘的边界恢复隐藏历史。
 
