@@ -68,8 +68,10 @@ remains pending (LC9–LC12); the traces are positive/negative acceptance eviden
    New input q alone receives default entry generation. Recreating r's
    origin as a fresh default world would break Post=Pre and is rejected. An
    explicit Pre must hold in this inherited world, not overwrite its history.
-3. `let heap = heap ref .. locate(pool);` reads old heap and forms a legal local
-   next_pool dependency. A selected guaranteed `heap relocate;` transfers all
+3. `mut let heap_locate = heap .. locate(pool); let heap = heap_locate ref;`
+   first uses a borrowed outer heap to form a local layer, then borrows that
+   local layer. Neither operation captures/moves the parent heap by value;
+   the actual outer name or scoped exterior unknown and its Region Pre are retained. A selected guaranteed `heap relocate;` transfers all
    covered support/release duties/descriptors, preserving live x's Place and
    history, then reveals the old heap binding. A pool without that guarantee
    cannot submit; metadata exhaustion cannot appear as a hidden legal failure.
@@ -991,6 +993,18 @@ an assumed unconditional commute with choice combination.
 ## 3. Dynamic safeid and batch share partitioning
 
 ### try_trust and ordinary success/failure Patterns
+
+The minimally required trusted success assertion may be ordinary lifecycle
+expression material, e.g. `index@ .. in(array@)` in the actual success
+branch's compatible `unsafe post`. Here `in` is an ordinary compile
+operation whose meaning and entailment/transitivity are supplied by the
+library's own contracts. The consuming array access Pre uses the same
+expression material and real name/source/generation mapping. Neither the
+name `try_trust` nor an `in` expression creates a builtin Hoare-logic
+solver; the real validation must hold and remain protected. A forged value
+or bare numeric equality supplies no trusted Post.
+
+
 
 The compact design seed is:
 

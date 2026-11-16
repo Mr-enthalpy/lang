@@ -20,16 +20,46 @@ providers have their own ordinary contracts.
 
 ```text
 HeapStack = (pool, next_pool: HeapStack ref | None)
-let heap = heap ref .. locate(pool);
+mut let heap_locate = heap .. locate(pool);
+let heap = heap_locate ref;
 ```
 
-`locate` RHS 取得原 heap，完成合法操作后 LHS 遮蔽它。没有 `prev` 反向链。当前 pool 需要补充资源时，合法取得/子借用 `next_pool`，局部重新绑定 heap，再普通调用 malloc。
+`locate` 使用对旧 heap 的真实借用，先形成局部 `heap_locate`，然后通过 `heap_locate ref` 显式创建当前层借用并以 `heap` 名字遮蔽旧入口。不得按值捕获或 Move 外层 heap 充当父层来源，否则失去外层 Region 偏序。没有 `prev` 反向链。当前 pool 需要补充资源时，合法取得/子借用 `next_pool`，局部重新绑定 heap，再普通调用 malloc。
 
 标准 `malloc` 不再提供偏好参数；请求严格从当前栈顶发起，补充请求逐层转发。定制分配策略通过显式注入普通 heap 对象表达。
 
 请求入口/管辖来源不等于最终供给物理块的 pool。根节点必须使转发终止；它不意味着容量无限或 malloc 必成功。
 
-“当前 heap”是普通调用实际捕获或显式提供的环境材料，不是另设的隐含线程局部变量。lazy/eager 捕获的原有来源规则仍成立；标准路由只在相应已准入环境中作保证。
+“当前 heap”是普通调用实际借用捕获或显式提供的环境材料，不是隐含线程局部变量。父层 heap 的 origin 若来自真实外部已知名字就直接代入，若仍是树外 unknown 就递归保留向外的 Pre；按值捕获不能替代这个来源证明。标准路由只在已准入环境内作保证。
+
+### Allocation and Box dependency contracts
+
+Standard malloc starts at the actual current heap-stack top. A successful
+allocation's ordinary Pre/Post (or compatible unsafe Post after a real
+external allocation success when necessary) establishes a fresh independent
+origin and a strictly shorter Region than the allocated heap support:
+
+```text
+Region(allocated) prec Region(heap_support)
+Origin(allocated) = fresh independent allocation source
+```
+
+The selected source and exact support/ownership transfer remain real
+provider facts. A failed allocation forms no successful allocation origin or
+storage authority; neither globalheap nor an exterior unknown implies
+infinite capacity. A library Box's internally named `storge` field may
+express its dependence as ordinary lifecycle relation material:
+
+```lang
+boxobject@.storge .. live_with(heap@)
+```
+
+`storge` and `live_with` here are library spellings, not new language
+primitives. The current-top route identifies either the actual externally
+known heap source or the scoped outside-tree unknown whose Pre must
+be forwarded outward. The Box and allocation retain real Region, origin,
+release and Drop obligations. Submission transfers management/support,
+not historical origin.
 
 ## 2. Allocation and release routing
 
@@ -109,6 +139,8 @@ remain. Regular path descriptions prove no missing submission or arbitrary escap
 每份释放/析构责任恰有一个合法持有者；继承既定清理顺序与相关外部依赖。允许延迟/提前物化回收的自由，以所有可观察效果和存储有效性保持为条件。
 
 ### N31 — 结构化挂起保持 heap 管辖关系 [不变量]
+
+通过外层借用捕获的 heap，其来源有效期大于当前调用的合法借用窗口。挂起并不使该已成立的来源重新默认生成；合法交接后续体继承实际 Post。失败位于其本来的动作边界：未来使用/固定析构 Region 与继承 Color 不满足时，在请求发起 Pre 拒绝；出口仍依赖不可规约到合法外部 unknown 的本地 heap_locate 时，在 Post 名字压缩拒绝。既不提前汇聚所有约束求全局解，也不以 Wait 延长 Region。
 
 heap 是普通环境材料，可以随具体续体保存和恢复。栈上较内层依赖其父层，正常退出或保证的逐层提交维持这项关系；挂起不暗中制造可以独立逃逸的 heap。
 
