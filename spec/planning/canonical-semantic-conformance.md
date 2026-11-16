@@ -84,17 +84,17 @@ they do not run RequiredCapture fulfillment or an initializer.
 
 | ID | Positive required behavior | Negative / non-derivable boundary | Defined semantics | Pending consumer | Executed evidence |
 |---|---|---|---|---|---|
-| C01 | Form [heap:T] without heap; admitted new call binds local heap | Do not read a source at formation | D dependency §3 | P LC9 | S syntax only |
-| C02 | Admitted matching context fulfills requirement | Missing/wrong local heap cannot use formation global | D dependency §3 | P LC9 | S unavailable gate only |
-| C03 | [let heap=globalheap] retains initialized source | Later local shadow cannot rebind it or replay initializer | D dependency §3 | P realization | S source distinction only |
+| C01 | Form required [heap:T ref] without a source; admitted new call binds an actual heap borrow | Do not move the parent heap into the capture or invent an implicit ref at binding | D dependency §3 | P LC9 | S syntax only |
+| C02 | Admitted heap ref satisfies required borrow capture | Missing/wrong ref or exterior-region evidence cannot use unrelated global or copy by value | D dependency §3 | P LC9 | S unavailable gate only |
+| C03 | [let heap=globalheap ref] forms initialized borrow at creation | Later local shadow cannot rebind/reforge borrow or replay initializer | D dependency §3 | P realization | S source distinction only |
 | C04 | Raw/Norm [x] has required slot, no initializer | Never synthesize =x; malformed required annotation diagnoses | D syntax contract | P source fulfillment | S |
 | C05 | Candidate-local evidence and unique seal precede selected binding | Post-seal capture failure never selects runner-up | D overload §4 | P LC9 | S pre-install/prepare gate only |
 | C06 | Self/captures/args transfer coherently once; live output maps to successor context with separate name, custody and cleanup proofs | No duplicate Kill, implicit self-field ownership or permission from name mapping alone | D call §6/effect §2 | P LC3/LC9/LC12 | None |
 | C07 | Fn value exposes capture specifications as explicit formals even without same-name context at projection | No projection-site value witness or hidden source recovery proves future calls | D Pattern §11 | P FnExtract | None |
 | C08 | Env Object forwards heap/IO fields normally | Wrapper grants no new access/lifetime or mandatory Box | D Pattern §11.2 | P ordinary forwarding | None |
-| H01 | Locate reads old heap then installs shadowing node | No self-resolving new binding or special push | D heap §1 | P LC11 | None |
+| H01 | mut let heap_locate = heap .. locate(pool); let heap = heap_locate ref forms local heap and explicit current borrow | No self-resolving new binding, owner Move into parent, or hidden parent rewrite | D heap §1 | P LC11 | None |
 | H02 | Subborrow next_pool, replenish outward and terminate at None; standard globalheap exposes the compatible terminal root and terminating root protocol | No reverse prev pointer or pool copy inferred; an incompatible standard root fails its contract, other user Heap/IO need no isomorphism, and root capacity is not infinite | D heap §1 | P standard provider/library | None |
-| H03 | Standard malloc starts at top and replenishes through each next_pool | Top need not supply physical storage; no magical search | D heap §2 | P library | None |
+| H03 | Standard malloc starts at actual top, forms fresh independent allocation origin with Region below heap support, replenishes through next_pool | Physical provider may be outer; no unproved infinite capacity or forged unsafe Post | D heap §2 | P library | None |
 | H04 | Free submits real credentials and responsibility to current top, which handles/forwards | No preference arg or forced historical pool path | D heap §2 | P credentials | None |
 | H05 | Guaranteed submit preserves live Places and reveals old heap | Name deletion/history rewrite cannot substitute for transfer | D heap §4 | P LC11 | None |
 | H06 | At standard locate, every non-root pool proves universal direct-parent Submit and lazy acceptance over all admitted reachable states | No hidden metadata-allocation failure on legal submit | D heap §4 | P guarantee proof | None |
@@ -151,7 +151,10 @@ is pending; these rows add no Rust coverage claim.
 
 These are canonical **design targets**; no parser, lifetime source consumer,
 effect execution or proof is claimed as connected by this specification change.
-The type-default declaration spelling is deliberately not yet fixed.
+The source `lifetime default E` annotation is provisionally attached
+inside RHS structural Pattern material. Its relation API is ordinary compile
+material and actual runtime/source consumers remain pending; no new generic
+Hoare-logic engine is claimed.
 
 | ID | Admitted or contrasting source | Required relation and negative boundary |
 |---|---|---|
@@ -161,10 +164,21 @@ The type-default declaration spelling is deliberately not yet fixed.
 | NW04 | Runtime callable actually executes wait; compile callable actually executes wait | Request runtime effect in the former and compile effect in the latter; same-stage effect contract is checked at each actual boundary, not inferred from payload Policy |
 | NW05 | Compile function forwards runtime wait unhandled, or runtime function forwards compile wait unhandled | Stage/interface mismatch cannot silently recolor, migrate or reopen; an admitted ordinary handler/wrapper must close it, with actual control/cleanup still checked |
 | NW06 | Reify callable wait versus reverse-dependent compile work | Outward wait/effect shape is runtime and compile-closed; internal reverse-dependent work keeps active-boundary premises. No second E or user-directed effect stage |
-| NW07 | New T formal has DefaultWorld(T) with no extra cross-component relations; no explicit Pre | Entry uses that default plus unchanged base borrow-root/structure/source laws, and only when caller's actual mapped world satisfies it. Default alone supplies no Movable, access or Drop waiver |
-| NW08 | Same T formal with explicit Pre declaring a supported dependent relationship | Explicit Pre overrides the corresponding defaulted relations, and actual caller must prove them. Do not reject merely because T has an independent default or synthesize a different current source |
-| NW09 | Existing InPlace capture, held wait context, or non-default actual instance | Never regenerate established names from type defaults; preserve history and inherited Post, or reject failed mapped Pre. Type equality is no proof of default-instance recovery |
-| NW10 | Anonymous forgetting of type T with a uniform repair or one event-specific Move proof | Preserve required executable Move/Drop and each target's real legality; default-world schema is not a type-wide trivial movement theorem. No implicit Box/clone or unproved generalization |
+| NW07 | New typed formal has recursive Pattern-local lifetime default and no explicit Pre | Construct ordinary serial material `U_base; PatternDefault` with actual binder-to-name substitution; ref roots exterior and distinct by default, share roots may alias; no Movable or source permission follows |
+| NW08 | An explicit lifetime pre modifies only one default relation | Evaluate default and Pre as ordinary serial lifecycle expressions, before check/admit; unmodified relations persist and actual caller evidence must satisfy the changed material |
+| NW09 | Existing InPlace capture or held Wait continuation carries a ref/share source | Preserve preceding Post/actual exterior-source mapping through handoff; no redefault, copied authority or unconditional long life |
+| NW10 | Name forgetting or recovery across Policy ranks | Ordinary Pattern-default relation is not universal Movable; preserve non-default source dependencies and executable Move/Drop; restore only a concrete instance satisfying the full default in closed reify, never infer inverse identity |
+
+| NW11 | Two lifetime default declarations on the same Pattern node | New local declaration fully replaces old node relations; descendant defaults compose before shallower nodes and only colliding whole relation items are replaced | 
+| NW12 | Pattern-local srt default nested in wrapper with sibling others | srt sees only own registered descendants; caller maps root srt@ to object@ or nested srt@ to object@.srt, never sibling/ancestor by spelling | 
+| NW13 | Ref/share formal default with external unknown | Ref has a scoped outside-owner origin distinct from other independent refs; share may alias; a known external name substitutes, unresolved unknown forwards checked Region obligations outward | 
+| NW14 | Indexed paths with known i, runtime length n, repetition ω | Lifetime paths are respectively [i], [0:n], [0:ω]; they denote route descriptions, not index trust, range permission or resident-value reads | 
+| NW15 | Array insertion with non-default origin line | ordinary array@.origin ||= out_lines collects conservative external origin/Region, before actual insertion; lacking legal compression rejects | 
+| NW16 | Extract element from anonymous array | New name inherits conservative aggregate origin; remainder keeps aggregate constraints; no subtraction or lost operation responsibility | 
+| NW17 | try_trust success produces Index name and index@ .. in(array@) | Successful compatible unsafe Post can establish the real validation fact, ordinary range-access Pre consumes the in expression; false/missing protocol evidence rejects without invented builtin Hoare-logic inference | 
+| NW18 | Borrowed heap-stack locate with mut let heap_locate = heap .. locate(pool); let heap = heap_locate ref | Parent heap remains borrowed, not moved through capture; actual source has strict Region order and unknown duties propagate to caller | 
+| NW19 | malloc and Box storge dependency | Allocation has real fresh independent origin and Region less than supporting heap; boxobject@.storge .. live_with(heap@) is ordinary relation; actual top source known or exterior unknown | 
+| NW20 | Wait or exit with captured borrowed heap | At request Pre reject fixed future Region/Color conflict; at Post local compression reject uneliminated local heap_locate dependency; legal Wait inherits valid Post without rerunning a global solver | 
 
 ## Stage, Policy and two-round calls
 

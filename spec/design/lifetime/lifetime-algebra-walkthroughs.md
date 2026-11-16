@@ -55,13 +55,18 @@ helpers are ordinary library combinations except explicitly required host
 capabilities and guaranteed external submit facilities. All source execution
 remains pending (LC9–LC12); the traces are positive/negative acceptance evidence.
 
-1. Form `[heap:T]` where heap is absent: retain the required slot without reading
-   a source. At a new call with admitted local heap:T, ordinary candidate-local
-   evidence and unique selection bind that source, then one input transaction
-   moves it. Missing/incompatible local heap rejects or reports unavailable;
-   a global visible at formation cannot fill the gap. `[let heap=globalheap]`
-   instead forms once and ignores later same-name shadowing. Repeated/equal
-   values never merge capture occurrence identities or sealed invocation inputs.
+1. Form `[heap:T ref]` where the required borrowed heap is absent: retain
+   the required borrow-typed capture slot without reading a source. At a
+   later call with an actual, admitted `heap ref` input, candidate-local
+   evidence and unique selection bind that **borrow instance**, not heap's
+   owned value. Its origin points to an already known outer source or a
+   scoped caller-exterior unknown with strict Region obligations; no
+   implicit borrow is created by parameter adaptation. Missing/incompatible
+   borrow rejects or is unavailable; an unrelated global visible at
+   formation cannot fill the slot. `[let heap=globalheap ref]` instead
+   forms the explicit initialized borrow once under the actual global
+   Place/Pre; later same-name shadowing cannot rebind it. Equal values
+   do not merge captures or authorize two exclusive borrows.
 2. At an empty InPlace slice, an existing r carries the preceding Post into
    AutoPre by the identity law Pre(id)=Post(id). The identity interval preserves
    r's complete observed state; it does not assert the closure body is id.
