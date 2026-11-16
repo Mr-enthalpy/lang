@@ -725,6 +725,42 @@ Both anonymous positions are structural. The complete (name)$ operand is
 interpreted in V, supplying the existing value Pattern to ordinary extraction.
 Raw and normalized heads agree with the explicit form and retain InPlace.
 
+### 9.1 Ordinary typed numeric slices in Pattern relations
+
+RHS `:` is already the ordinary `Product |> slice` formation material,
+not a dedicated AST or a special Atomic form. When its actually selected
+ordinary Slice/Pattern consumer defines an interval over a finite
+numeric domain (e.g. `u32`), that completed interval may participate in
+`R_Gamma` exactly as other ordinary Pattern material:
+
+```lang
+let NotZero = ((1u32:) NotZero)$;
+let NotOne  = ((0u32 | (2u32:)) NotOne)$;
+```
+
+For a formed `u32` interval `(a:)`, the lower endpoint `a` is inclusive
+and the omitted right endpoint means the greatest legal value of the
+`u32` domain. Thus:
+
+```text
+R_Gamma(NotZero, n, rho) iff 1 <= n <= u32::MAX
+R_Gamma(NotOne,  n, rho) iff n = 0 or 2 <= n <= u32::MAX
+```
+
+The interval does not admit values outside the stated number domain,
+silently wrap at the maximum, or prove a numeric value's provenance,
+version/generation or resource ownership. This is an ordinary selected
+`slice` relation combined by ordinary choice `|`, not a new numeric
+Pattern ontology, implicit CAS counter operation, or privilege to inspect
+a hidden value. Missing actual Slice/Pattern producer evidence is
+Unavailable; a known value outside the admitted interval mismatches.
+
+When Atomic uses such a Pattern as its named `Status` child, it consumes
+the already formed relation without imposing new Pattern matching rules.
+The exact `Status`/`own`/`share` roles are specified by the Atomic
+consumer; ordinary Pattern members with the same names do not themselves
+grant atomic authority.
+
 ## 10. Joint extraction across adjacent universe ranks
 
 ### Classifier observation and decided relation outcomes

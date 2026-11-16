@@ -1430,7 +1430,12 @@ retains Hole identities and inserts no implicit Path conversion or resident Read
 polarity decoding rule. Index p[i] yields relative single-name
 path_pattern. RHS colon forms ordinary Product |> slice; empty structural
 colon/comma slots are unit. Slice consumers use ordinary overload/Pattern
-extraction, without a separate slicing primitive. Textual roots
+extraction, without a separate slicing primitive. A selected typed
+finite-integer slice (e.g. `1u32:`) can be used as an ordinary Pattern
+interval whose missing right endpoint denotes that domain's maximum;
+`NotZero = ((1u32:) NotZero)$` matches all nonzero u32 values and
+`NotOne = ((0u32 | (2u32:)) NotOne)$` excludes precisely one.
+This adds no Atomic-only range grammar, special AST or integer authority. Textual roots
 resolve at resident use, while explicit roots retain their dependencies.
 Current source consumers remain pending, including # and general polarity interpretation.
 

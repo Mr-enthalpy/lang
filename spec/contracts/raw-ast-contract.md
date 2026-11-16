@@ -687,7 +687,12 @@ Read_name/Read_resident, path_pattern projection (#), relative single-name
 indexing and general $ consumer wiring are pending. # observes values rather
 than source AST; general $ does not insert Path conversion. RHS colon slots
 normalize to ordinary Product |> slice, empty colon/comma slots complete to unit,
-and no Slice node enters semantic IR. LHS colon remains annotation.
+and no Slice node enters semantic IR. Ordinary numeric slice Pattern formation
+(such as `1u32:` and `2u32:` under the selected u32 Slice consumer) uses
+that same carrier: an omitted upper bound means the finite integer domain
+maximum. The frontend must preserve typed endpoint values and opposite-context
+`$` information without claiming it has evaluated the range, matched a
+value, recognized an Atomic Status role or checked ownership. LHS colon remains annotation.
 Polarity-flip carriers preserve the opposite-context operand and arbitrary
 nested flips, with even/odd polarity and exact alpha-bound Hole identities.
 They establish no resident read, Stage change, semantic evaluation or readiness. Optional generator heads, HoleRef
