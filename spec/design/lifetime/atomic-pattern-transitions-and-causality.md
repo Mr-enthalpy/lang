@@ -280,10 +280,11 @@ failure:
   // protected T share only via separately admitted actual read protocol
 
 success while KEEPING the same live S:
+  require actual protected-read acquisition as part of the admitted operation
   commit the selected legal I/Pattern update, retaining identical S
-  if selected operation promises a shared result and read protection holds,
-      deliver T share of that S with real Region/source/version evidence
+  result includes T share of that S with real Region/source/version evidence
   never duplicate/move S merely to form the shared result
+  // if protection cannot be admitted, do not commit a success lacking its share
 ```
 
 成功的 `RetireDuty` 必须在同一个被承认的提交点取得旧 `S_a`
@@ -293,10 +294,14 @@ success while KEEPING the same live S:
 所有其他状态/资源改变的 CAS 变体均遵守这个 shareable 资源退休
 规则；没有资源的分支不发明要回收的对象。
 
-所有**保持资源身份**的真实操作（包括相应 `cas_keep`、只改 I 的
-RMW/条件更新及已注册的受保护观察）在有活的 S 且实际取得保护时，
-可以按普通关联结果交付一个 `T share`；不能因为状态数不变，
-就从原始普通 `peek`、未认证的 CAS 失败或不存在 S 的分支交付。
+shareable CAS 家族中所有**保持资源身份**且当前分支持有真实 S 的
+成功动作（包括相应 `cas_keep`、只改 I 的 RMW/条件更新与受保护
+读取），都应在其**受保护的成功结果**中交付 `T share`。
+这要求将合法读保护包含在动作成功的 Pre/共同提交条件里；
+无法取得保护时不得先宣布成功，再省略 `T share`。没有 S 的
+分支按其普通和模式结果处理，不能发明共享借用。仅返回版本/状态数
+的普通裸 `peek` 是不同的元数据观察接口，不充当本规则的
+资源保持式共享 API；未认证的 CAS 失败也不能自动取得 share。
 写者的 keep/替换竞争都属于同一个 atomic 实例 `mo_a`。
 原来的资源取出式 CAS 与 shareable 退休式 CAS 必须由真实
 注册的受控入口/Pre 排斥不兼容的同时使用，不能允许另一条 safe
