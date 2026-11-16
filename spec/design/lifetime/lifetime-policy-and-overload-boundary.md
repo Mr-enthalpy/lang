@@ -2357,7 +2357,7 @@ evidence only for their implemented transaction/value slices.
 ## 16. Anonymous names, executable operations and partial recovery
 
 This section uses the recursively composed Pattern-local `lifetime default`
-and the ordinary serial `lifetime pre` expression from `2.1.2. Name
+and the ordinary serial `lifetime pre` expression from section 2.1.2. Name
 forgetting is a reduction of actual retained lifecycle description material,
 not an independent solver that collects constraints for later satisfaction.
 An exterior unknown remains tagged with the precise traceable access-tree

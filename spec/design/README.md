@@ -99,7 +99,7 @@ Type operations use the compile algebra. See the
 
 The [N01–N50/M01–M31/U01–U12/F01–F19 ledger](../planning/lifetime-concurrency-consolidation.md)
 records actual ownership, baseline, carrier/source coverage and proof gates.
-The [original 105 paired cases and the added shareable-atomic targets](../planning/lifetime-concurrency-acceptance.md) are
+The [original 105 paired cases and additional Atomic Pattern/slot targets](../planning/lifetime-concurrency-acceptance.md) are
 normative source targets, not all executed tests. Definitions do not imply proofs or connected consumers;
 extra SeqCst/fence alone remains an undecided ordering rule, while standard
 non-root locate's universal direct-parent relocation is already mandatory.
