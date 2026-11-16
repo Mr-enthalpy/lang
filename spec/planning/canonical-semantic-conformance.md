@@ -147,7 +147,7 @@ normal Error-shaped data delivery has no implicit effect, while explicitly
 requested value/effect adapters retain ordinary contracts. All adapter execution
 is pending; these rows add no Rust coverage claim.
 
-## Named callable, wait-stage and type-default entry acceptance
+## Named callable, wait-stage and Pattern-local default acceptance
 
 These are canonical **design targets**; no parser, lifetime source consumer,
 effect execution or proof is claimed as connected by this specification change.

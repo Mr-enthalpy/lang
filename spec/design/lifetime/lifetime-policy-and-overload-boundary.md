@@ -495,7 +495,7 @@ executes only the modifications expressed by its ordinary lifecycle program.
 Unmentioned default relations remain in effect. These are one ordinary
 expression/continuation semantics, not distinct core patch solvers. This
 reuses the same serial material interpretation required for formed-body
-action descriptions and automatic Post (`10).
+action descriptions and automatic Post (section 10).
 
 For a Pattern tree node n with children n_i:
 
