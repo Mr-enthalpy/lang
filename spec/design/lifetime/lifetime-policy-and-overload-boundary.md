@@ -647,7 +647,7 @@ Rust 载体的 `contains_event` 只查询完整 `(cut, action ordinal)`，`conta
 
 ### N04 — 默认入口世界与已有名字的继承 [不变量]
 
-一般函数的新入参在省略 Pre 时按既有基础默认世界及其类型参数化 DefaultWorld 生成；显式 Pre 在其指定关系上替换默认假设，随后由真实调用端映射和 Pre 检验，而非改写既有事实。默认世界不凭空建立两个独占入参之间的父子关系。共享根的既有默认规则继续有效，不能改写成“所有入参的所有来源均两两不同”。类型默认关系本身不证明 Movable。
+一般函数的新入参由基础外部来源默认与完整结构 Pattern 的递归 lifetime default 表达式材料生成，随后串行执行实际显式 lifetime pre；显式 Pre 只修改它执行时明确涉及的关系，未提及的默认关系保留。ref 默认来源互异，share 默认 may-alias；二者都以各自真实访问树之外的 unknown 为外向根而保留待外层履行的 Region/来源义务。默认来源不自动建立任意内层父子关系，也不证明 Movable。
 
 已有名字不重新默认生成。InPlace 自动捕获继承上一刻的 Post；空动作切片满足同一观察词汇下的 `Pre(id)=Post(id)`。实际交接之后，后续续体持有材料的 AutoPre 由成功交接 Post 经合法名字对应形成。
 
@@ -809,8 +809,9 @@ For a Function Pattern LHS interface F and actual callable contract A,
 omission and compatibility have these meanings:
 
 ```text
-Entry_new_parameters(F) = U_default_base op_plus TypeDefault(F) op_plus Delta_pre
-omitted pre  => Delta_pre = empty  // typed defaults for genuinely new input names
+Entry_new_parameters(F) =
+  E_life(U_default_base; Instantiate(PatternDefault(P_formal),theta); E_pre)
+omitted pre  => E_pre = identity  // new formal names only
 omitted post => Post_F = NoDelta(S_before,S_after)
 NoDelta = unchanged state on every lifecycle observation of the contract
 
@@ -1997,6 +1998,38 @@ ADL and registered ordinary forwarding/Pattern extraction remain the only
 field routes; Val2 presence alone grants no access edge or structural role.
 
 Access/source structure retains regular form from formation.
+Ordinary lifecycle path expressions additionally admit `[]` as an index/element
+step alongside registered field advance `.`, choice `||` and repetition `~`.
+This is a registered ordinary Pattern/operation expression, **not** a new
+business-object axis or a read of an array resident by the compile lifecycle
+world. For a compile-known index i, the precise path is `[i]`. For an index
+unknown until runtime in an admitted actual array of length n, the conservative
+access-path description is `[0:n]`. For an unbounded repetition family `T * ω`,
+the description is `[0:ω]`, not an attempt to enumerate infinitely many
+objects or to manufacture any given bound. Policy overloads may select the
+known-index and unknown-index ordinary operations without special syntax
+dispatch or a second execution model.
+
+`[0:n]` and `[0:ω]` denote sets of *possible element paths*, not
+permissions to operate on all of them or equal identities for their members.
+Actual indexing needs a separately admitted index name/value, protected
+resource/length/generation, valid access route, and its own Region/Color Pre.
+The precise `[i]` route can be retained when the selected input/Policy
+provides the needed compile observation. Source/path unknown does not
+erase value-dependent bounds checks.
+
+Anonymous insertion compresses external origin-line dependencies into the
+aggregate's own lifecycle summary, schematically `array@.origin ||= out_lines`,
+and preserves the corresponding strict Region comparisons for each live
+dependent source. This is an ordinary lifecycle relation-expression
+composition at the actual boundary, not unrestricted world mutation: only
+real source-derived lineage and legal conservative unknowns qualify.
+An extracted name inherits the aggregate's conservative origin summary,
+while its actual selected extraction/Moves retain their own specific producer,
+generation and responsibility. The remaining aggregate does not subtract
+that summary when an element is extracted. Path-index material and origin
+summary therefore cooperate without identifying different element names.
+
 Each actual name item retains its formed original paired regular descriptor
 as the target of boundary-local SCC collapse; the type value alone cannot
 supply this lifecycle value, and earlier cropping is not undone. Ordinary
@@ -2038,7 +2071,7 @@ of §13. Distinct paths or anonymous origins alone never prove actual disjointne
 
 ### N17 — 可信索引是名字事实，不是新业务类型 [不变量]
 
-`try_trust` 是示例 API 名称，不是关键词、内建识别入口或不可更改命名。库可以使用 `validate_index`、`validate_range` 等明确表达具体验证行为的名称。
+`try_trust` 是示例 API 名称，不是关键词、内建识别入口或不可更改命名。库可以使用 `validate_index`、`validate_range` 等名称。真正成功验证的可信外部事实可以在实际成功分支的兼容 `unsafe post` 中以 `index@ .. in(array@)` 这一**普通 compile 生命周期表达式材料**声明（具体 `in` API 的普通注册与前提仍由库决定）。访问函数的普通 Pre 可以消费同样的 `in` 表达式；语言核心不内建一套通用 Hoare 逻辑、全局偏序推理器或名为 `in` 的特权规则。成立性必须来自同一资源、索引名字/generation、实际区间及所有可使事实失效的操作得到的协议保证。
 
 验证对象的业务值和类型可以保持为原 Index 类型；实际成功必须把凭证绑定到交付名字、真实聚合资源及其有效条件。数值相等、同类型、复制描述数据或返回 `true` 均不构成该绑定。
 
@@ -2307,6 +2340,14 @@ evidence only for their implemented transaction/value slices.
 
 ## 16. Anonymous names, executable operations and partial recovery
 
+This section uses the recursively composed Pattern-local `lifetime default`
+and the ordinary serial `lifetime pre` expression from `2.1.2. Name
+forgetting is a reduction of actual retained lifecycle description material,
+not an independent solver that collects constraints for later satisfaction.
+An exterior unknown remains tagged with the precise traceable access-tree
+frontier and carries its still-open source/Region/permission obligation outward.
+It is not a fabricated `origin=None` or a fixed-depth universal root.
+
 ### N20 — 名字遗忘的保守准入 [不变量]
 
 不可追踪的名字生成/遗忘是本代数的明确精度边界。对即将遗忘的名字：
@@ -2323,11 +2364,11 @@ evidence only for their implemented transaction/value slices.
 
 ### N21 — 匿名聚合按整体粒度承接依赖 [不变量]
 
-对于以匿名元素聚合为语义的数组/重复结构，投放前必须能把元素相对默认世界的全部特殊名字依赖，合法表达为聚合整体的约束；否则拒绝投放。
+对于以匿名元素聚合为语义的数组/重复结构，投放前必须能把元素相对完整 Pattern-local 默认表达式的全部特殊名字依赖，沿 `[i]`、`[0:n]` 或 `[0:ω]` 的实际有根据的路径汇总到聚合整体，示意为 `array@.origin ||= out_lines`，并同时保留对外 origin 的 Region 严格偏序；否则拒绝投放。这是生命周期表达式/实际边界规约，不是事后收集全局约束求解。
 
 这些约束是义务的保守合并，不是权限的并集。一个数组可能需要同时受 A/B 资源有效性限制，但取出一个索引凭证不因此同时拥有针对 A 和 B 的具体授权。
 
-普通取出生成的新名字继承聚合的全部保守依赖；剩余聚合不能仅凭“取出了一个元素”撤去整体依赖。取出实际所有权仍按选定动作交接，不重复复制资源。没有精确来源证据，就不能按数值、位置或相同类型恢复原 LifeName。
+普通取出生成的新名字沿其合法 `[]` 来源继承聚合 origin/Region 的全部保守依赖；剩余聚合不能仅凭“取出了一个元素”撤去整体依赖。取出实际所有权仍按选定动作交接，不重复复制资源。没有精确来源证据，就不能按数值、位置或相同类型恢复原 LifeName。
 
 整体销毁或有独立充分证明的专门操作可以结束当前责任；“历史不可擦除”不等于一个已经合法结束的对象永远仍有活跃义务。
 
@@ -2335,7 +2376,7 @@ evidence only for their implemented transaction/value slices.
 
 ### N22 — 遗忘必须保留可执行的 Drop 和 Move [不变量]
 
-名字/类型观察精度下降时，不仅要保留保守依赖，还须保留后续操作的实现与合法性材料。典型端点为：
+名字/类型观察精度下降时，不仅要保留保守依赖，还须保留后续操作的实现与合法性材料。`runtime:compile -> runtime:runtime` 的抽象可按 Pattern 默认结构保留可恢复的关系，并把剩余来源逐步规约到有根的外部 unknown；失败于本地外逃依赖的边界压缩不能伪造 unknown。`runtime:runtime -> runtime:compile` 的合法反向迁移只有在闭合 reify 及具体默认性验证成立时恢复相应模板关系，不恢复已遗忘的原名/generation。典型端点为：
 
 ```text
 runtime:compile -> runtime:runtime
@@ -2347,21 +2388,21 @@ runtime:compile -> runtime:runtime
 
 Move/Drop 的可执行性不等于已遗忘的精确名字关系可以恢复；保存了析构函数也不等于可消除它对外部名字的真实依赖。
 
-### N23 — 类型默认世界、统一 repair 与实例 Move 证明 [定义]
+### N23 — Pattern 默认关系、统一 repair 与实例 Move 证明 [定义]
 
-基础始终是具体事件判断 `Movable_K(n,m)`。类型的默认关系、
+基础始终是具体事件判断 `Movable_K(n,m)`。递归 Pattern 默认关系、
 普通统一 repair 和事件级证明承担不同职责，不能当成三种可互换
 的类型级 Movable 公理：
 
 | 材料 | 含义 |
 |---|---|
-| `DefaultWorld(tau)` | 对新的 tau 形式实例内部名字关系的类型定义默认假设，在显式 Pre 未覆盖的关系上应用；不是所有实际实例可移动的全称命题 |
+| `PatternDefault(P_tau)` | 结构 Pattern 节点的局部 lifetime default 完整声明，递归先子后父完整关系项覆盖；新形式名字按模板映射并在显式 Pre 串行表达式后检验，不证明 Movable |
 | 普通统一 repair | 类型或具体续体可以提供适用于其已证明输入域的统一修复程序，但每次仍要检验实际源、伙伴、Pre、Region、Color、目的地与资源责任 |
 | 当前名字的实例证明 | `Movable_K(n,m)` 对当前真实名字/动作的合法证明，以及该承载协议所需的实际 Move/Drop 可执行材料 |
 
 即使某个受约束实例族可以**另外证明**其默认世界及普通
 移动前提蕴涵某类无 repair 移动，这也只是带有明确假设与
-动作域的定理；不能由 `DefaultWorld(tau)` 声明本身推出。
+动作域的定理；不能由 Pattern 默认声明本身推出。
 不符合默认关系的实例并非类型错误：合法显式 Pre 可描述其
 额外关系，只要实际调用映射和动作均满足该 Pre。缺少证据
 不能当作独立性，不能凭声明覆盖真实 origin、历史或权限。
@@ -2373,7 +2414,7 @@ Copyable。
 
 ### N24 — 默认世界反向恢复是部分操作 [不变量]
 
-在 reify 内，已依法选择的 `runtime:runtime -> runtime:compile` 恢复，只接受能够按其类型已确定的默认世界（若无类型自定义则按基础默认世界）重建实例名字依赖的对象。已经遗忘并隐藏了非默认依赖的实例，不因持有正确 Type、移动子或析构子而取得该恢复能力。
+在 reify 内，已依法选择的 `runtime:runtime -> runtime:compile` 恢复，只接受能够按其完整结构 Pattern 的递归 lifetime default 加基础外部来源默认，真实重建实例依赖的对象。已经遗忘并隐藏了非默认依赖的实例，不因持有正确 Type、移动子或析构子而取得该恢复能力。
 
 ```text
 RecoverDefault(x):
