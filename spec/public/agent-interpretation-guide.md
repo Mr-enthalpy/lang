@@ -577,20 +577,37 @@ with Pending unexecuted, and all standard non-root locate requires universal
 guaranteed parent submission plus lazy acceptance. Ordinary custom heaps remain
 allowed. Production Pre owns escape rejection; QS is no language premise.
 
-Atomic is a formed-type consumer requiring external-origin closure of all retained
-state names, including I/Index and S; it creates no enum Pattern. A real ordinary
-copy/formation can establish a fresh closed name, but state-number role or equal
-content cannot erase an existing dependency. Comparison-only, unretained input
-still satisfies ordinary access Pre. CAS success changes state at one point: the original exclusive protocol
-transfers old S_a to the caller, while a registered shareable protocol
-atomically retires it to guaranteed lazy custody without returning S_a.
-Failure retains incoming custody. Stable Boxlike-to-T-share access needs a real
-protected read with source, Region and release/retire race proof; normal share
-has no internal mutation. A writer can clone an actual T share to an independent
-owned candidate and conditionally publish through the same CAS domain, with
-retry/Wait left to ordinary code. Lazy free alone proves no reader guard,
-and ARC count atomicity alone proves no safe business read. Actual branch
-causality, ownership and read-publication visibility are required; F19 reader
-protection/retirement and F14/F16 backend/OOTA remain pending. Extra SeqCst
-is still F15. No field-to-outer atomic propagation, payload from ordinary
-peek, automatic retry or arbitrary subset proof is licensed.
+Atomic consumes ordinary `$`-formed sum Pattern structures with
+named, independently optional `Status`, `own`, `share` roles.
+`(I Status, S own)` and `(I Status, S share)` are
+distinct fully named Product patterns, not a new atomic enum or
+position-based bare Product schema. `Status` can use ordinary
+finite numeric Slice Patterns such as `(1u32:)` or
+`0u32` with `(2u32:)` to distinguish count states;
+role names do not themselves erase external origins.
+
+A real CAS succeeds at one atomic state/Status/resource/
+permission commit. A real old source `S own` exit returns
+owned S to Committed; `S share` exit gives owned S to
+a lawful Forget receiver and a valid `S share` to
+Committed. Keeping S in its slot is neither exit and need
+not issue a share. Failed CAS returns the **actually
+formed proposed new Status and resource** with their
+ownership, without silently Dropping them. Changes
+between own/share are actual Pattern-changing CAS,
+not Status-only updates, and share-to-own must prove
+that all conflicting live shares ended. A number
+alone never proves that.
+
+Partial/hidden Status observations, incremental counts,
+different registered CAS mechanisms, reader protocols,
+clone/COW, lazy free, retry and suspension are ordinary
+implementation/library choices, not language Atomic
+primitives or mandatory ARC/RCU/GC/Mutex facilities.
+Actual N35 source closure, Region/Color, transaction
+competition and branch causal/visibility requirements
+remain. F13/F14/F16/F18/F19 are pending proof/source/
+backend obligations; F15 is the only extra SeqCst
+semantic-order decision. No implicit subset certification,
+automatic retry, unsafe permission minting or payload
+from unprotected peek is licensed.

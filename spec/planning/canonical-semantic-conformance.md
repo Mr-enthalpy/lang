@@ -183,27 +183,28 @@ Hoare-logic engine is claimed.
 | NW22 | A pair of share formals with distinct known caller roots enters may-alias default Pre | The interface forgets the distinction through an ordinary lawful relation abstraction without rewriting caller history; no equality or inequality becomes an assumption |
 | NW23 | Path p[i] segment extraction and lifecycle [i]/[0:n] route construction | Keep ordinary Path-relative-segment and lifecycle path-route meanings distinct under their actual selected operation and evidence; neither creates index trust or access permission | 
 
-## Shareable atomic reader/retirement targets (definition, not execution)
+## Atomic Pattern/Status/CAS proof targets (definition, not execution)
 
-All rows AS01–AS11 consume N35/N36/N39–N50 and the real F13/F14/F16/F18/F19
-proof/source/backend gates. The words shareable, forgetable and Boxlike are
-provisional protocol roles, **not** registered source tokens or a new
-Atomic/Lock/ARC ontology. Original exclusive take/return CAS remains admitted
-in its different registration domain.
+AS01–AS13 consume the ordinary Pattern owner, N34–N50, and pending
+F13/F14/F16/F18/F19. These are **normative positive/negative targets**,
+not executable tests or a commitment to ARC/RCU/GC/Mutex/Boxlike,
+clone/COW, fixed retirement or a particular CAS API family.
 
 | ID | Positive required behavior | Negative or non-derivable boundary |
 |---|---|---|
-| AS01 | Registered stable Boxlike payload has ordinary Boxlike -> T share production with actual storage identity, Region, immutable shared Color and valid reader guard | Merely forming atomic(T), seeing equal T values, or holding an unprotected pointer cannot yield T share |
-| AS02 | Reader enters a valid protect-before-load domain, or publishes guard then revalidates actual state/version before dereference | Interleaving reader load-old; writer replace/retire/free; reader late-protect must not use freed payload or form a valid share |
-| AS03 | Two readers receive independent lawful T shares of the same immutable committed S, and a writer can concurrently replace Cell state | Shared read does not permit in-place mutation; protected old snapshots do not become shares of new S |
-| AS04 | Replacement CAS success changes to S_b and transfers old S_a's unique custody/Drop continuation to guaranteed Pending once | No owned S_a returned; CAS-then-fallible-lazy-register, erased reader obligations or ordinary safe take while readers remain is forbidden |
-| AS05 | CAS failed attempt leaves S_a current and returns/retains incoming candidate S_b; only proved actual observations may be exposed | No duplicate S_b, no premature retire S_a, no success receipt, weak spurious failure cannot invent version/share |
-| AS06 | Keep/resource-invariant RMW commits on same cell, retains identical S and returns T share only with separately established real read protection | Mere unchanged I or ordinary peek cannot mint share, and keep/RMW cannot skip replace competition |
-| AS07 | Existing old protected share continues immutable reads after new CAS publishes S_b; pending Drop waits for its actual Region and guard validity | Lazy-accepting heap, stale register or observed ABA does not imply safe reclamation |
-| AS08 | Selected ordinary clone of old T share yields fresh independent owned/mutable candidate, modified privately then offered to version/credential-qualified CAS | Not every T has clone; no implicit copy, share-internal mutation, or unconditional latest-version equality |
-| AS09 | Two writers clone from a protected snapshot and independently compete on the same atomic cell; success retires old S, failure keeps losing candidate | No auto-retry, lock/ARC requirement, implicit rollback of prior side effects, or promise of lock-free progress |
-| AS10 | Heap Submit to direct parent preserves the whole retired resource, protected reader/deferred Drop duty and storage support; final Drop only when admissible | No early Drop at retire, arbitrary pending drain, missing worst-case retire metadata, or out-of-bound borrow |
-| AS11 | Read of real published version v sees completely initialized T and imports permitted rf/Past, while causality, Color and Origin remain distinct | Pointer-atomicity/guard alone does not establish machine visibility; do not solve F15 by claiming universal SC |
+| AS01 | `(I Status, S own)` and `(I Status, S share)` are ordinary fully named Product structures; Atomic consumes real selected structural roles | No role by bare position, accidental same-name Val2 or second Atomic enum syntax |
+| AS02 | Numeric `(1u32:)` matches nonzero u32; `0u32` or `(2u32:)` matches precisely u32 values except 1, using ordinary RHS Slice/Pattern | No overflow, infinite implicit domain or Atomic-only numeric matcher |
+| AS03 | Missing I/S roles are really absent; only present state number/resource participate | No manufactured inputs, source or share for absent S |
+| AS04 | Actual source `S own` ExitSlot gives sole old S ownership to Committed on the same CAS commit | No ReturnOwned on Keep or while a conflicting legal share remains |
+| AS05 | Actual source `S share` ExitSlot gives old owned S to a lawful Forget receiver and a valid old S share to Committed | No Forget-only success, invalidated share, doubled custody or mandatory lazy-free implementation |
+| AS06 | Keep retains same S without ExitSlot; a CAS that only changes count/mode need not issue a new share | Not ReturnOwned, not Forget, and not an unconditional share producer |
+| AS07 | Rejected retains the cell state and returns already-formed proposed I_b and S_b with original custody | No silent Drop, swallowed Status input, fake new version or old-resource authority |
+| AS08 | Source own/share contract is fixed per state Pattern, not chosen independently by API; changing it requires a Pattern-changing CAS | Status-only update cannot silently flip own/share; same source cannot offer both safe exit dispositions |
+| AS09 | Share-to-own conversion has actual proof all conflicting live shares ended and further issuing is blocked; later take is a separate CAS | n=0, n=1, numeric-slice match or unsafe/check=true label alone does not certify unique reader |
+| AS10 | Own-to-share conversion can be admitted under ordinary access/source Pre; newly issued share still needs real lifecycle evidence | Mode change itself does not create a borrow or permit interior mutation |
+| AS11 | Nonpublic Status components can be retained/matched/updated by admitted ordinary operations with a restricted external observation projection | Omitted public field is not absent internal state or uncheckable authority |
+| AS12 | All safe CAS on one Atomic instance compete on its real state and jointly preserve existing Region/Color/source and published causal history | No collaborator promise not to steal, ABA proof from numeric equality or successful machine CAS then fallible Post |
+| AS13 | Different library protocols may count readers, delay Drop, clone resources, retry/suspend or use external success evidence, while satisfying same slot/permission law | No generic ARC/RCU/Mutex/GC/HeapStack/Boxlike proof requirement or unearned progress guarantee |
 
 ## Stage, Policy and two-round calls
 
