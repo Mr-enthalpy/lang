@@ -183,28 +183,30 @@ Hoare-logic engine is claimed.
 | NW22 | A pair of share formals with distinct known caller roots enters may-alias default Pre | The interface forgets the distinction through an ordinary lawful relation abstraction without rewriting caller history; no equality or inequality becomes an assumption |
 | NW23 | Path p[i] segment extraction and lifecycle [i]/[0:n] route construction | Keep ordinary Path-relative-segment and lifecycle path-route meanings distinct under their actual selected operation and evidence; neither creates index trust or access permission | 
 
-## Atomic Pattern/Status/CAS proof targets (definition, not execution)
+## Sum-arm association and Atomic transform proof targets (definition, not execution)
 
-AS01–AS13 consume the ordinary Pattern owner, N34–N50, and pending
-F13/F14/F16/F18/F19. These are **normative positive/negative targets**,
-not executable tests or a commitment to ARC/RCU/GC/Mutex/Boxlike,
-clone/COW, fixed retirement or a particular CAS API family.
+AS01–AS14 consume the ordinary Pattern owner (§9.2), actual E-relative
+transform registration and Atomic N34–N50 with F13/F14/F16/F18/F19.
+The spelling `~~` is target structural syntax; `->::E` and
+`e transform ?` remain pending callable/source consumers.
+All rows are normative positive/negative acceptance, not executed tests.
 
 | ID | Positive required behavior | Negative or non-derivable boundary |
 |---|---|---|
-| AS01 | `(I Status, S own)` and `(I Status, S share)` are ordinary fully named Product structures; Atomic consumes real selected structural roles | No role by bare position, accidental same-name Val2 or second Atomic enum syntax |
-| AS02 | Numeric `(1u32:)` matches nonzero u32; `0u32` or `(2u32:)` matches precisely u32 values except 1, using ordinary RHS Slice/Pattern | No overflow, infinite implicit domain or Atomic-only numeric matcher |
-| AS03 | Missing I/S roles are really absent; only present state number/resource participate | No manufactured inputs, source or share for absent S |
-| AS04 | Actual source `S own` ExitSlot gives sole old S ownership to Committed on the same CAS commit | No ReturnOwned on Keep or while a conflicting legal share remains |
-| AS05 | Actual source `S share` ExitSlot gives old owned S to a lawful Forget receiver and a valid old S share to Committed | No Forget-only success, invalidated share, doubled custody or mandatory lazy-free implementation |
-| AS06 | Keep retains same S without ExitSlot; a CAS that only changes count/mode need not issue a new share | Not ReturnOwned, not Forget, and not an unconditional share producer |
-| AS07 | Rejected retains the cell state and returns already-formed proposed I_b and S_b with original custody | No silent Drop, swallowed Status input, fake new version or old-resource authority |
-| AS08 | Source own/share contract is fixed per state Pattern, not chosen independently by API; changing it requires a Pattern-changing CAS | Status-only update cannot silently flip own/share; same source cannot offer both safe exit dispositions |
-| AS09 | Share-to-own conversion has actual proof all conflicting live shares ended and further issuing is blocked; later take is a separate CAS | n=0, n=1, numeric-slice match or unsafe/check=true label alone does not certify unique reader |
-| AS10 | Own-to-share conversion can be admitted under ordinary access/source Pre; newly issued share still needs real lifecycle evidence | Mode change itself does not create a borrow or permit interior mutation |
-| AS11 | Nonpublic Status components can be retained/matched/updated by admitted ordinary operations with a restricted external observation projection | Omitted public field is not absent internal state or uncheckable authority |
-| AS12 | All safe CAS on one Atomic instance compete on its real state and jointly preserve existing Region/Color/source and published causal history | No collaborator promise not to steal, ABA proof from numeric equality or successful machine CAS then fallible Post |
-| AS13 | Different library protocols may count readers, delay Drop, clone resources, retry/suspend or use external success evidence, while satisfying same slot/permission law | No generic ARC/RCU/Mutex/GC/HeapStack/Boxlike proof requirement or unearned progress guarantee |
+| AS01 | An E sum arm `A ~~ (S write) | B ~~ (T read)` preserves real direct arm association within complete `$` Pattern, independent of Atomic | No reinterpreting `~~` as `=>`, extraction, construction, generic Product entry or a CAS instruction |
+| AS02 | A standalone `A ~~ (S read)` arm needs no artificial `|` neighbor; `A ~~ R | B` associates tighter than sum choice | `(C ~~ (S write),D)` cannot use association at a nested Product level |
+| AS03 | R_Gamma, Norm_P and complete Pattern identity preserve `~~` arm structure and its two role-specific operands | Equal satisfaction or field layout does not erase association or merge with a bare Product |
+| AS04 | An actually registered `->::E` can construct an E-relative callable transform value before Atomic execution | `~~`, `=>` or construction of transform must not itself consume old S, run CAS or grant rights |
+| AS05 | `B::E ~~ newSource` supplies the resource side of an E-relative target arm to a selected ordinary transform producer | No inferred resource from association alone, unselected producer or hidden AST magic |
+| AS06 | If target B needs compatible S but target S is omitted, inherit old S by Keep; if target B needs compatible I but target I is omitted, inherit old I | Do not inherit absent roles or reuse incompatible state/resource |
+| AS07 | Omitting target arm B requires missing target resource too and means same-arm Keep; may still update Status | Do not replace S merely by explicitly spelling the same state or doing Status-only update |
+| AS08 | A same-arm, same-resource Keep CAS can mask/partially match and update Status while preserving other actual components | Do not treat partial mask as full source Status match for a different target arm |
+| AS09 | An A-to-B different-arm transform requires full actual source state/Status match even if B inherits target Status or S | Hidden source values can be matched by licensed evidence, but a public projection or omission cannot skip full matching |
+| AS10 | E `?` observes one coherent legally readable branch/Status snapshot, dropping nonpublic components from the projection | Do not force hidden field error, leak hidden source, invent complete match evidence or copy S ownership |
+| AS11 | Atomic admits the already formed E and selected transform as a trusted one-point state/resource/permission transition | No Atomic-specific sum syntax, independent transform language or general type-system inference |
+| AS12 | Source write exits return owned S; source read exits Forget and return valid share; Keep write yields none, Keep read->read share, Keep read->write none | No share from transition read->write Keep, no old owner on Keep, no loss of resource custody |
+| AS13 | Failed Atomic transform returns all actually formed proposed target Status/resource candidates and changes no cell state | No silent Drop, invented candidates or success/old-resource credentials |
+| AS14 | `e transform ?` may dispatch actual ordinary success/failure Pattern branches with distinct Post and Past | No implied retry, ambient scheduling, effect rebinding or current parser/consumer implementation |
 
 ## Stage, Policy and two-round calls
 
