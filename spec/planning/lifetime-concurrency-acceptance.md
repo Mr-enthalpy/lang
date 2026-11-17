@@ -133,13 +133,13 @@
 
 | ID | 规范条款 | 正向要求 | 必须拒绝或不得推导 | D | P | S | C | T | B |
 |---|---|---|---|---|---|---|---|---|---|
-| ATOM01 | N34 N46 | $ 已形成 (I Status,S own) 与 (I Status,S share) 等命名结构后交 Atomic 消费。 | 不能由 bare 位置、同名 Val2 或 atomic enum 伪造权限。 | D | — | — | — | — | — |
+| ATOM01 | N34 N46 | $ 形成 E 后，和分支 A ~~ (Sa write) 与 B ~~ (Sb read) 保留真实关联，Atomic 只消费完整材料。 | 不能把 ~~ 当 => 的生成/提取，不能在 Product 内部放关联或由 bare 位置推断旧资源。 | D | — | — | — | — | — |
 | ATOM02 | N34 N37 | 输入可合法嵌套既有 atomic/一般结构，关联 ref/share API 由 OpenHere 注册。 | 不能要求每个高级抽象新增一个内建类。 | D | — | — | — | — | — |
 | ATOM03 | N35 | 所有 RetainedStateNames(A) 对 atomic 边界均无外部 origin 依赖，包含存入状态的普通 I/Index、S 及真实保留依赖；每个初始/转换 Pre 都维持闭合。 | S_b 闭合不能掩盖 I_b 仍依赖外部聚合；状态数角色、同 Index 类型、数值相等或 hidden unknown 都不能洗掉被保留名字的外部来源。 | D | — | — | — | — | — |
 | ATOM04 | N35 N19 | 合法已选普通复制/形成的实际 Post 可建立真正闭合的新 I_b（平凡 Index copy 不携原凭证）；内部合法 origin 关系允许存在。仅临时比较且不保留的输入依其普通访问 Pre 处理。 | 不能把任意 clone 或 I 角色当 origin=None 的定理，不能隐式复制/遗忘原名字依赖，也不得要求所有内部 origin=None 或将持有闭合条件无差别套给未保留的比较输入。 | D | — | — | — | — | — |
 | ATOM05 | N36 N37 | 仅 atomic 注册的受控域允许相应重叠独占染色。 | 全体字段 atomic 不提升外层；payload 普通写不获并发权限。 | D | — | — | — | — | — |
 | ATOM06 | N38 | Live(1)->Live(2)->Live(1) 的事件版本不同。 | 标量等于 1 不证明从未变化、相同 generation 或同 rf。 | D | — | — | — | — | — |
-| ATOM07 | N39 N47 | 同一 Cell 的 Keep/Exit 竞争；Exit 由源 own 或 share 固定资源去向。 | Keep 不是 Forget；同一源槽不能同时开放两种离槽去向。 | D | — | — | — | — | — |
+| ATOM07 | N39 N47 | 同一实例 Keep/Exit 保持单点竞争；读写权由源 read/write 与目标角色共同决定。 | 不能由同一源臂随意选择两种离槽方式，Keep 也不等于 Forget。 | D | — | — | — | — | — |
 | ATOM08 | N39 N49 | 失败返回确实已形成的拟写入 I_b/S_b，并保留所有权与原状态。 | 不得 silent Drop、吞掉拟写入材料、交付成功回执。 | D | — | — | — | — | — |
 | ATOM09 | N40 N45 | 某计数/票据库可依法证明真实读资格与计数对应。 | n=1 不自动表示唯一存活读者；ARC 不是核心本体。 | D | — | — | — | — | — |
 | ATOM10 | N37 N40 | 普通组合维持基础不变量。 | 不能由 safe 子动作推出任意更小行为集合、整体事务或自动新 Color。 | D | — | — | — | — | — |
@@ -147,21 +147,21 @@
 | ATOM12 | N39 N47 | 源 S own 真正离槽成功才向 Committed 交旧 owned S。 | Keep 不交旧所有权；不可在有冲突活 share 时取出。 | D | — | — | — | — | — |
 | ATOM13 | N39 N49 | 失败 Rejected 持有实际拟写入的 Status 与资源，Cell 不变。 | 不能 Drop 候选、发旧资源或成功版本凭证。 | D | — | — | — | — | — |
 | ATOM14 | N34 N46 | I、S 可以分别缺省，Pattern 只使用确实存在的角色。 | 不得为缺省角色制造资源、状态数或位置占位。 | D | — | — | — | — | — |
-| ATOM15 | N39 N47 N49 | Keep 可以改模式/Status 而保持原 S 身份与责任。 | Keep 不是离槽，也不自动发 share。 | D | — | — | — | — | — |
+| ATOM15 | N39 N47 N49 | 相同状态臂 Keep 可更新部分 Status、保持 S；源 read 到目标 read 成功交付 share。 | 不能用局部 Status 掩码改变状态臂；源 write Keep 不产生 S 所有权。 | D | — | — | — | — | — |
 | ATOM16 | N38 N48 N49 | 同模式 Status 增量计算在单点 CAS 执行，可保持 S。 | 状态数更新不能暗改 own/share 或未经授权跳过隐藏字段。 | D | — | — | — | — | — |
 | ATOM17 | N39 N41 | CAS 结果作为普通 Committed/Rejected 和模式进入不同的实际续体分支，分别形成后续因果材料。 | 不能执行未选分支、给失败分支复制成功凭证或将两分支事件直接合并成同时发生。 | D | — | — | — | — | — |
 
-| ATOM18 | N46 | Status 与 own/share 是普通命名成员，I/S 可缺省。 | 不靠 bare 位置、同型或任意同名 Val2 授权。 | D | — | — | — | — | — |
+| ATOM18 | N46 | 直接和分支使用 ~~ 关联 State/Resource，单分支也可关联且强于 |。 | 不能写 (C ~~ (Sc write), D) 作为积内部关联，也不自动提取。 | D | — | — | — | — | — |
 | ATOM19 | N46 | (1u32:) 匹配非零 u32；0u32 或 (2u32:) 的普通 Pattern 排除 1。 | 不得当作无穷整数、溢出或 Atomic 专用切片。 | D | — | — | — | — | — |
 | ATOM20 | N39 N47 | 源 share 真离槽时所有权交合法 Forget 且 Committed 必得有效 S share。 | 不能只 Forget 不发 share，或使结果 share 悬空。 | D | — | — | — | — | — |
 | ATOM21 | N39 N47 | 源 own 真离槽成功时 Committed 获得唯一 owned S。 | 同一源状态不能让不同 safe CAS 任意切换离槽方式。 | D | — | — | — | — | — |
-| ATOM22 | N47 N49 | 成功 Keep 可仅关闭读入口/修改计数而不新增 share。 | 不得强制所有 Keep 返回 S share。 | D | — | — | — | — | — |
-| ATOM23 | N48 | share 到 own 先经过保持 S 的模式变更 CAS，取出 S 仍需后一次 CAS。 | 仅改 Status 不能切换资源角色，第一次成功不保证第二次。 | D | — | — | — | — | — |
+| ATOM22 | N39 N47 | Keep 来源 read 且目标仍 read 时成功交付 S share；read→write Keep 不交付 share。 | 不能把任何 Keep 一概当成无 share，或切换到 write 时产生新 share。 | D | — | — | — | — | — |
+| ATOM23 | N48 N49 | read→write 先以全源臂及状态数匹配的 CAS 保持 S 并改变模式，再以另一 CAS 尝试取 S。 | 仅靠改 Status、隐藏值不读或第一次 CAS 成功不足以准入第二次。 | D | — | — | — | — | — |
 | ATOM24 | N48 N50 F19 | share 到 own 有真实证据证明冲突活 share 已结束、读入口已关闭。 | n=0/n=1 或 unsafe/check=true 不能直接证明。 | D | — | — | — | — | — |
 | ATOM25 | N48 N50 | own 到 share 在普通来源/借用 Pre 成立时可以进行模式转换。 | 不得凭模式名制造读权或内部可变性。 | D | — | — | — | — | — |
-| ATOM26 | N49 | 隐藏 Status 分量可由受控 CAS 保留/匹配/更新，普通观察只提供可读部分。 | 隐藏不等于内部状态不存在，也不得跳过必要匹配。 | D | — | — | — | — | — |
+| ATOM26 | N49 | 不可公开读取的 Status 可以被受控完整匹配；E? 只投影单个实际版本的可读状态。 | 不能从 E? 的局部观察推导全源状态匹配或 S 借用。 | D | — | — | — | — | — |
 | ATOM27 | N39 N49 | 竞争失败返回实际已形成的 I_b/S_b 及完整责任。 | 不能隐式 Drop 或制造未形成的状态数。 | D | — | — | — | — | — |
-| ATOM28 | N35 N39 N49 | 全部 safe CAS 共同维持保留 I/S 的来源闭合、同实例竞争与 share 安全。 | 不能要求协作者自行承诺不偷，或让计数操作绕过源槽角色。 | D | — | — | — | — | — |
+| ATOM28 | N34 N35 N39 N49 | 普通 ->::E 先形成 callable transform；对同一 Atomic 实例 e transform ? 才可能真实原子执行。 | 不能把构造变换、~~ 关联和 CAS 运行视为同一动作。 | D | — | — | — | — | — |
 | ATOM29 | N41 N47 N50 F14 | 交付 S share 的成功分支具有真实源、Region/Color 和版本发布可见性。 | Peek、裸指针、数值相等不能凭空产生权限。 | D | — | — | — | — | — |
 | ATOM30 | N40 N45 N50 | 读写协作、计数、版本共存、回收、clone、等待均可由普通安全协议表达。 | 不强制 ARC/RCU/GC/Mutex/Boxlike/COW/lazy 或固定 CAS API。 | D | — | — | — | — | — |
 

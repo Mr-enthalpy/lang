@@ -472,8 +472,8 @@ substrate tests do not establish HA execution.
 [Current evidence and F01–F19](lifetime-concurrency-consolidation.md) own the
 normative/proof status; [the original 105 plus new Atomic Pattern/slot acceptance targets](lifetime-concurrency-acceptance.md)
 are not executed source coverage. N01–N50 and U01–U12 are distributed across
-actual topic owners. F19 is a pending Status/slot/permission proof and
-consumer gate (including share-to-own, failed input return), not an
+actual topic owners. F19 is a pending `~~` sum-arm/`->::E` transform, source matching,
+readable `?`, resource/permission and failed input return consumer gate, not an
 extra memory-order decision; F15 remains explicitly unselected.
 
 The implemented D1 slice replaces the continuous Region carrier with discrete
@@ -489,8 +489,9 @@ material; F02–F04 source-driven repair and explicit responsibility; F05–F09
 correlated joins, index, anonymous Move/Drop and recovery; F10 independent
 containers; F11/F12/F17 standard heap/lazy/universal locate; F13/F14/F16/F18
 atomic resource/causal/backend/protocol consumers; F19 additionally
-covers ordinary numeric Slice and Status/own/share roles, conditional
-ReturnOwned/Forget+share and Keep, safe mode switches, and full
+covers direct sum-arm `~~`, E-relative callable transform production,
+full source matching for arm changes versus same-arm masked Status,
+readable one-version `?`, source write/read Exit/Keep rights, and complete
 Rejected I/S candidate return without mandatory recovery algorithm.
 Connect new facts to actual host dependencies at each step. Missing domains remain unavailable; no id,
 None/default origin, empty Post, cloned owner, hidden Box or backend substitute

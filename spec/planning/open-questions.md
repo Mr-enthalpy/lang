@@ -182,14 +182,15 @@ Persistent dependency/source encoding remains open, not the propagation law.
 - Which ordinary API names (including depends_on/live_with), argument packaging,
   namespaces, regular-material encodings, caches and boundary-transform
   algorithms implement the closed lifecycle relations?
-- Which ordinary registration/callable interfaces consume the already formed
-  `(I Status, S own)` / `(I Status, S share)` roles, optional I/S,
-  numeric Slice Patterns, hidden Status observations, partial or incremental
-  Status computations and failure-result custody of proposed I_b/S_b?
-  `Status`, `own`, `share` are member-name conventions, not new lexer tokens
-  or Atomic-only Pattern nodes. The semantic role/exit/Keep and live-share
-  proof laws are fixed in N46–N50; exact CAS API shapes remain deliberately
-  open. F19 checks permission/proof/source/backend connectivity rather than
+- How do the pending source consumers register ordinary E-relative
+  `->::E` callable transforms and an E `?` readable observation for the
+  newly defined direct sum-arm `~~` association? `~~` preserves real
+  State/Resource arm structure without extraction, generation or CAS.
+  `write/read` are illustrative normal resource member names and the final
+  role spelling remains a minor surface choice. Target omission, same-arm
+  masked Status matching, full source matching on arm change, optional
+  resources and failed I_b/S_b return are fixed in N46–N50; precise
+  callable and operator registration/implementation remain pending. F19 checks permission/proof/source/backend connectivity rather than
   choosing a reader-count, Boxlike, RCU, GC, Mutex or lazy-heap algorithm.
   F15 remains the sole extra SeqCst/fence semantic-order decision.
 - Which representations/algorithms realize the fixed name-item SCC collapse

@@ -43,10 +43,11 @@ A dash is incomplete, never a default success. Carrier/model evidence is named
 as a narrower slice. This work migrates the normative specification and D1's
 finite event carrier; it does **not** complete lifecycle/concurrency execution.
 
-Current normative owners include N01–N50: N46–N50 specify ordinary
-$ Pattern numeric slices, named Status/own/share slots, conditional
-resource exit/Keep, mode-transition proofs, CAS mechanisms and failure
-return of proposed Status/resources. Specific ARC/RCU/GC/Mutex,
+Current normative owners include N01–N50: the ordinary Pattern owner now
+fixes direct-arm `~~` State/Resource associations, while N46–N50 govern
+Atomic's admission of formed E and selected `->::E` callable transforms,
+conditional source write/read Exit/Keep, full arm matching for transitions,
+readable `?` observation, and failed target candidate return. Specific ARC/RCU/GC/Mutex,
 Boxlike, clone/COW and lazy-free implementations are not mandated. N43 remains only the extra SeqCst/fence
 ordering decision (F15); F19 is a distinct pending proof/consumer gate, not
 a new ordering choice. No F01–F19 general proof or backend support is claimed. The paired source
@@ -293,7 +294,7 @@ The audit follow-up and its separate validation record are described below.
 | 13 Composition | Atomic fields do not certify outer Atomic; safe actions do not enforce arbitrary narrower protocols |
 | 14 CAS | Single point transforms Pattern/Status/rights; source own/share controls actual exit, Keep distinct, Rejected returns proposed I/S; scheduling is ordinary composition |
 | 15 Memory | Branch causal closure and ownership/share-publication visibility fixed; F15 extra order undecided; OOTA/backend proofs pending |
-| 16 Atomic enhancement | Named Status/own/share, ordinary numeric Slice, conditional ExitSlot and share proof, mode switching, failed candidate return; no mandatory ARC/lock/Boxlike/lazy/retry; F19 pending |
+| 16 Atomic enhancement | Ordinary sum-arm `~~` + selected `->::E` transform, Atomic one-point CAS/Color; masked Status only for same-arm Keep; source read/write result and failed candidate return; F19 pending |
 
 No contradictory current positive rule was found in the stated audits. Their
 inspection is not a universal absence proof. Specific unimplemented source
