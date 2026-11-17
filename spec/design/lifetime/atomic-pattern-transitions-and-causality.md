@@ -1,13 +1,16 @@
 # Atomic Pattern transitions and causal memory
 
-Status: canonical owner of atomic registration, ordinary Pattern role
-interpretation, one-attempt CAS/resource and access-right handoff, and causal
-memory. N34–N42/N44–N50 define the semantic boundary; F13–F19 proof,
-source-consumer and backend obligations remain pending. N43/F15 remains the
-bounded extra SeqCst decision. `Status`, `own` and `share` below are
-provisionally fixed **structural member-name conventions**, not new
-keywords or Atomic-only Pattern syntax. CAS API names and variants are not
-frozen. No executable Atomic API or cross-ISA support is claimed.
+Status: canonical owner of Atomic admission of **ordinary**
+`$`-formed associated sum Patterns, one-attempt CAS and resource/rights
+handoff, and causal memory. The direct sum-arm `~~` structural association
+belongs to the [Pattern owner](../patterns-overload/pattern-relations-observation-and-extraction.md#92-direct-sum-arm-structural-association-);
+Atomic is its stronger trusted execution **consumer**, not its creator.
+N34–N42/N44–N50 define the target semantics, F13–F19/source/backends
+remain pending, and N43/F15 remains the bounded extra SeqCst decision.
+`write/read` here are illustrative ordinary resource member names;
+`~~` is the selected association spelling, not an Atomic-only operator.
+The selected `->::E` ordinary transform interface is target syntax,
+not a connected implementation or a frozen CAS API family.
 All equations and conventional call notation below are metanotation; source
 sketches are target syntax with unconnected consumers.
 
@@ -21,25 +24,31 @@ sketches are target syntax with unconnected consumers.
 formed_type |> atomic::
 ```
 
-Cell 的结构意图用元记号表达为：
+和模式的结构材料可以直接采用普通 `~~` 关联语法：
 
-```text
-P_Cell(T) = Empty | Live(uint32 Status, Stable(T) own)
-                  | Readable(uint32 Status, Stable(T) share)
-Cell(T)   = atomic(Form$(P_Cell(T)))
+```lang
+let E = ((
+    (Ia1 n1, Ia2 n2) A ~~ (Sa write) |
+    (Ib1 m1) B         ~~ (Sb read)  |
+    C                  ~~ (Sc write) |
+    D
+) E)$;
+
+// 目标使用：已形成完整 E 材料再交给 Atomic 消费者
+E |> atomic::
 ```
 
-以上不是传统 `f(args)` 或已实现的完整源码样例，而是从
-已有 `$` 形成的和 Pattern 的结构示意。每一个分支里
-`(I Status, S own)` 或 `(I Status, S share)` 的两个成员都**有名字**，
-故本层 Product 按原有规则为无序结构；`own/share` 表示两种
-不同的候选成员名，不是斜杠运算符或第三个裸标记。
-`I Status` 和 `S own/share` 各自可以缺省：没有 I 就不虚构状态数，
-没有 S 就没有可交付的资源。其他普通结构分支可由 Pattern 自己
-细化。Atomic 消费者以实际 Pattern/结构证据确定唯一合法的角色，
-而不是靠 bare Product 的位置、普通同名 Val2 成员、Type 相等或
-不可验证的字段拼写猜出身份。其受信任语义是对已准入状态进行
-一次真实和 Pattern 条件转换；没有新的 enum、Object 轴或第二套 E/K。
+每个 `~~` 在和模式**直接分支**（含单分支）上将状态
+Pattern 与资源 Pattern 结构关联；并未执行提取、移动、
+构造或转换。这里的 `write/read` 是各自资源 Pattern 的
+普通命名成员，作为独占交付/共享交付的候选协议角色，
+仍可再调整命名。没有资源关联的 `D` 是合法分支；
+状态数材料也可以在该分支真实缺省。对 `A~~R|B` 的解释
+是 `(A~~R)|B`，不允许将 `~~` 下沉到积模式内部，
+例如 `(C~~(Sc write),D)` 不合法。两侧是普通 Pattern，
+关联证据由 `$` 形成并由 `R_Gamma` 及 Norm 保留；
+Atomic 根据所选结构证据判定角色，绝不能根据 bare
+Product 第几位、同名 Val2 或一个新 enum 本体猜测。
 
 输入模式可以结构化复用既有 atomic 类型和普通语言材料，形成合法递归组合。一次一般模式构造/提取的“原子完整提交”不自动等于跨执行主体的机器 CAS。
 
@@ -103,8 +112,10 @@ OpenHere 提供注册能力，不提供伪造生命周期/原子权限的能力�
 
 ```text
 P : current ordinary sum-Pattern alternative
-I : optional ordinary Status role (may have nonpublic components)
-S : optional held resource in the own/share role
+I : optional state-number material inside the selected state arm
+    (may have nonpublic components)
+S : optional resource from that arm's ordinary ~~ association
+    (e.g. named write/read), with real custody
 v : identity of a committed atomic event
 n/g : ordinary lifetime name and generation
 ```
@@ -115,69 +126,74 @@ n/g : ordinary lifetime name and generation
 
 数值 ABA 不被默认禁止；需要“自观察以后绝无改变”的协议必须另外提供版本/世代判定。无需把语义事件身份实现为无限增长机器整数，也不从名字等同性推出物理地址相等。
 
-### N39 — 单次 CAS 的原子性、资源去向与失败材料 [不变量]
+### N39 — 单次 CAS 原子性、Keep/Exit 与失败材料 [不变量]
 
-最基本的 CAS 是作用于一个实际 Atomic 实例的、已形成和 Pattern
-分支上的单次条件转换。它同时约束实际模式、可选 Status、可选
-资源和由结果建立的权限，而不是仅比较整数。采用语义元记号
-（不是已经冻结的 CAS API）：
+对实例 `a`，已依法构造的 `E` 相对变换值 `t`
+通过 Atomic 受信任消费者发起一次 CAS；
+构造 `t` 时不执行本次 CAS：
 
 ```text
-attempt(a, A, proposed I_b?, proposed S_b?, selected ordinary transition)
-old actual state:  A(I_a?, S_a?)
+attempt(a:E, t:Transform(E))
+old actual arm A(I_a?, S_a?)
+desired arm B(I_b?, S_b?) after ordinary formation/normalization
 
-on successful one-point commit:
-  actual state becomes selected B(I_b?, S_b? or preserved S_a)
-  if S_a actually leaves the old resource slot:
-    source role own  => transfer owned S_a to Committed result
-    source role share => transfer sole owned S_a to lawful Forget receiver
-                         AND deliver lawful S_a share to Committed result
-  if S_a remains in the slot:
-    Keep(S_a); no ExitSlot transfer; share result only if this operation
-    actually admits/establishes such a borrow
-  publish actual version and branch-dependent Post
+successful single commit:
+  match actual A with the source evidence required by t
+  publish B and its actual State/Resource/permission Post atomically
+  if old S_a exits its source slot:
+    source resource role write => Committed receives owned S_a
+    source resource role read  => sole owned S_a enters lawful Forget;
+                                  Committed receives valid S_a share
+  if old S_a remains (Keep):
+    source write => Committed has no old-resource access
+    source read, target read => Committed receives valid S_a share
+    source read, target write => Committed receives no S_a share
+  deliver actual committed version and causal facts
 
-on failure:
-  state a is unchanged by this attempt
-  Rejected(proposed I_b?, proposed S_b?, actual observation if available)
-  do not consume, silently Drop or lose either already-formed input;
-  no S_a, minted share or success credential is delivered
+failure:
+  atomic instance unchanged by this attempt
+  Rejected returns all *actually formed* incoming new I_b/S_b
+  and their unconsumed ownership; only real failure observations
+  neither returns old S_a nor mints an unproved share/success receipt
 ```
 
-`?` above denotes a genuinely optional role/input, not implicit null storage
-or a new syntax. In particular, if a proposed Status is formed by internal
-computation from actual retained state, a failed attempt preserves/returns
-the ordinary still-owned inputs and any already-formed unused candidate;
-it cannot synthesize a Status name that was never actually formed.
+If a state/target has no respective I/S role, there is no fictitious
+candidate, return or inheritance. `I_b` computed from old material
+and never formed cannot be fabricated as a returned name. If a target
+omits resource while it actually requires a compatible one, omission
+means **identity-preserving Keep** of old S, not a fresh resource or
+return of old ownership; incompatible omission is illegal.
 
-For every committed event e involving a real old source S:
+For any committed transition e that **actually exits** old S:
 
 ```text
 ExitSlot(e,S) => ReturnOwned(e,S) XOR ForgetOwned(e,S)
 Keep(e,S)     => not ExitSlot(e,S)
-ForgetOwned(e,S) => Committed contains a lawful S share
+ForgetOwned(e,S) => Committed receives a lawful S share
 ```
 
-The XOR has the **ExitSlot precondition**: `not ReturnOwned` alone does
-not imply `ForgetOwned` because `Keep` is another legal resource
-behavior. `own/share` is fixed by the **source Pattern's resource slot**,
-not selected afresh by each CAS operation. The same source state cannot
-expose both owned-return and Forget-on-exit safe CAS variants.
-An actual new resource belongs to the target state only on a successful
-commit; all resource/Status candidates offered by a failed attempt are
-returned in its Rejected branch, not silently destroyed. Both branches
-are ordinary sum Pattern results with their own real Post.
+The XOR has an ExitSlot premise. `not ReturnOwned` does **not**
+imply Forget: a transition may Keep the original S. The
+resource delivery role is fixed by its **source arm** and
+cannot be selected per API invocation. No two safe
+transform implementations on the same source arm may
+offer contradictory exit custody. A resource change must
+be bound to a true state-Pattern-changing CAS, not only
+a Status update or a post-commit ordinary action.
 
-Success checks the actual A branch and selected Status/Pattern conditions,
-destination N35 closure for every retained I/S name, and the real Region,
-Color, origin, access, generation and source/ownership Pre **before**
-the commit. Neither a successful machine CAS followed by a fallible
-ownership transfer nor an ordinary Post attempting to repair absent
-authority is admissible. `Status` is ordinary value/name material:
-a number alone cannot establish event version identity or permission,
-and equal numeric values do not exclude ABA. Only the actually selected
-committed or rejected branch establishes its causal observations (N41);
-weak/spurious failure does not invent a committed version.
+All source/target Pattern, retained-name N35 closure,
+Region, Color, origin, generation, ownership and access
+Pre are checked at the actual request/commit boundary.
+Full source arm+state-number matching is required for
+a transition to a **different state arm**, even when
+target material is inherited. Only an in-place
+same-arm Keep update may use a masked/partial
+state-number match (`N48–N49`).
+Failed comparisons never consume new target materials
+or silently Drop them. Successful/failed result arms
+remain ordinary sum values carrying different Post
+and N41 causal histories. A value-equal Status does
+not establish a committed version or eliminate ABA.
 
 ### N40 — 一般安全组合与外部事实的信任边界 [不变量]
 
@@ -275,142 +291,201 @@ async 与异构执行正交，异构执行与自动逃逸正交。基础内存�
 已有有限模型不构成对所有 Region、Color、来源、版本、
 机器后端、复杂回收或一般库协议的证明。
 
-### N46 — 由普通 $ Pattern 给 Atomic 提供 Status 与资源角色 [定义]
+### N46 — 普通和模式分支关联与 Atomic 的消费边界 [定义]
 
-`atomic` 消费 `$` 已形成的完整和 Pattern 类型。约定使用
-本来合法的命名成员，而不是让第零个 bare 项自动成为状态数、
-第二项自动成为资源：
+一般 `$` Pattern 先产生完整 E，后由普通关联
+`~~` 提供每个和模式分支的 State/Resource 结构：
 
 ```lang
-// 结构/Pattern 形成示意，具体 atomic 注册消费者尚未接通
-(I Status, S own)
-(I Status, S share)
-(I Status)        // 无资源
-(S own)           // 无状态数
-(S share)         // 无状态数
+let E = ((
+    (Ia1 n1, Ia2 n2) A ~~ (Sa write) |
+    (Ib1 m1) B         ~~ (Sb read)  |
+    C                  ~~ (Sc write) |
+    D
+) E)$;
 ```
 
-同一资源槽位的 `own` 和 `share` 是不同的命名结构角色：
-它们并非斜杠算子、额外可见资源、第三个裸标记、
-新关键字或第二套 Pattern 语法。所有直接成员都命名时
-这一 Product 层按原有规则无序；包含 bare 成员则遵守
-原有有序规则。S 上的普通裸 `name` 与 `name$` 粘贴值
-仍按一般极性/Val1 语义解释，不可因 Atomic 角色而改写。
-其他字段及更复杂模式通过真正的普通 Pattern 分支表达。
-缺省 I/S 只消去对应的状态数/资源职责。
+`~~` 是**分支级关联**，不是 `=>` 的生成/提取箭头、
+不是一般 Product 运算、不是 CAS 转换或资源移动。
+单一关联分支不必为合法性额外构造另一个 `|` 分支；
+`(C ~~ (Sc write),D)` 之类嵌入 Product 的式子非法。
+即使相同 `Sat`，关联材料也属于完整 Pattern 的
+关系/规范化身份，不得被 `Norm_P` 或类型缓存抹除。
+完整注册还须具有真正的关联/角色结构证据，
+而不是通过普通同名 Val2 字段提升权限。
 
-Atomic 必须从实际结构注册与 `R_Gamma` 推导中确定
-`Status`、`own/share` 的唯一角色观察（或证明所有成功
-推导所得观察相同），不得由同名虚拟 Val2 成员、类型
-相等或位置猜测赋予能力。`Status` 是普通可计算的值材料，
-可以复用普通 Pattern 的数值切片，例如：
+资源侧 `(S write)`、`(S read)` 的名字
+可按语言一般命名语义形成；这里用 `write` 表示
+源资源离槽时合法交付 owned S，用 `read` 表示
+源资源离槽时合法 Forget 其 owned custody 并
+向成功结果交付 S share。两者均**只是暂用命名
+约定**，不产生额外 Object 类型、自动回收、
+读写锁或 Atomic 私有 Pattern。S 可缺省；
+State 分支的 I 也可缺省。数值 Status 可以复用
+普通 `Product |> slice` 和 `R_Gamma`：
 
 ```lang
 let NotZero = ((1u32:) NotZero)$;
-let NotOne = ((0u32 | (2u32:)) NotOne)$;
+let NotOne  = ((0u32 | (2u32:)) NotOne)$;
 ```
 
-上面 `:` 仍经现有 RHS ordinary `Product |> slice` 形成；
-在 u32 域内 `1u32:` 覆盖 1 至最大合法 u32，
-`2u32:` 覆盖 2 至最大合法 u32，因此 NotZero
-排除 0，NotOne 排除 1。既有普通 Slice/Pattern
-消费者须提供域边界、端点和匹配证据；不新增
-Atomic 专用范围、独立 Slice AST/本体或第二个
-Pattern 求解器。数值溢出、空范围和缺证据仍由
-实际普通计算/匹配与 Pre 处理。
+`1u32:` 在 u32 域匹配 1 至最大合法值，
+`NotOne` 通过 `0u32 | (2u32:)` 排除 1。
+这属于普通 Pattern owner 的数值切片，
+不是 Atomic 专用计数器原语、私有 AST、
+新类型轴或额外求解器。
 
-### N47 — 槽位 own/share 的条件离槽交付契约 [不变量]
+普通 `E` 的合法形成与关联不蕴含任何原子执行。
+Atomic 仅约束其准入并对实际选中
+`Transform(E)` 赋予一次 CAS 提交、受控
+不相斥独占 Color、资源与结果 Post 的可信
+交接。所有保留 I/S 名字仍须遵守 N35。
 
-每个有 S 的**源状态 Pattern**固定其资源槽位的
-`own` 或 `share` 契约。同一源状态不得同时注册
-安全的“取出旧 owned S”和“Forget 旧 S”两种离槽
-方式；需要不同业务分支时，应在 Atomic Pattern
-状态结构里显式区分，不将协调状态机塞进 S 内部。
+### N47 — 源资源角色、离槽与 Keep 的成功权利 [不变量]
+
+每个已关联资源的源 arm 通过自己的
+`write/read` 角色确定离槽交付；同一
+arm 不允许同时注册两种互斥离槽去向。
+所有成功分支依**实际资源行为**判定：
 
 ```text
-actual CAS success with S leaving source slot:
-  source S own   => result obtains owned S
-  source S share => sole owned S goes to lawful Forget responsibility
-                    AND success result obtains lawful S share
-actual CAS success with S remaining in source slot:
-  Keep(S)        => no owned exit; share issue only if operation
-                    explicitly forms a lawful share
+ExitSlot(source write) => Committed receives owned S
+ExitSlot(source read)  => Forget receives owned S
+                          AND Committed receives S share
+Keep(source write)     => Committed does not obtain old S
+Keep(source read -> target read)
+                       => Committed receives S share
+Keep(source read -> target write)
+                       => Committed does not obtain S share
 ```
 
-`Forget` 不是关键字、自动删除、固定 lazy-free 队列或
-无主资源。它是与同一个单点提交绑定的、实际有合法
-所有权承接者的保守遗忘/析构责任交付；由于成功结果
-同时得到 `S share`，其真实存活/Region/来源及
-合法 Drop 窗口必须继续成立。`Keep` 不是第三个
-离槽去向，而是根本没有触发离槽前件。
-从 `not ReturnOwned` 不可推导 `Forget`。
-没有 S 的分支不得假造 owned S 或 share。
+`Forget` 保持唯一清理责任；它不是立即
+删除或某个强制 lazy/ARC 算法。成功返回的
+`S share` 必须由真实 Region、Color、origin
+及存储有效性支撑；普通 share 不允许隐藏
+一般内部可变性。即使新旧两个状态的
+资源身份不变，状态分支模式、资源角色
+仍须作为真实 CAS 条件/结果解释。
 
-### N48 — 转换访问模式与活共享权的证明 [不变量]
+结果权利由**源角色加实际 Exit/Keep 和
+目标角色**共同确定，不是 `~~` 自行生成的
+提取器。没有 S 的 arm 不虚构资源结果。
+从 `not ReturnOwned` 不可推出 `Forget`：
+`Keep` 是其余合法情况。
 
-由于 `own/share` 是**源 Pattern 中与槽位绑定**
-的角色，改变这一契约必须真实切换 Atomic
-状态 Pattern；单纯改变 `Status`（包括增减状态数）
-不能使原槽位从 share 偷渡到 own，反之亦然。
-模式切换即使保持 S 及 Status 完全不变，也需
-单独的一次合法 CAS；之后想实际取出 S，
-必须再发起另一次重新检查当前状态的 CAS：
+### N48 — 模式变化的完整匹配与共享权恢复 [不变量]
+
+改变和模式 arm（包括 `read/write` 资源
+角色变化）必须由一次状态-Pattern-changing
+CAS 完成；单纯更改状态数不能改变资源
+交付模式。若 Keep 同一 S 但从 read 切到
+write，该成功分支**不**产生新 S share。
+之后真正取出旧 S 必须另行执行一次 CAS，
+不能把第一次成功当成第二次成功。
+
+从 read 状态恢复到 write 时必须在真实
+Pre/交接中证明先前全部冲突共享权已经
+合法结束且不会继续发放；`n=0`/`n=1`、
+数值切片或隐藏状态位本身均不证明这个
+性质。具体许可、计数、Region 或外部
+受信任设施如何履行该义务属于普通协议。
+
+这里有一个重要的源状态匹配边界：
 
 ```text
-A(I Status, S share)
-  -- CAS: change Pattern, Keep(S) --> B(I Status, S own)
-  -- a separate CAS: exit old S --> Empty or another legal state
+ChangingArm(A,B) => FullMatch(A, all actual I_a material)
+PartialStatusMatch(I_a) => SameArm(A,B) AND Keep(S_a)
 ```
 
-`own -> share` 在真实来源与读取准入成立时通常是
-放宽可交付的权限；`share -> own` 则需要
-证明不存在仍存活且与随后独占取出冲突的
-合法 share，以及新读取资格的创建路径已被
-同一原子状态转换关闭。`n=1`、`n=0` 或
-`NotZero/NotOne` 的匹配**单独**不能建立
-实际共享许可的完整性或最后归还事实。
-计数协议可以用相应凭证/Region/续体 Pre/Post
-证明这一点；也可能需要确有根据的外部受信任
-成功事实，但不能由一个 `unsafe` 标签或
-`check=true` 直接凭空建立独占权。
-一切安全 CAS 变体必须共同保护此不变量，
-而非寄希望于协作者不调用危险入口。
+在原位保持 arm 和资源的 Status 更新中，
+可使用局部/蒙版式匹配及增量修改，
+未指定的分量由同一实际状态原样保留。
+但不能把此操作提升为从 A 到不同 B
+状态的部分匹配转换；即使新资源/状态数
+目标侧可以合法继承，也必须拥有真实
+**完整源 arm+Status 匹配证据**。
+不可公开读取的 Status 分量不等于不存在；
+受控比较可在未对外泄漏其值的情况下
+满足完整匹配，但不能跳过它。
 
-### N49 — CAS 变体所需的机制空间，非预先规定的 API [定义]
+### N49 — E 关联变换值、结构省略与 Atomic 执行 [定义]
 
-在先不固定 `cas_keep`、`update_id` 等具体 API
-数量、名称、参数顺序与结果形状的条件下，
-普通注册接口需要有能力表达下列**独立要求**：
+已形成和 Pattern E 可通过普通关联的
+`->::E` 成员形成**可调用变换值**。下列是
+拟议的语法目标（尚未接入源码消费者），
+并非立即执行 CAS，也不是预先固定的一批
+`cas_keep`/`cas_take` API：
 
-- 模式与普通 Pattern 条件匹配，包括数值切片；
-  实际分支和当前版本只由真实 CAS 观察证明。
-- 模式可改变而 Status/S 原样保留；Status
-  可保持、替换或经合法普通计算增量更新，
-  不因计算改变 `own/share`。
-- Status 可含不可公开读取的普通分量；
-  注册操作可以根据真实权限对其受控匹配、
-  增量更新或原样保留。公开观察/调用端义务
-  只请求对应可读分量，不能因隐藏而使整个
-  状态数不存在；也不能让未经证明的隐藏
-  部分免于内部真实条件检验。
-- I 或 S 可缺省；资源可原位 Keep、合法
-  离槽或由新 S 替换；共享读取资格由
-  **声明并实际准入**的成功操作发放，
-  而不是所有 Keep 操作自动产生 share。
-- 成功资源出槽由**源状态**的 `own/share`
-  固定交付方式，失败将本次已形成的
-  拟写入 Status 和拟写入资源及其仍有的
-  所有权返回 Rejected 分支，不隐式析构、
-  遗失或假造未形成的值。
-- 针对同一 Atomic 实例的全部修改/Keep/
-  取出/Forget 转换在同一实际提交竞争
-  关系中；额外代际/版本/凭证、等待和
-  重试策略仅由确有证据的库/用户机制定义。
+```lang
+let transform =
+    ((val1 n1::A::E, val2 n2::A::E) A::E)
+    (->::E)
+    ((val3 B::E) ~~ newSource);
 
-这是**机制需求清单**而非一份预先设计好的
-受信任 CAS API 家族。精确受控入口的可用性、
-匹配资料、候选输入与失败返还 Pattern，
-以及所需硬件实现是后续接口设计/验证工作。
+let same_arm_delta =
+    (val1 n1::A::E) (->::E) (val2 n1::A::E);
+let same_arm_unchanged =
+    (val1 n1::A::E) (->::E) ();
+```
+
+`->::E` 应是**实际注册、可选择的普通
+关联可调用对象**；调用者先构造变换值，
+后由使用者选择何时对实例尝试。普通 E
+只负责合法的关系/变换材料；Atomic 的
+受信任消费者才赋予 CAS 原子性和相应
+Color/权限交接。表面式 `B::E ~~ newSource`
+构成 E-relative **关联目标臂材料**，
+不是 `~~` 自行创建资源或自动运行变换。
+目标省略和左侧蒙版匹配遵守 `N48`，
+所有合法性由已选择的普通操作检查。
+
+省略规则以目标**实际需要槽位**为前提：
+
+- 目标 B 及新资源都缺省时，沿用源 arm，
+  不允许同时显式替换资源。
+- 目标 arm 存在而新资源省略，仅在目标
+  需要该资源且与真实源资源兼容时 Keep
+  同一 S；不兼容拒绝构造变换。
+- 目标需要 Status 而新 Status 省略，则
+  继承真实源 Status，要求其满足目标
+  Pattern；不兼容拒绝。目标根本无
+  Status/资源时不存在所谓“缺省继承”。
+- 左侧状态数部分省略表示蒙版匹配，
+  **仅**同一 arm、Keep 原资源的原位
+  状态数更新允许；改变 arm 必须全匹配。
+  Status 可由普通合法计算增量更新，
+  并可保留不可公开读取分量。
+- 若提供新的资源 S_b，替换必须与
+  真实状态 arm 转换同一原子动作绑定，
+  不能在状态未变化时仅替换旧资源。
+
+普通 E 的 `?` 可作为已注册普通观察
+接口的结构模板：复制**合法可读**的
+分支/Status 投影，不会因一条隐藏字段
+而让整个观察报错；不可读取的分量
+没有在投影中解包。对 Atomic 实例，
+完成的一次快照必须对应**一个实际一致**
+状态观察，而不是从不同提交拼接字段。
+这一观察不自动给出 S share、完整
+隐藏 Status 的匹配证据、版本永不改变
+事实或资源所有权。`?` 仍服从原有
+提取/调用 Policy 和来源规则。
+
+对真实实例的后续使用可写成目标形状：
+
+```lang
+e transform ?
+  |> (self, data success) { ... }
+  |> (self, data failure) { ... }
+```
+
+这只是一次变换**尝试**和普通结果
+和 Pattern 分支交付；成功/失败及
+其真实资源输入/输出由 N39/N47 定义，
+未宣称当前解析器已有此执行支持。
+具体签名、隐藏 Status 操作和机器
+实现仍由消费者与后端验证，而不
+新增第二种原子变换语言或静态求解器。
 
 ### N50 — 固定安全证明义务，开放具体方法 [不变量及证明义务]
 
