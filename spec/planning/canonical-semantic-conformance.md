@@ -193,8 +193,8 @@ All rows are normative positive/negative acceptance, not executed tests.
 
 | ID | Positive required behavior | Negative or non-derivable boundary |
 |---|---|---|
-| AS01 | An E sum arm `A ~~ (S write) | B ~~ (T read)` preserves real direct arm association within complete `$` Pattern, independent of Atomic | No reinterpreting `~~` as `=>`, extraction, construction, generic Product entry or a CAS instruction |
-| AS02 | A standalone `A ~~ (S read)` arm needs no artificial `|` neighbor; `A ~~ R | B` associates tighter than sum choice | `(C ~~ (S write),D)` cannot use association at a nested Product level |
+| AS01 | An E sum arm `A ~~ (S write) \| B ~~ (T read)` preserves real direct arm association within complete `$` Pattern, independent of Atomic | No reinterpreting `~~` as `=>`, extraction, construction, generic Product entry or a CAS instruction |
+| AS02 | A standalone `A ~~ (S read)` arm needs no artificial `\|` neighbor; `A ~~ R \| B` associates tighter than sum choice | `(C ~~ (S write),D)` cannot use association at a nested Product level |
 | AS03 | R_Gamma, Norm_P and complete Pattern identity preserve `~~` arm structure and its two role-specific operands | Equal satisfaction or field layout does not erase association or merge with a bare Product |
 | AS04 | An actually registered `->::E` can construct an E-relative callable transform value before Atomic execution | `~~`, `=>` or construction of transform must not itself consume old S, run CAS or grant rights |
 | AS05 | `B::E ~~ newSource` supplies the resource side of an E-relative target arm to a selected ordinary transform producer | No inferred resource from association alone, unselected producer or hidden AST magic |

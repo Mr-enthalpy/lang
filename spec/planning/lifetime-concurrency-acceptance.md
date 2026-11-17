@@ -151,7 +151,7 @@
 | ATOM16 | N38 N48 N49 | 同模式 Status 增量计算在单点 CAS 执行，可保持 S。 | 状态数更新不能暗改 own/share 或未经授权跳过隐藏字段。 | D | — | — | — | — | — |
 | ATOM17 | N39 N41 | CAS 结果作为普通 Committed/Rejected 和模式进入不同的实际续体分支，分别形成后续因果材料。 | 不能执行未选分支、给失败分支复制成功凭证或将两分支事件直接合并成同时发生。 | D | — | — | — | — | — |
 
-| ATOM18 | N46 | 直接和分支使用 ~~ 关联 State/Resource，单分支也可关联且强于 |。 | 不能写 (C ~~ (Sc write), D) 作为积内部关联，也不自动提取。 | D | — | — | — | — | — |
+| ATOM18 | N46 | 直接和分支使用 ~~ 关联 State/Resource，单分支也可关联，且其结合优先级高于和模式选择。 | 不能写 (C ~~ (Sc write), D) 作为积内部关联，也不自动提取。 | D | — | — | — | — | — |
 | ATOM19 | N46 | (1u32:) 匹配非零 u32；0u32 或 (2u32:) 的普通 Pattern 排除 1。 | 不得当作无穷整数、溢出或 Atomic 专用切片。 | D | — | — | — | — | — |
 | ATOM20 | N39 N47 | 源 read 真离槽时所有权交合法 Forget 且 Committed 必得有效 S share。 | 不能只 Forget 不发 share，或使结果 share 悬空。 | D | — | — | — | — | — |
 | ATOM21 | N39 N47 | 源 write 真离槽成功时 Committed 获得唯一 owned S。 | 同一源状态不能让不同 safe CAS 任意切换离槽方式。 | D | — | — | — | — | — |
