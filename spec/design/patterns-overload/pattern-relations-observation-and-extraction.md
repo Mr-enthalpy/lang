@@ -368,7 +368,9 @@ and preserves, up to alpha-renaming / canonical binder renaming:
 - the observable and extractable interface;
 - direct structural incidence;
 - attached node-local `lifetime default` expression material, scope/binder
-  identity and its complete recursively composed relation observation.
+  identity and its complete recursively composed relation observation;
+- direct sum-arm `~~` association structure and its two role-specific Pattern
+  operands, even when bare satisfaction or field layout agrees.
 
 Therefore:
 
@@ -760,6 +762,73 @@ the already formed relation without imposing new Pattern matching rules.
 The exact `Status`/`own`/`share` roles are specified by the Atomic
 consumer; ordinary Pattern members with the same names do not themselves
 grant atomic authority.
+
+### 9.2 Direct sum-arm structural association (`~~`)
+
+The ordinary sum Pattern may associate a branch's state Pattern with its
+resource Pattern as **formed relational structure**, independent of any
+Atomic or CAS consumer. The source-level association spelling is `~~`;
+it does **not** imply extraction, generation, copying, movement, a
+function arrow, a conversion, or execution. Its operands have distinct
+roles, so `A ~~ R` does not entail `R ~~ A` or symmetry/equality.
+
+```text
+Arm ::= StatePattern
+      | StatePattern ~~ ResourcePattern
+Sum ::= Arm ("|" Arm)*        // a standalone associated Arm is legal
+```
+
+Examples of target Pattern formation (still requiring real ordinary
+Pattern/structural witnesses and a legal `$` conversion):
+
+```lang
+let E = ((
+    (Ia1 n1, Ia2 n2) A ~~ (Sa write) |
+    (Ib1 m1) B         ~~ (Sb read)  |
+    C                  ~~ (Sc write) |
+    D
+) E)$;
+```
+
+Here `|` chooses an ordinary sum alternative. `~~` associates
+**that direct arm**, and binds more tightly than `|`;
+`A ~~ R | B` means `(A ~~ R) | B`.
+A standalone `A ~~ R` arm needs no artificial `|` neighbor.
+The spelling `(C ~~ (Sc write), D)` is **not** a valid product-level
+association: `~~` is neither a general Product entry nor a global
+binary Pattern connective. An enclosing group that consists of a
+single arm does not turn that arm into an ordered Product.
+The weak ordinary names `write` and `read` in this example
+are illustrative resource-role member names, not lexer keywords;
+the precise final role vocabulary is not fixed by choosing `~~`.
+
+The formed complete Pattern retains both subpatterns, the arm to
+which they belong, and the structural association evidence. It
+does not silently project the right resource into the left State
+Pattern, invent a source resident, register a constructor/extractor
+or issue a resource borrow. `R_Gamma` and `Norm_P` must preserve
+the association, including branch/binder identity and observable
+role structure; erasing `~~` into a generic Product or merely
+remembering equal satisfaction sets is not equivalent.
+
+An `E`-associated ordinary callable may later consume an
+E-relative arm description to **construct** a transform value,
+for instance a selected `->::E` operation with an associated
+target arm `B::E ~~ newSource`. This uses the same structural
+association, but its source/target binding, optional material
+and admissibility are obligations of the **ordinary selected
+E-associated transform consumer**. `~~` by itself is not a
+resource constructor or a CAS execution primitive.
+An Atomic consumer can then apply a proved legal transform
+at one committed point (N34/N39), without reinterpreting
+`~~` as a new Atomic Pattern ontology.
+
+The lexical target recognizes `~~` as one structural association
+token, not two existing postfix `~` repetitions or an arbitrary
+overload chosen because the characters happen to match.
+Source/Raw/Norm/semantic consumers for this extension remain
+pending. The existing `=>` callable declaration/generative
+direction is unaffected; do not replace that syntax.
 
 ## 10. Joint extraction across adjacent universe ranks
 

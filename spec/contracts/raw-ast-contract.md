@@ -41,8 +41,22 @@ const / mut / compile / close / let
 
 are not lexer keywords.
 
-There are 20 structural `Symbol` variants. `Ellipsis` is structural Pattern
-syntax.
+The current lexer has 20 structural `Symbol` variants. The proposed
+sum-arm association extension adds a **distinct target** structural `~~`
+carrier (21 after wiring), not a new semantic Object axis or an already
+implemented operator. `Ellipsis` remains structural Pattern syntax.
+
+For the pending direct-sum-arm `~~` syntax, maximal munch must
+recognize `~~` as one structural association token before ordinary
+postfix `~` or any generic operator fallback. `~` keeps its existing
+Function Pattern repetition meaning. The association token is legal
+only at an ordinary sum-arm formation boundary (including its
+singleton form) or within an E-relative arm operand admitted by a
+selected associated transform producer. It is **not** a general
+Product infix operator; e.g. `(C ~~ (Sc write), D)` is not a
+legal product-level association. `A ~~ R | B` groups as
+`(A ~~ R) | B`. Raw parsing must not confuse it with
+existing directional `=>` callable heads/tails.
 
 Dot-family maximal munch is:
 
@@ -672,6 +686,30 @@ binding/shadowing/write interpretations; it never executes a failing statement
 and reparses it as contribution. New source wiring requires span/recovery and
 golden coverage, and may not feed semantic facts back into parsing.
 
+
+## Direct sum-arm association handoff (pending)
+
+An ordinary RHS sum arm may have explicit structural association:
+`StatePattern ~~ ResourcePattern`, with `|` remaining the sum
+separator. A singleton associated arm is legal. Raw and Norm
+must retain an arm-local `AssocArm(state,resource,source_span)`
+carrier (name schematic, not an existing implemented node) with
+real operands and provenance. It is **not** a plain Product of
+two children, an extraction edge, generated resident, or an
+Atomic-owned syntax tree. The Pattern consumer validates
+arm placement, selected structural witnesses, and the
+observable relational identity of the complete `$` result.
+No partial lexer/parser implementation is claimed.
+
+A transform operand for an ordinary E-associated producer
+(e.g. `->::E`) may use the same arm association shape;
+the selected producer, not the tokenizer, must establish
+source/target relation, compatible omitted material, and
+whether a callable transform value exists. Constructing
+such a value does not execute CAS. A later Atomic consumer
+may interpret that value with one-point CAS and real rights
+transfer. `~~` is not the generative callable `=>` and
+does not rewrite any existing named callable/closure syntax.
 
 ## Structural interpretation handoff
 
