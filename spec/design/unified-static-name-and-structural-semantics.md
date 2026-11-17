@@ -844,7 +844,7 @@ Pattern 节点内的 `lifetime default` 是普通表达式材料，按子到父�
 
 Heap 接收 Pending、Region 上界拒绝逃逸及单次责任交接解决存活/回收合法性；它们不自动建立发布/订阅的 rf、对象修改序或 fence 保证。
 
-反之，成功 CAS、fence 或观察到某版本不能证明目标 heap 足够长寿、没有读者逃逸或可以跳过 deferred Drop。Atomic 的 `share` 源资源实际离槽时，可以将唯一旧资源所有权交给合法 Forget 接收者并向成功结果发放有效 S share；如果选择 HeapStack lazy free，必须另证接收和读者整个合法 Region。资源保持、读取授权、旧资源回收、内存可见性和访问模式变化分别有真实契约，不能相互充当证明。
+反之，成功 CAS、fence 或观察到某版本不能证明目标 heap 足够长寿、没有读者逃逸或可以跳过 deferred Drop。Atomic 中普通 `~~` 关联的 `read` 源资源实际离槽时，可以将唯一旧资源所有权交给合法 Forget 接收者并向成功结果发放有效 S share；如果选择 HeapStack lazy free，必须另证接收和读者整个合法 Region。资源保持、读取授权、旧资源回收、内存可见性和访问模式变化分别有真实契约，不能相互充当证明。
 
 ## U10 — Atomic 的复用边界是输入结构和关联 API
 
@@ -857,7 +857,7 @@ general $-formed Pattern/type material
     -> ordinary safe operations / Pattern branches / effects
 ```
 
-Atomic 消费普通 `$` Pattern 的结构角色，`(I Status, S own)` / `(I Status, S share)` 及可选 I/S 不建立新的和模式本体。Status 的数值切片也属于普通 Pattern 关系。同一成功 CAS 的模式/状态数/资源与权限交付不可分割：旧 S 离槽时 `own` 将 S 交给 Committed；`share` 将唯一 owned S 交给合法 Forget 并使 Committed 取得有效 share。Keep 不是 Forget，且不会自动造出 share。槽位的 own/share 只能通过 Pattern-changing CAS 切换，share→own 必须证明先前冲突读权已结束；状态数相等不足为证。失败将实际拟写入的新 Status/S 作为 Rejected 材料返回，绝不隐式 Drop。具体计数、重试、回收、复制算法皆是可证明的普通库协议；实际分支只发布自身因果（N39、N41、N46–N50）。
+Atomic 消费普通 `$` 形成的和 Pattern：分支的 `A ~~ (S write)` / `B ~~ (T read)` 是来自 Pattern owner 的结构关联，不是提取或生成箭头。普通选定 `->::E` 先形成可调用变换值，Atomic 才在调用时保证单次原子提交。状态臂改变要求完整匹配源状态/状态数；仅同一状态臂的 Keep 可局部蒙版匹配 Status。旧 S 离槽时，源 `write` 将 S 所有权交给 Committed，源 `read` 将唯一 owned S 交给合法 Forget 并同时交付有效 share。Keep 源 `write` 不返旧资源权，Keep 源 `read` 且目标仍 `read` 返回 share，Keep 从 `read` 切换至 `write` 则不返回 share。切换协议必须通过实际模式变换 CAS，并证明冲突旧读权已终结。失败分支交还真实已形成的新 Status/S 而不隐式 Drop；普通 `E?` 仅得一致且可读的状态投影，不凭空产生资源共享或隐藏数值权限。所有分支仅发布自身实际因果（N39、N41、N46–N50）。
 
 没有 `atomic enum` 新本体；没有自动 `struct-of-atomic -> atomic-struct` 规则；没有“用户声明安全即可”的任意世界写入口。
 

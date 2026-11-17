@@ -526,11 +526,12 @@ Boxlike、Clone/写时复制或 HeapStack
 Input is the actual admitted cell/version, selected Pattern transition and
 ordinary expression material, proposed Status/resource names (when present),
 current resource custody, Region/Color/source and causal observations.
-The single committed result applies the source state `own/share` exit
-disposition if S actually leaves; a kept S remains held and shares are
-issued only by operations whose actual Pre/commit/Post justify them.
-Any successful source `share` exit delivers a lawful borrow to the
-Committed result while giving old S ownership to lawful Forget custody.
+The single committed result uses the source associated `write/read`
+resource role if S exits. A kept S remains held: Keep from write
+delivers no old-resource access, Keep read->read delivers valid S share,
+and Keep read->write delivers no S share. A source read ExitSlot
+also gives a valid borrow to Committed while transferring old S's
+sole ownership to lawful Forget custody.
 A Rejected result returns the proposed newly formed Status/resources
 and their unconsumed duties, never silently Drops them or fabricates a
 successful old-resource claim. Checks and complete ownership handoffs

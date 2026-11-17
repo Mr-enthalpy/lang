@@ -144,7 +144,7 @@
 | ATOM09 | N40 N45 | 某计数/票据库可依法证明真实读资格与计数对应。 | n=1 不自动表示唯一存活读者；ARC 不是核心本体。 | D | — | — | — | — | — |
 | ATOM10 | N37 N40 | 普通组合维持基础不变量。 | 不能由 safe 子动作推出任意更小行为集合、整体事务或自动新 Color。 | D | — | — | — | — | — |
 | ATOM11 | N45 | Mailbox 只允许单次资源转交，Mutex 不由 peek 发 guard。 | 任意 T 不因此被宣称单条机器 CAS 可搬运。 | D | — | — | — | — | — |
-| ATOM12 | N39 N47 | 源 S own 真正离槽成功才向 Committed 交旧 owned S。 | Keep 不交旧所有权；不可在有冲突活 share 时取出。 | D | — | — | — | — | — |
+| ATOM12 | N39 N47 | 源 S write 真正离槽成功才向 Committed 交旧 owned S。 | Keep 不交旧所有权；不可在有冲突活 share 时取出。 | D | — | — | — | — | — |
 | ATOM13 | N39 N49 | 失败 Rejected 持有实际拟写入的 Status 与资源，Cell 不变。 | 不能 Drop 候选、发旧资源或成功版本凭证。 | D | — | — | — | — | — |
 | ATOM14 | N34 N46 | I、S 可以分别缺省，Pattern 只使用确实存在的角色。 | 不得为缺省角色制造资源、状态数或位置占位。 | D | — | — | — | — | — |
 | ATOM15 | N39 N47 N49 | 相同状态臂 Keep 可更新部分 Status、保持 S；源 read 到目标 read 成功交付 share。 | 不能用局部 Status 掩码改变状态臂；源 write Keep 不产生 S 所有权。 | D | — | — | — | — | — |
@@ -153,8 +153,8 @@
 
 | ATOM18 | N46 | 直接和分支使用 ~~ 关联 State/Resource，单分支也可关联且强于 |。 | 不能写 (C ~~ (Sc write), D) 作为积内部关联，也不自动提取。 | D | — | — | — | — | — |
 | ATOM19 | N46 | (1u32:) 匹配非零 u32；0u32 或 (2u32:) 的普通 Pattern 排除 1。 | 不得当作无穷整数、溢出或 Atomic 专用切片。 | D | — | — | — | — | — |
-| ATOM20 | N39 N47 | 源 share 真离槽时所有权交合法 Forget 且 Committed 必得有效 S share。 | 不能只 Forget 不发 share，或使结果 share 悬空。 | D | — | — | — | — | — |
-| ATOM21 | N39 N47 | 源 own 真离槽成功时 Committed 获得唯一 owned S。 | 同一源状态不能让不同 safe CAS 任意切换离槽方式。 | D | — | — | — | — | — |
+| ATOM20 | N39 N47 | 源 read 真离槽时所有权交合法 Forget 且 Committed 必得有效 S share。 | 不能只 Forget 不发 share，或使结果 share 悬空。 | D | — | — | — | — | — |
+| ATOM21 | N39 N47 | 源 write 真离槽成功时 Committed 获得唯一 owned S。 | 同一源状态不能让不同 safe CAS 任意切换离槽方式。 | D | — | — | — | — | — |
 | ATOM22 | N39 N47 | Keep 来源 read 且目标仍 read 时成功交付 S share；read→write Keep 不交付 share。 | 不能把任何 Keep 一概当成无 share，或切换到 write 时产生新 share。 | D | — | — | — | — | — |
 | ATOM23 | N48 N49 | read→write 先以全源臂及状态数匹配的 CAS 保持 S 并改变模式，再以另一 CAS 尝试取 S。 | 仅靠改 Status、隐藏值不读或第一次 CAS 成功不足以准入第二次。 | D | — | — | — | — | — |
 | ATOM24 | N48 N50 F19 | share 到 own 有真实证据证明冲突活 share 已结束、读入口已关闭。 | n=0/n=1 或 unsafe/check=true 不能直接证明。 | D | — | — | — | — | — |
