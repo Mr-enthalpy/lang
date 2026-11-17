@@ -76,6 +76,12 @@ remain architecture acceptance targets, separate from executed substrate tests.
 
 ## Contracts
 
+For Atomic work, follow the [ordinary Pattern association](design/patterns-overload/pattern-relations-observation-and-extraction.md#92-direct-sum-arm-structural-association-),
+[selected ordinary transform/observation](design/patterns-overload/operator-patterns-and-generative-declarations.md#7-ordinary-e-relative-transforms-and-readable-observation)
+and [Atomic execution](design/lifetime/atomic-pattern-transitions-and-causality.md)
+owners in that order. The [status ledger](planning/lifetime-concurrency-consolidation.md)
+separates their definitions from pending source, proof and backend gates.
+
 - [`raw-ast-contract.md`](contracts/raw-ast-contract.md)
 - [`semantic-owner-namespace-graph.md`](contracts/semantic-owner-namespace-graph.md)
 - [`control-flow-end-events.md`](contracts/control-flow-end-events.md)

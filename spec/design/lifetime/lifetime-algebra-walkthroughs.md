@@ -1289,8 +1289,7 @@ following specific source/validation/interval observations:
 |---|---|
 | Validation source / source_matches | An already established ValidatedIndex for this index name, mapped source choice, actual Q and protected ranges; v's actual read target must be that Q, not an equal container or copied descriptor |
 | Generations / source_matches | Current index and resource generations, including the permitted actual input-Move mapping; an old index/resource generation supplies no current credential |
-| Shared dependency / actual access requirement | Presence of the required live shared dependency on every protocol-protected endpoint, and actual access/validation conditions. Independent-access Color is checked
-only when present; historical Color alone or absence of conflict is insufficient |
+| Shared dependency / actual access requirement | Presence of the required live shared dependency on every protocol-protected endpoint, and actual access/validation conditions. Independent-access Color is checked only when present; historical Color alone or absence of conflict is insufficient |
 | Interval / region_fits | This access and its temporary element observation lie in the credential's maintained interval and actual target validity; no invalidating resource/index action has intervened |
 | Range/read/transfers / access_is_subset and effects_match | The selected element endpoint is in both the validated range and v's permitted read structure; actual input Moves, temporary borrowing, clone and cleanup satisfy their own Pre |
 

@@ -470,7 +470,7 @@ substrate tests do not establish HA execution.
 ## 11. Lifecycle/concurrency consolidation
 
 [Current evidence and F01–F19](lifetime-concurrency-consolidation.md) own the
-normative/proof status; [the original 105 plus new Atomic Pattern/slot acceptance targets](lifetime-concurrency-acceptance.md)
+normative/proof status; [the 131 paired source targets](lifetime-concurrency-acceptance.md)
 are not executed source coverage. N01–N50 and U01–U12 are distributed across
 actual topic owners. F19 is a pending `~~` sum-arm/`->::E` transform, source matching,
 readable `?`, resource/permission and failed input return consumer gate, not an

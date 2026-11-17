@@ -25,7 +25,7 @@
 | DFLT02 | 不另写 default 的 ref 指向当前访问树外的可追溯 unknown，且严格 Region 小于其 origin | unknown 不代表无限寿命、None、自动有效 access | D | — | — | — | — | — |
 | DFLT03 | 独立 ref 默认 origin 不同；share 默认 Pre 主动经普通关系遗忘为 mayalias；外层真实名字代入或向外续传义务 | 不得从 share 名字不同推断独立性，亦不得删除 caller 的实际来源历史 | D | — | — | — | — | — |
 | DFLT04 | [i]/[0:n]/[0:ω] 三类普通生命周期路径形成，遵循实际 Policy/长度/注册材料 | 不授予全数组操作权限或隐式范围验证 | D | — | — | — | — | — |
-| DFLT05 | array@.origin ||= out_lines 保留保守外部来源和 Region，取出继承而余数组不扣减 | 不按值或索引恢复原名，不合并权限 | D | — | — | — | — | — |
+| DFLT05 | array@.origin \|\|= out_lines 保留保守外部来源和 Region，取出继承而余数组不扣减 | 不按值或索引恢复原名，不合并权限 | D | — | — | — | — | — |
 | DFLT06 | try_trust 的成功 unsafe post 可用普通 index@ .. in(array@)，访问 Pre 用同一关系材料 | 无真实验证不能凭 bool/同值建立 in；无通用 Hoare 推理内建 | D | — | — | — | — | — |
 | DFLT07 | HeapStack 用 mut let heap_locate = heap .. locate(pool); let heap = heap_locate ref，外层 heap 由 borrow 捕获 | 不 Move 外层 heap，不能让挂起遗失外部来源偏序 | D | — | — | — | — | — |
 | DFLT08 | malloc 成功实际新 origin 和更短 Region，Box storge 与 heap 用普通 live_with 关系 | unsafe post 仅真实外部成功后，不能虚构无限堆 | D | — | — | — | — | — |
@@ -126,8 +126,7 @@
 | HEAP11 | N32 U09 | 保守管辖回收不需要语言可观察 QS。 | 回收上界不自动给发布/订阅内存序；不伪称完整 RCU/GC 进展。 | D | — | — | — | — | — |
 | HEAP12 | N33 F17 | 标准 locate 构造/注册 Pre 证明所有非根 pool 在其全部准入状态可保证向直接父层 relocate，且具备 lazy 接收能力。 | 不能注册只在特定状态偶尔可提交的标准 pool，也不能把这一要求扩散到全语言任意 heap。 | D | — | — | — | — | — |
 | HEAP13 | N29 N33 | 非根标准池先通过普遍迁移能力证明，再依法向唯一父层提交完整 Pending；根节点走终止协议。 | 不能把一次动态 relocate 成功当成标准注册的全称证明，或要求根节点搬到不存在的父层。 | D | — | — | — | — | — |
-
-| HEAP14 | N28 N47 N50 F19 | 若选择 HeapStack 作为 share 源离槽的 Forget 接收者，正确承接唯一资源/Drop/借用 Region 义务。 | 不强制 lazy free 为 Atomic 本体；CAS 后不可失败登记而丢失旧资源。 | D | — | — | — | — | — |
+| HEAP14 | N28 N47 N50 F19 | 若选择 HeapStack 作为 read 关联源臂离槽的 Forget 接收者，正确承接唯一资源/Drop/借用 Region 义务。 | 不强制 lazy free 为 Atomic 本体；CAS 后不可失败登记而丢失旧资源。 | D | — | — | — | — | — |
 
 ## 原子类型和库组合
 
@@ -148,17 +147,16 @@
 | ATOM13 | N39 N49 | 失败 Rejected 持有实际拟写入的 Status 与资源，Cell 不变。 | 不能 Drop 候选、发旧资源或成功版本凭证。 | D | — | — | — | — | — |
 | ATOM14 | N34 N46 | I、S 可以分别缺省，Pattern 只使用确实存在的角色。 | 不得为缺省角色制造资源、状态数或位置占位。 | D | — | — | — | — | — |
 | ATOM15 | N39 N47 N49 | 相同状态臂 Keep 可更新部分 Status、保持 S；源 read 到目标 read 成功交付 share。 | 不能用局部 Status 掩码改变状态臂；源 write Keep 不产生 S 所有权。 | D | — | — | — | — | — |
-| ATOM16 | N38 N48 N49 | 同模式 Status 增量计算在单点 CAS 执行，可保持 S。 | 状态数更新不能暗改 own/share 或未经授权跳过隐藏字段。 | D | — | — | — | — | — |
+| ATOM16 | N38 N48 N49 | 同一状态臂且 Keep 同一 S 的 Status 增量计算可作局部匹配/更新。 | 状态数更新不能暗改 read/write 协议、替换 S 或在跨臂时跳过隐藏 Status。 | D | — | — | — | — | — |
 | ATOM17 | N39 N41 | CAS 结果作为普通 Committed/Rejected 和模式进入不同的实际续体分支，分别形成后续因果材料。 | 不能执行未选分支、给失败分支复制成功凭证或将两分支事件直接合并成同时发生。 | D | — | — | — | — | — |
-
 | ATOM18 | N46 | 直接和分支使用 ~~ 关联 State/Resource，单分支也可关联，且其结合优先级高于和模式选择。 | 不能写 (C ~~ (Sc write), D) 作为积内部关联，也不自动提取。 | D | — | — | — | — | — |
 | ATOM19 | N46 | (1u32:) 匹配非零 u32；0u32 或 (2u32:) 的普通 Pattern 排除 1。 | 不得当作无穷整数、溢出或 Atomic 专用切片。 | D | — | — | — | — | — |
 | ATOM20 | N39 N47 | 源 read 真离槽时所有权交合法 Forget 且 Committed 必得有效 S share。 | 不能只 Forget 不发 share，或使结果 share 悬空。 | D | — | — | — | — | — |
 | ATOM21 | N39 N47 | 源 write 真离槽成功时 Committed 获得唯一 owned S。 | 同一源状态不能让不同 safe CAS 任意切换离槽方式。 | D | — | — | — | — | — |
 | ATOM22 | N39 N47 | Keep 来源 read 且目标仍 read 时成功交付 S share；read→write Keep 不交付 share。 | 不能把任何 Keep 一概当成无 share，或切换到 write 时产生新 share。 | D | — | — | — | — | — |
 | ATOM23 | N48 N49 | read→write 先以全源臂及状态数匹配的 CAS 保持 S 并改变模式，再以另一 CAS 尝试取 S。 | 仅靠改 Status、隐藏值不读或第一次 CAS 成功不足以准入第二次。 | D | — | — | — | — | — |
-| ATOM24 | N48 N50 F19 | share 到 own 有真实证据证明冲突活 share 已结束、读入口已关闭。 | n=0/n=1 或 unsafe/check=true 不能直接证明。 | D | — | — | — | — | — |
-| ATOM25 | N48 N50 | own 到 share 在普通来源/借用 Pre 成立时可以进行模式转换。 | 不得凭模式名制造读权或内部可变性。 | D | — | — | — | — | — |
+| ATOM24 | N48 N50 F19 | read 到 write 的首次 CAS 已证明冲突活 share 结束且读入口关闭；Keep 不发 share，真正取 S 另需第二次 CAS。 | n=0/n=1 或 unsafe/check=true 不能直接证明，首次成功不能充当第二次提交。 | D | — | — | — | — | — |
+| ATOM25 | N48 N50 | write 到 read 在全源匹配及普通来源/借用 Pre 成立时进行真实 arm/协议转换，Keep 成功不取得旧资源访问权。 | 不得凭模式名制造读权或内部可变性，不能把源 write 的 Keep 当源 read 发 share。 | D | — | — | — | — | — |
 | ATOM26 | N49 | 不可公开读取的 Status 可以被受控完整匹配；E? 只投影单个实际版本的可读状态。 | 不能从 E? 的局部观察推导全源状态匹配或 S 借用。 | D | — | — | — | — | — |
 | ATOM27 | N39 N49 | 竞争失败返回实际已形成的 I_b/S_b 及完整责任。 | 不能隐式 Drop 或制造未形成的状态数。 | D | — | — | — | — | — |
 | ATOM28 | N34 N35 N39 N49 | 普通 ->::E 先形成 callable transform；对同一 Atomic 实例 e transform ? 才可能真实原子执行。 | 不能把构造变换、~~ 关联和 CAS 运行视为同一动作。 | D | — | — | — | — | — |
@@ -174,7 +172,7 @@
 | MEM03 | N42 | peek 可读模型允许的旧版本，但不违反自身因果下界。 | 不得把全接口实时最新性当成默认保证。 | D | — | — | — | — | — |
 | MEM04 | N41 U09 | rf、origin、FormedFrom、Region、Color 分别验证。 | 任意一个关系不能补另一个缺失前提。 | D | — | — | — | — | — |
 | MEM05 | N43 F15 | 双边 SB 作为判断是否需要 SeqCst/fence 的候选 litmus，按最终选定公理确定期望。 | 尚未完成 F15 前不能把双初始值的排除写作既定源语义或已验证事实。 | D | — | — | — | — | — |
-| MEM06 | N43 | 单边 SB、IRIW、2+2W 和候选 fence 的累积性仅按最终明确公理判定。 | 不能从某 ISA 锁定指令的偶然强化或旧稿候选 Litmus 推出源保证。 | D | — | — | — | — | — |
+| MEM06 | N43 | 单边 SB、IRIW、2+2W 和候选 fence 的累积性仅按最终明确公理判定。 | 不能从某 ISA 指令的偶然强化或尚未确立预期的候选 Litmus 推出源保证。 | D | — | — | — | — | — |
 | MEM07 | N42 F14 | 完整模型必须排除 out-of-thin-air。 | 不能把 acyclic 口号或有限 MP 检查当完整证明。 | D | — | — | — | — | — |
 | MEM08 | N43 | 设备/FFI/MMIO 等采用真实域特定 API 和事实。 | 普通 coherent fence 不扩展成所有外部世界同步。 | D | — | — | — | — | — |
 | MEM09 | N44 | CAS Rejected 后由普通分支/effect/handler 决定等待与再次调用。 | 语言核心不得内建锁类别、退避或阻塞策略。 | D | — | — | — | — | — |
@@ -183,7 +181,6 @@
 | MEM12 | N39 N41 | 某个成功/失败分支实际取得的版本因果在该分支后继的原子提交中发布，其他执行者真实观察该提交后继承其闭包。 | 不得凭相同 I、未走到的分支或旧失败报告导入因果；不建立全局总序。 | D | — | — | — | — | — |
 | MEM13 | N39 N41 | 从 S_a/S_b 的合法所有权交接推出可见性同步要求，并由具体原子实现/后端兑现。 | 仅有类型检查、单个 relaxed 硬件操作或缓存标签不能代替必要机器同步。 | D | — | — | — | — | — |
 | MEM14 | N41 N43 F15 | 基础语言无 per-op relaxed/acquire/release/acq_rel 参数；仅 SeqCst 额外保证的必要性及形式待决。 | 不得以用户选 relaxed 解除资源交接保证，亦不得把 fence/全局 SC 直接宣称为既定核心。 | D | — | — | — | — | — |
-
 | MEM15 | N41 N47 N50 F14 F16 | 交付的 S share 兼具真实 Region/Color、源与已发布数据的可见性。 | 回收机制/裸观察不能替代必要同步与访问权限。 | D | — | — | — | — | — |
 | MEM16 | N39 N49 F19 | CAS 失败只交还已形成的 I_b/S_b 候选与真正可用的观察。 | 不能以失败制造成功 share/rf，亦不自动 Drop 输入。 | D | — | — | — | — | — |
 
@@ -196,7 +193,7 @@
 | INT03 | U08 | 按请求直接生成较粗合法续体，保留有观察意义的 repair/handler 效果。 | 不强制 Future/Box，也不先造所有原子对象或所有指数分割。 | D | — | — | — | — | — |
 | INT04 | U12 | 新增资格/recipe/因果/责任变化使其真实 consumers 失效重验。 | 相同签名/布局/旧缓存 success 不能证明新世界仍合法。 | D | — | — | — | — | — |
 | INT05 | M01–M31 | 现行 owner、public、contracts、指南、术语和测试均原位更新。 | 不能只增加新文档，并以新文档优先保留旧规则。 | D | — | — | — | — | — |
-| INT06 | F01–F18 | 准确区分 D/P/S/C/T/B；F15 为额外 SeqCst 待选定，F17 为标准 locate 已定义但证明/消费者待接通；实际命令有记录。 | 不能把 Python 有限模型、Rust carrier 或 CI 成功写成完整语言证明。 | D | — | — | — | — | — |
+| INT06 | F01–F19 | 准确区分 D/P/S/C/T/B；F15 为额外 SeqCst 待选定，F17 为标准 locate 已定义但证明/消费者待接通；实际命令有记录。 | 不能把 Python 有限模型、Rust carrier 或 CI 成功写成完整语言证明。 | D | — | — | — | — | — |
 
 ## 已有有限模型的实际证据
 

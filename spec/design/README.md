@@ -26,7 +26,7 @@ that the corresponding source semantics is implemented.
 | Proof-relevant Pattern relation, directional Function Pattern extraction/request and mandatory external structural-source authority erasure | [Pattern relation](patterns-overload/pattern-relations-observation-and-extraction.md) |
 | Restricted Split/D, internal chain completion and residual escape | [extraction chains](patterns-overload/static-pattern-spaces-and-extraction-chains.md) |
 | Pass action, move fixed point and directed with cleanup placement | [mechanical passing](mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md) |
-| Requested-name producer surfaces, operator dispatch and OG_s | [Operator Patterns](patterns-overload/operator-patterns-and-generative-declarations.md) |
+| Requested-name producer surfaces, operator dispatch, OG_s and ordinary E-relative transform/observation contracts | [Operator Patterns](patterns-overload/operator-patterns-and-generative-declarations.md) |
 | Candidate pipeline and no reopen | [overload](patterns-overload/overload-resolution-design.md) |
 | Compile instance identity, result delivery, opening sources and current storage | [invocation](static-evaluation/compile-instance-invocation-and-result-delivery.md) |
 | Runtime main, active dominance, readiness, whole-original-K CPS correspondence, E projections, delivery-selected ABIKind and O1/O2 | [evaluation](static-evaluation/evaluation-residual-and-optimization.md) |
@@ -99,7 +99,7 @@ Type operations use the compile algebra. See the
 
 The [N01–N50/M01–M31/U01–U12/F01–F19 ledger](../planning/lifetime-concurrency-consolidation.md)
 records actual ownership, baseline, carrier/source coverage and proof gates.
-The [original 105 paired cases and additional Atomic Pattern/slot targets](../planning/lifetime-concurrency-acceptance.md) are
-normative source targets, not all executed tests. Definitions do not imply proofs or connected consumers;
+The [131 paired cases](../planning/lifetime-concurrency-acceptance.md) are
+normative source targets, not executed source tests. Definitions do not imply proofs or connected consumers;
 extra SeqCst/fence alone remains an undecided ordering rule, while standard
 non-root locate's universal direct-parent relocation is already mandatory.

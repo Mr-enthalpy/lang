@@ -2349,7 +2349,7 @@ These rules share the ordinary language and one lifecycle world:
 U_default for new input names, omitted interface Pre, interface NoDelta, Pre_F => Pre_A and
 Post_A => Post_F, atomic complete identities, Pass/MoveEffect, self/Param,
 cleanup and same-cut order, return barriers and E-selected delivery remain.
-This revision supplies no independent lifecycle checker, SMT engine, source
+The defined relations supply no independent lifecycle checker, SMT engine, source
 runner, container implementation or physical ABI. Existing carrier tests are
 evidence only for their implemented transaction/value slices.
 
@@ -2372,7 +2372,7 @@ It is not a fabricated `origin=None` or a fixed-depth universal root.
 - 非默认部分只有在能够保守化为更深 origin 链中的真实 unknown 边界时才允许隐藏；
 - 无法这样表达而又不扩大权限的，拒绝该遗忘。
 
-合法 unknown 化是一个有实际来源、由遗忘操作建立的观察边界；不是把缺失证据、失效借用、任意环或已死亡目标伪装成 unknown。不能借默认的独占根独立性掩盖实际共享/父子依赖。尤其是 Atomic `share` 槽位依法交付过的真实共享借用，不能因状态变换、名字压缩或源资源离槽而擅自失效；其 Drop、来源与 Region 责任不能被普通 Type 摘要抹除。
+合法 unknown 化是一个有实际来源、由遗忘操作建立的观察边界；不是把缺失证据、失效借用、任意环或已死亡目标伪装成 unknown。不能借默认的独占根独立性掩盖实际共享/父子依赖。尤其是 Atomic `~~` 关联的 read 源臂依法交付过的真实共享借用，不能因状态变换、名字压缩或源资源离槽而擅自失效；其 Drop、来源与 Region 责任不能被普通 Type 摘要抹除。
 
 遗忘丢失观察精度，不消除已有历史，不增加 Region，不删除既有 Color，不恢复被裁剪的访问权限。
 
@@ -2390,7 +2390,7 @@ It is not a fabricated `origin=None` or a fixed-depth universal root.
 
 无外部名字依赖的普通值不因匿名化凭空取得外部约束。值身份、实际资源所有权与析构责任仍保留；不可 Copy 不自动等于不可进入数组。
 
-Atomic `S share` 源槽位在实际 CAS 离槽时执行 Forget：旧资源的
+Atomic `~~` 关联的 read 源资源在实际 CAS 离槽时执行 Forget：旧资源的
 **唯一所有权/可执行 Drop 责任**交付给实际合法接收者，同时
 CAS 成功结果取得真正的 `S share`。这不是强制的 lazy-free
 回收或 Boxlike 变换；接收者不得因此令现存读取的 Region、

@@ -50,9 +50,9 @@ For the pending direct-sum-arm `~~` syntax, maximal munch must
 recognize `~~` as one structural association token before ordinary
 postfix `~` or any generic operator fallback. `~` keeps its existing
 Function Pattern repetition meaning. The association token is legal
-only at an ordinary sum-arm formation boundary (including its
-singleton form) or within an E-relative arm operand admitted by a
-selected associated transform producer. It is **not** a general
+only in the structural sum-arm grammar (including its singleton form and
+arm-shaped transform operands). Parsing preserves this shape without deciding
+producer availability, E-relative compatibility or selection. It is **not** a general
 Product infix operator; e.g. `(C ~~ (Sc write), D)` is not a
 legal product-level association. `A ~~ R | B` groups as
 `(A ~~ R) | B`. Raw parsing must not confuse it with
@@ -694,10 +694,11 @@ An ordinary RHS sum arm may have explicit structural association:
 separator. A singleton associated arm is legal. Raw and Norm
 must retain an arm-local `AssocArm(state,resource,source_span)`
 carrier (name schematic, not an existing implemented node) with
-real operands and provenance. It is **not** a plain Product of
+both operands and their spans, the `~~` span, enclosing arm/group boundaries
+and recovery provenance. It is **not** a plain Product of
 two children, an extraction edge, generated resident, or an
-Atomic-owned syntax tree. The Pattern consumer validates
-arm placement, selected structural witnesses, and the
+Atomic-owned syntax tree. Syntax-directed parsing validates arm placement;
+the later Pattern consumer validates selected structural witnesses and the
 observable relational identity of the complete `$` result.
 No partial lexer/parser implementation is claimed.
 
@@ -851,5 +852,5 @@ association may be inferred from partial recovery.
 Postfix ? preservation selects no Option/validation semantics. Explicit @{...}
 still reports UnsupportedEffectRepair until its low-binding carrier connects.
 Atomic/fence/thread source consumers and the extra F15 fence decision are not
-implemented by names or normalizer nodes. This migration changes no parser,
+implemented by names or normalizer nodes. This contract changes no parser,
 normalizer or diagnostic behavior.

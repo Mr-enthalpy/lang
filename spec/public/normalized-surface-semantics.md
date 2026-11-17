@@ -1756,8 +1756,10 @@ ExitSlot delivers owned S to lawful Forget custody **and** a valid
 S share to Committed. Keep from write yields no old-resource access;
 Keep read->read yields share; Keep read->write yields no share.
 Changing resource protocol is an arm-changing CAS even with Keep,
-and subsequent take is a separate attempt. Its Pre must establish
-there are no conflicting live shares; numeric count alone is insufficient.
+and subsequent take is a separate attempt. The first read-to-write CAS must
+already prove that conflicting live shares have ended and issuance is closed;
+the later extraction still needs its own ordinary Pre. Numeric count alone
+is insufficient for either step.
 
 Failure returns all actually formed proposed new Status/resources
 and preserves the actual Atomic instance; it cannot silently Drop or

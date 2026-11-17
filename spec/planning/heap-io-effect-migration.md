@@ -155,4 +155,4 @@ This index's earlier HIE-scoped M/F rows retain their original scope; the
 lazy duty and universal non-root locate refine H03–H08/F06–F08. Omitted repair
 is source-derived automatic repair, not unconditional id. Region is a discrete
 event set with strict parent/child endpoints. Historical audit/test paragraphs
-above record earlier checks only; they are not evidence for the new 105 targets.
+above record their stated checks only; they do not execute the 131 current source targets.

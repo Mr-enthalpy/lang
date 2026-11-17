@@ -266,7 +266,7 @@ A failed attempt returns all genuinely formed target
 Status/resource candidates, not implicit Drop. E's `?`
 observation may yield a coherent readable-only State
 projection, never hidden-source authority or payload share
-by itself. Share-to-write change must prove prior conflicting
+by itself. Read-to-write protocol change must prove prior conflicting
 borrow rights end, and no source/Color/Region premise is
 derived solely from a number. F13/F14/F16/F18/F19,
 producer and machine proof gates remain pending; F15

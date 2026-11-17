@@ -26,7 +26,7 @@ let heap = heap_locate ref;
 
 `locate` 使用对旧 heap 的真实借用，先形成局部 `heap_locate`，然后通过 `heap_locate ref` 显式创建当前层借用并以 `heap` 名字遮蔽旧入口。不得按值捕获或 Move 外层 heap 充当父层来源，否则失去外层 Region 偏序。没有 `prev` 反向链。当前 pool 需要补充资源时，合法取得/子借用 `next_pool`，局部重新绑定 heap，再普通调用 malloc。
 
-标准 `malloc` 不再提供偏好参数；请求严格从当前栈顶发起，补充请求逐层转发。定制分配策略通过显式注入普通 heap 对象表达。
+标准 `malloc` 没有偏好参数；请求严格从当前栈顶发起，补充请求逐层转发。定制分配策略通过显式注入普通 heap 对象表达。
 
 请求入口/管辖来源不等于最终供给物理块的 pool。根节点必须使转发终止；它不意味着容量无限或 malloc 必成功。
 
@@ -82,9 +82,9 @@ not historical origin.
 
 若队列匿名承载不同具体类型的析构续体，须按 N20–N24 保留其 Drop/Move 实现与全部必要依赖；不能只保存一个裸入口而遗失捕获或名字资格。
 
-**An Atomic `S share` exit may use this ordinary lazy reception protocol,
+**An Atomic read-role ExitSlot may use this ordinary lazy reception protocol,
 but is not defined by it.** A successful CAS that actually removes S from a
-`share` source slot must deliver unique owned S custody to some lawful Forget
+`~~`-associated read source arm must deliver unique owned S custody to some lawful Forget
 receiver while simultaneously returning a valid `S share`. If the selected
 ordinary receiver is a standard heap manager, its accepted pending duty
 must preserve real Drop/Move, storage support and every outstanding legal
@@ -94,7 +94,7 @@ be realized by other ordinary protocols; no particular lazy list, ARC or
 reader-guard representation is required by Atomic.
 
 HeapStack's ability to accept Pending does **not** prove that concurrent
-share acquisition, source-to-own mode recovery or eventual invalidating
+share acquisition, read-to-write protocol recovery or eventual invalidating
 Drop is safe. Those are independent real Pre/Post, Region/Color and
 protocol-maintenance obligations; the selected library must prove them.
 The [atomic owner](atomic-pattern-transitions-and-causality.md) N47–N50
@@ -165,7 +165,7 @@ heap 是普通环境材料，可以随具体续体保存和恢复。栈上较内
 
 从较外层供给而在内层环境释放的对象，其责任沿合法当前链的 drop/relocate 被处理。保留的共同 K、父层借用、真实所有权和释放凭证共同构成证明，不以机器调用栈地址或全局扫描为依据。
 
-取消偏好后，语言精确追踪的是一层一层的责任迁移路径；物理资源补充仍可递归。无法证明当前/父层路由和生命周期相容时，不允许“先接收，未来再猜”。
+语言精确追踪一层一层的责任迁移路径；物理资源补充仍可递归。无法证明当前/父层路由和生命周期相容时，不允许“先接收，未来再猜”。
 
 ## 6. Composition, stages and acceptance
 
@@ -183,7 +183,7 @@ RCU 风格、GC 风格等库可以利用较宽的 Region 管辖窗口承接动�
 
 ### N33 — 标准 locate 的普遍保证式迁移与自定义 Heap 边界 [不变量]
 
-**标准 `locate` 的每个非根 Pool 必须普遍具备向其直接父层的保证式提交能力**，这是标准 HeapStack 的构造/注册 Pre，不再逐次选择或留作接口政策问题。设 `up(H)` 为合法的直接父层：
+**标准 `locate` 的每个非根 Pool 必须普遍具备向其直接父层的保证式提交能力**，这是标准 HeapStack 的构造/注册 Pre。设 `up(H)` 为合法的直接父层：
 
 ```text
 StandardLocated(H) and up(H) != None

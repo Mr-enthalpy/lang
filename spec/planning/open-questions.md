@@ -378,7 +378,7 @@ continuation layout remain representation questions; consumer work is in roadmap
 
 ## Lifecycle/concurrency proof and remaining decision boundary
 
-The [ledger](lifetime-concurrency-consolidation.md) records F01–F18 with their
+The [ledger](lifetime-concurrency-consolidation.md) records F01–F19 with their
 actual proof/consumer status. The following are fixed semantics with pending
 proof/implementation: discrete Region/endpoint order and pure slicing; independent
 Color; source-driven repair and exact automatic/explicit responsibility;

@@ -2,7 +2,8 @@
 
 This directory preserves the handoff's Python model and expected stdout without
 editing. The separately authored [audit script](audit_consolidation.py) checks
-document links/anchors, N/M/U/F and case inventories, both original hashes and
+document links/anchors and table/fence structure, N/M/U/F inventories,
+131 paired cases plus AS01–AS14, pending source statuses, both original hashes and
 the model's actual output. Run from a checkout with Python 3:
 
 ```text
@@ -14,13 +15,13 @@ the independent `Specification and evidence audit` job on pull requests, pushes
 to main and manual dispatch. It installs Python 3.13 and needs no third-party
 Python packages. A link/inventory, preserved-hash or model-output mismatch fails
 the job. This structural check does not establish that every normative sentence
-is consistent, execute the 105 source targets or discharge semantic proof gates;
+is consistent, execute the 131 source targets or discharge semantic proof gates;
 those still require separate review and their actual consumers.
 
 The audit has an explicit document scope and needs neither an uncommitted diff
 nor the original downloaded ZIP. It is auxiliary evidence, not lang syntax,
 a source consumer, an ISA
-model or normative ontology. Its old explanatory implementation-language words
+model or normative ontology. Its explanatory implementation-language words
 (including atomic enum) define no lang Pattern or declaration. Execution and
 SHA-256 checks are recorded in [the ledger](../../lifetime-concurrency-consolidation.md).
 The model covers at most three ARC tickets/two actors and simplified MP/SB.

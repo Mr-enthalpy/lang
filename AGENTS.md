@@ -447,17 +447,30 @@ reachable management states. Relocate targets up(H), transfers Pending without
 executing it, and Drop performs its unique ordered duty. Escape is rejected at
 production Pre. Ordinary custom heaps are permitted under their own contracts.
 
+Ordinary Pattern `~~` associates a direct state/resource arm (singleton allowed);
+`$` forms its complete E while retaining branch/operand/binder incidence. An
+actually registered and selected ordinary `->::E` producer may form a callable
+transform; association and formation execute no CAS and grant no old-resource
+access. Compatible omitted target I/S inherits actual material; omitted arm
+means same-arm Keep. Partial Status matching is only same-arm Keep; any arm or
+read/write protocol change requires full actual source matching, and resource
+replacement requires a real arm change. Ordinary E `?` is a single-version
+readable projection only, not a generic rule for every `?` consumer.
+
 [Atomic](spec/design/lifetime/atomic-pattern-transitions-and-causality.md)
-consumes $-formed ordinary type material whose every retained state name has no
-external-origin dependency, including retained state/count/Index I as well as S.
-Only a real ordinary producer Post can establish a fresh closed name; neither
-an I role nor equal numeric content erases a retained dependency.
-Its single successful CAS jointly changes branch/state and S_a/S_b custody;
-Rejected keeps incoming S_b. Actual branch versions publish/import causal closure,
-and backend realization must honor ownership-transfer visibility. Atomic fields
-do not make an atomic outer type; safe primitives do not prove arbitrary protocol
-subsets. No implicit retries or per-operation relaxed/acquire/release operands.
-Only extra SeqCst/fence remains undecided at F15; F17 standard locate is fixed.
+consumes admitted E/transform material. Every retained state name, including
+I/Index and S, is closed against external origin dependencies; only an actual
+ordinary producer Post proves a fresh closed name. Its one CAS jointly commits
+state/resource/rights and causal Post. Source write ExitSlot returns owned S;
+read ExitSlot transfers ownership to lawful Forget and delivers valid S share.
+Keep write grants no old-resource access; Keep read->read grants share;
+Keep read->write grants none and must prove prior conflicting readers ended.
+A later take needs a second CAS. Rejected returns all actually formed incoming
+I_b/S_b and remaining duties; unavailable evidence is not competition failure.
+Atomic fields do not make an atomic outer type, and safe primitives do not
+prove arbitrary protocol subsets. No implicit retry or per-operation memory
+order operands follow. F13/F14/F16/F18/F19 remain proof/source/backend gates;
+only extra SeqCst/fence remains undecided at F15; F17 standard locate is fixed.
 
 Read the [owner map](spec/design/README.md) and
 [status/proof ledger](spec/planning/lifetime-concurrency-consolidation.md).

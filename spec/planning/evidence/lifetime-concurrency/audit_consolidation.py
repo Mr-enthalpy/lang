@@ -36,6 +36,7 @@ MARKDOWN_FILES = [
     "spec/design/lifetime/lifetime-policy-and-overload-boundary.md",
     "spec/design/lifetime/unsafe-semantic-admission.md",
     "spec/design/patterns-overload/pattern-relations-observation-and-extraction.md",
+    "spec/design/patterns-overload/operator-patterns-and-generative-declarations.md",
     "spec/design/patterns-overload/product-repetition-and-unpacking.md",
     "spec/design/patterns-overload/return-value-extraction-and-implicit-decomposition.md",
     "spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md",
@@ -44,8 +45,10 @@ MARKDOWN_FILES = [
     "spec/design/static-evaluation/host-capabilities-and-machine-objects.md",
     "spec/design/symbol-world/dependency-observation-and-realization.md",
     "spec/design/symbol-world/function-object-call-model.md",
+    "spec/design/symbol-world/names-and-overload-groups.md",
     "spec/design/symbol-world/policy-and-static-flow-projection.md",
     "spec/design/symbol-world/structural-type-formation-and-composition.md",
+    "spec/design/symbol-world/structured-path-algebra-and-interpretation-polarity.md",
     "spec/design/symbol-world/type-associated-function-objects-and-access-trees.md",
     "spec/design/unified-static-name-and-structural-semantics.md",
     "spec/planning/canonical-semantic-conformance.md",
@@ -99,11 +102,56 @@ def require(condition, message):
         raise ValueError(message)
 
 
+def table_cells(line):
+    """Markdown pipes split cells even in code spans; an escaped pipe does not."""
+    cells, start, slashes = [], 1, 0
+    for i, char in enumerate(line[1:], 1):
+        if char == "|" and slashes % 2 == 0:
+            cells.append(line[start:i].strip())
+            start = i + 1
+        slashes = slashes + 1 if char == "\\" else 0
+    return cells
+
+
+def markdown_structure(name, text):
+    fences = re.findall(r"^```", text, re.M)
+    require(len(fences) % 2 == 0, f"unpaired code fence: {name}")
+    expected = None
+    in_fence = False
+    expect_separator = False
+    for number, line in enumerate(text.splitlines(), 1):
+        line = line.rstrip()
+        if line.startswith("```"):
+            require(not expect_separator, f"missing table header separator: {name}:{number}")
+            in_fence = not in_fence
+            expected = None
+            continue
+        if in_fence:
+            continue
+        if not line.startswith("|"):
+            require(not expect_separator, f"missing table header separator: {name}:{number}")
+            expected = None
+            continue
+        require(line.endswith("|"), f"unfinished table row: {name}:{number}")
+        count = len(table_cells(line))
+        if expected is None:
+            expected = count
+            expect_separator = True
+        elif expect_separator:
+            require(all(re.fullmatch(r":?-+:?", cell) for cell in table_cells(line)),
+                    f"missing table header separator: {name}:{number}")
+            expect_separator = False
+        require(count == expected, f"table width {count}, expected {expected}: {name}:{number}")
+    require(not expect_separator, f"missing table header separator at end: {name}")
+
+
 def main():
     bad_links, links = [], 0
     for name in MARKDOWN_FILES:
         path = ROOT / name
-        for dest in re.findall(r"(?<!!)\[[^\]\n]+\]\(([^)\n]+)\)", prose(read(name))):
+        markdown_structure(name, read(name))
+        link_text = re.sub(r"(`+).*?\1", "CODE", prose(read(name)))
+        for dest in re.findall(r"(?<!!)\[[^\]\n]+\]\(([^)\n]+)\)", link_text):
             if re.match(r"\w+://|mailto:", dest):
                 continue
             dest = urllib.parse.unquote(dest.strip("<>"))
@@ -117,18 +165,34 @@ def main():
 
     headings = "\n".join(read(p) for p in OWNERS)
     ids = re.findall(r"^### (N\d\d) —", headings, re.M)
-    require(sorted(ids) == [f"N{i:02}" for i in range(1, 46)], "N owner headings must be unique and contiguous")
+    require(sorted(ids) == [f"N{i:02}" for i in range(1, 51)], "N owner headings must be unique and contiguous")
     unified = read(OWNERS[-1])
     require(re.findall(r"^## (U\d\d) —", unified, re.M) == [f"U{i:02}" for i in range(1, 13)], "U headings mismatch")
     ledger = read("spec/planning/lifetime-concurrency-consolidation.md")
-    for prefix, count in (("M", 31), ("F", 18)):
+    for prefix, count in (("N", 50), ("M", 31), ("F", 19)):
         require(re.findall(rf"^\| ({prefix}\d\d) \|", ledger, re.M) ==
                 [f"{prefix}{i:02}" for i in range(1, count + 1)], f"{prefix} inventory mismatch")
     acceptance = read("spec/planning/lifetime-concurrency-acceptance.md")
-    cases = re.findall(r"^\| ((?:REG|CLR|HET|REP|JOIN|IDX|FORG|HEAP|ATOM|MEM|INT)\d\d) \|", acceptance, re.M)
-    require(len(cases) == len(set(cases)) == 105, "105 unique paired acceptance cases required")
+    groups = {"REG": 8, "DFLT": 10, "CLR": 6, "HET": 4, "REP": 13,
+              "JOIN": 6, "IDX": 7, "FORG": 11, "HEAP": 14, "ATOM": 30,
+              "MEM": 16, "INT": 6}
+    cases = re.findall(r"^\| ((?:" + "|".join(groups) + r")\d\d) \|", acceptance, re.M)
+    expected_cases = {f"{prefix}{i:02}" for prefix, count in groups.items()
+                      for i in range(1, count + 1)}
+    require(len(cases) == len(set(cases)) == 131 and set(cases) == expected_cases,
+            "131 unique contiguous paired acceptance cases required")
     require(acceptance.count("| ID | 规范条款 | 正向要求 | 必须拒绝或不得推导 | D | P | S | C | T | B |") == 11,
             "all 11 acceptance groups must expose D/P/S/C/T/B")
+    require(acceptance.count("| ID | 正向语义要求 | 不得推导 | D | P | S | C | T | B |") == 1,
+            "DFLT group must expose its own D/P/S/C/T/B columns")
+    for line in acceptance.splitlines():
+        if re.match(r"^\| (?:" + "|".join(groups) + r")\d\d \|", line):
+            require(table_cells(line)[-6:] == ["D", "—", "—", "—", "—", "—"],
+                    "unimplemented source target must retain pending P/S/C/T/B: " + line.split("|")[1])
+    association_cases = re.findall(r"^\| (AS\d\d) \|",
+                                   read("spec/planning/canonical-semantic-conformance.md"), re.M)
+    require(association_cases == [f"AS{i:02}" for i in range(1, 15)],
+            "AS01-AS14 association/transform/Atomic case inventory mismatch")
 
     evidence = pathlib.Path(__file__).resolve().parent
     for name, expected_hash in MODEL_HASHES.items():
@@ -141,7 +205,8 @@ def main():
             "bounded model stdout differs from supplied output")
     print(json.dumps({"markdown_files": len(MARKDOWN_FILES), "local_links": links,
                       "bad_links": bad_links, "unique_N_owners": len(ids), "U": 12,
-                      "M": 31, "F": 18, "paired_cases": len(cases),
+                      "M": 31, "F": 19, "paired_cases": len(cases),
+                      "association_cases": len(association_cases),
                       "model_hashes_verified": len(MODEL_HASHES), "model_exit_code": result.returncode,
                       "model_stdout_matches": True}, ensure_ascii=True))
     return bool(bad_links)

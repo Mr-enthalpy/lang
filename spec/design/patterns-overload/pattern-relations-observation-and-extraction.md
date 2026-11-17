@@ -757,11 +757,11 @@ Pattern ontology, implicit CAS counter operation, or privilege to inspect
 a hidden value. Missing actual Slice/Pattern producer evidence is
 Unavailable; a known value outside the admitted interval mismatches.
 
-When Atomic uses such a Pattern as its named `Status` child, it consumes
-the already formed relation without imposing new Pattern matching rules.
-The exact `Status`/`own`/`share` roles are specified by the Atomic
-consumer; ordinary Pattern members with the same names do not themselves
-grant atomic authority.
+Such ordinary interval relations may constrain state-number material within a
+formed state arm. An Atomic consumer uses that relation without adding range
+matching rules or inferring provenance/permission from the numeric predicate.
+Its source resource protocol comes from the arm's actual `~~` association,
+not a mandatory field name or Product position.
 
 ### 9.2 Direct sum-arm structural association (`~~`)
 
@@ -811,13 +811,50 @@ the association, including branch/binder identity and observable
 role structure; erasing `~~` into a generic Product or merely
 remembering equal satisfaction sets is not equivalent.
 
+The following judgments describe ordinary relational formation, not new Object
+coordinates, AST implementation types or a second matching calculus. Here k is
+the actual arm's structural identity under its Pattern root, and beta retains
+the ordinary binder/role incidence of both operands; spans are provenance only.
+
+```text
+FormedPattern_Gamma(P_s) and FormedPattern_Gamma(P_r)
+LegalArmSite(l) and CompatibleAssociationBindings_Gamma(l,P_s,P_r,beta)
+------------------------------------------------------------------
+FormArm_Gamma(l, P_s ~~ P_r) = AssocArm(k,P_s,P_r,beta)
+
+R_Gamma(AssocArm(k,P_s,P_r,beta), c, rho) iff
+  exists w,c_s,c_r,rho_s,rho_r:
+    ArmIncidence_Gamma(w,c,k,c_s,c_r,beta)
+    and R_Gamma(P_s,c_s,rho_s) and R_Gamma(P_r,c_r,rho_r)
+    and rho = CompatibleJoin(k,beta,w,rho_s,rho_r)
+
+Norm_P(AssocArm(k,P_s,P_r,beta))
+  = AssocArm(alpha(k),Norm_P(P_s),Norm_P(P_r),alpha(beta))
+```
+
+ArmIncidence denotes the actual ordinary structural-association evidence, and
+CompatibleJoin uses the existing compatible binding/derivation laws. They do
+not assume Product projections, synthesize Val2 residents, register an extractor
+or borrow resources. The complete `$` formation retains this arm material and
+its incidence template; a successful rho retains the actual matching witness.
+Missing required witness/consumer evidence is unavailable at that consumer,
+not a proved mismatch. A known invalid placement or incompatible binding fails
+its own formation premise.
+
+Legal alpha-renaming preserves k/beta correspondence and the two operand roles.
+Equal satisfaction or layout alone cannot equate associated/unassociated arms,
+swap State and Resource, or change arm/binder incidence. Thus normalization and
+complete Pattern identity preserve the same proof-relevant structure as §5;
+association is not commutative, symmetric or an equality relation.
+
 An `E`-associated ordinary callable may later consume an
 E-relative arm description to **construct** a transform value,
 for instance a selected `->::E` operation with an associated
 target arm `B::E ~~ newSource`. This uses the same structural
 association, but its source/target binding, optional material
 and admissibility are obligations of the **ordinary selected
-E-associated transform consumer**. `~~` by itself is not a
+E-associated transform consumer** defined by the
+[ordinary callable owner](operator-patterns-and-generative-declarations.md#7-ordinary-e-relative-transforms-and-readable-observation). `~~` by itself is not a
 resource constructor or a CAS execution primitive.
 An Atomic consumer can then apply a proved legal transform
 at one committed point (N34/N39), without reinterpreting

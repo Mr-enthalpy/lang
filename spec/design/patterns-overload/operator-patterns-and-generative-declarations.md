@@ -370,3 +370,102 @@ OrdinaryADLCall != RegisteredStructuralExtraction
 A selected type-path candidate produces a NameExpr; a receiver candidate
 delivers its ordinary result. Dot syntax alone supplies no structural role
 or private Place projection.
+
+## 7. Ordinary E-relative transforms and readable observation
+
+The [Pattern owner](pattern-relations-observation-and-extraction.md#92-direct-sum-arm-structural-association-)
+forms direct-arm `~~` relational structure before any Atomic consumer. For a
+complete formed E, an actually registered and selected ordinary associated
+callable, illustratively `->::E`, may form a callable transform from E-relative
+source/target descriptions. That spelling alone proves neither registration,
+applicability nor callability. Lookup and sealed implementation/projection/frame
+selection use the ordinary [call model](../symbol-world/function-object-call-model.md),
+including Type(x)'s associated Val2[()] entrance; there is no second registry or
+implied V_tau membership.
+
+```lang
+let transform =
+    ((val1 n1::A::E, val2 n2::A::E) A::E)
+    (->::E)
+    ((val3 B::E) ~~ newSource);
+let same_arm_delta =
+    (val1 n1::A::E) (->::E) (val2 n1::A::E);
+let same_arm_unchanged =
+    (val1 n1::A::E) (->::E) ();
+```
+
+These are target source forms with unconnected consumers. Transform(E) below
+denotes ordinary callable values retaining E and their admitted transformation
+contract, not a new Object kind, language keyword or primitive constructor.
+
+```text
+FormedComplete(E)
+OrdinarySelectedProducer_Gamma(E,p,source,target,projection,frame)
+WellFormedArmMap_Gamma(E,source,target,mu)
+ordinary formation Pre/commit/Post and callable-result delivery succeed
+------------------------------------------------------------------
+BuildTransform_Gamma(E,p,source,target,mu) = t : Transform(E)
+```
+
+The formed t retains the exact E/arm/binder correspondence, selected producer,
+supplied new material and outstanding matching/lifecycle obligations. It does
+not sample an instance to freeze an old resource, perform CAS or acquire old
+resource access. Its ordinary formation can still execute its real selected
+producer actions and effects; it cannot conceal an Atomic attempt. Supplied
+candidate values are formed only by their actual ordinary producers.
+
+The arm map normalizes omitted descriptions separately from absent structural
+slots. In the following metanotation, compatibility uses actual E-relative
+slot/Pattern/binder evidence, not equal resource types or display names:
+
+```text
+OmitTargetArm       => SameArm(A,B) AND KeepIdentity(S_a?)
+OmitTargetI AND HasCompatibleTargetISlot => InheritActual(I_a)
+OmitTargetS AND HasCompatibleTargetSSlot => KeepIdentity(S_a)
+PartialSourceStatusMatch => SameArm(A,B) AND KeepIdentity(S_a?)
+ChangeArm(A,B)      => FullMatch(actual A, all actual I_a)
+ReplaceResource(S_a,S_b) => ChangeArm(A,B)
+```
+
+`KeepIdentity(S_a?)` preserves the same resource when one exists and invents
+none otherwise. Omitted target arm cannot accept an independently supplied
+replacement resource. Explicitly repeating A does not prove ChangeArm(A,A).
+An omitted required target I/S inherits only with a present compatible source
+slot; incompatible descriptions reject formation. A target with no I/S slot
+inherits nothing. If old S exists but the target has no S slot, its application
+is an actual ExitSlot case, not Keep or default inheritance; the consumer must
+establish its custody/Drop obligations.
+
+Same-arm Keep may match/update only part of Status; untouched components retain
+their values from the same actual application state. Any arm change, including
+a resource protocol change, needs full actual source-arm/Status matching even
+when the target inherits material. Hidden components remain part of that match;
+legal internal evidence may compare them without publishing their values.
+Construction records these obligations rather than pretending it has already
+proved a future instance's Pre. Application instantiates inherited material at
+its actual frontier. Missing required evidence is unavailable; a known false
+formation/admission premise rejects, not an invented ordinary failure branch.
+
+An E with an actually selected readable-observation contract may support `e?`:
+
+```text
+ReadableObservation_Gamma(e:E,o) succeeds =>
+  exists one actual state/version witness v:
+    every delivered readable arm/Status component of o projects that v
+```
+
+The selected ordinary producer delivers only legally readable material, retaining
+its real Policy, source and lifecycle premises. Nonpublic components are omitted
+from this projection but remain in the actual state. The observation alone
+grants no S share, old ownership, full hidden-source matching credential,
+no-intervening-change guarantee or perpetual freshness. Components from different
+versions cannot be spliced into this snapshot. This contract applies to E's
+selected observation only; unrelated Option, Product, effect and other `?`
+consumers keep their own registrations and semantics.
+
+[Atomic N39/N47–N50](../lifetime/atomic-pattern-transitions-and-causality.md)
+consumes admitted E/t material at an actual instance to add trusted single-point
+CAS, controlled Color and branch-specific resource/causal Post. Ordinary `~~`,
+transform formation and readable observation supply none of that authority.
+Source syntax, normalization, registered producers/observers, ordinary E and
+Atomic/backend consumers remain separate pending gates.

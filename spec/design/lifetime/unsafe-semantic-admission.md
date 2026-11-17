@@ -159,23 +159,23 @@ Standard non-root locate requires universal guaranteed direct-parent Submit
 and lazy reception before registration; a successful one-state probe is not that
 proof. This requirement does not constrain arbitrary custom Heap providers.
 
-[Atomic](atomic-pattern-transitions-and-causality.md) consumes formed
-`$` Pattern roles (`Status` and a resource named `own` or `share`),
-rather than deriving ownership from positions or from a library label.
-The trusted scope is the actual one-point conditional state transition
-and its joint access/ownership Post: on source `own` exit, old S is
-returned owned; on source `share` exit, old S is transferred to a lawful
-Forget owner and an actually valid `S share` is returned. Keeping a
-resource is distinct from either exit, and successful Keep need not issue
-a share unless that operation expressly admits it. Failure returns all
-already-formed proposed new Status/resource material without silently
-Dropping it or issuing unproved rights.
+[Atomic](atomic-pattern-transitions-and-causality.md) consumes ordinary `$`-formed
+`A ~~ (S write/read)` association evidence and an actually selected ordinary
+E-relative callable transform; association and transform formation grant no
+old-resource access. Its trusted scope is the one-point conditional state
+transition with joint access/ownership Post. Source write ExitSlot returns old
+owned S; source read ExitSlot transfers sole ownership to lawful Forget and
+returns a valid S share. Keep write grants no old-resource access; Keep read
+to read returns valid share, while Keep read to write grants no share.
+Failure returns every already-formed proposed new Status/resource and its
+remaining duty, without silent Drop or unproved rights.
 
 The source Pattern, real I/S origin closure, Region/Color, active
 shares, same-instance competition and actual incoming custody are
-checked before the hardware commit. A share-to-own mode change
-requires proof that conflicting old shares ended and new issuance is
-closed; a numeric count alone cannot provide that fact. Ordinary
+checked before the hardware commit. A read-to-write arm/protocol change
+requires full actual source-arm/Status matching and proof that conflicting old
+shares ended and new issuance is closed. Its Keep success grants no share;
+taking S requires a subsequent CAS. A numeric count alone proves none of this. Ordinary
 Pre/Post may supply a proof, or a compatible externally established
 `unsafe post` may report real trusted success evidence. There is no
 `unsafe pre`, and neither an `unsafe` marker nor `check=true` can

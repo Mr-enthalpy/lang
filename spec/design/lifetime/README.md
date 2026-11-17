@@ -33,10 +33,12 @@ Region, Color, origin, automatic repair, name forgetting and partial recovery
 are defined only in the [lifetime owner](lifetime-policy-and-overload-boundary.md).
 [HeapStack](heap-stack-and-storage-responsibility.md) owns standard current-top
 routing, lazy duty and universal direct-parent submission at non-root locate.
-[Atomic transitions](atomic-pattern-transitions-and-causality.md) own
-ordinary Pattern-derived Status/own/share roles, numeric Status
-slice consumption, one-point CAS/Keep/exit custody, failed-candidate
-returns, and proof of legitimate share-to-own transitions.
+The [Pattern owner](../patterns-overload/pattern-relations-observation-and-extraction.md#92-direct-sum-arm-structural-association-)
+forms ordinary `~~` arm associations; the [ordinary callable owner](../patterns-overload/operator-patterns-and-generative-declarations.md#7-ordinary-e-relative-transforms-and-readable-observation)
+defines selected E-relative transform formation and readable observation.
+[Atomic transitions](atomic-pattern-transitions-and-causality.md) consume that
+material for one-point CAS, source read/write Keep/Exit custody, complete failed
+candidate return and safe read-to-write protocol changes.
 [HeapStack](heap-stack-and-storage-responsibility.md) owns
 standard lazy receipt as **one possible** lawful Forget receiver,
 not a mandatory Atomic implementation.
