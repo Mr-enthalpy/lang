@@ -1724,47 +1724,54 @@ locate operations prove universal guaranteed parent submission and lazy
 acceptance before registration. Custom heaps remain ordinary permitted providers.
 Escape fails at production Pre, not by a last-minute reader check at heap Drop.
 
+[Ordinary sum-arm `~~` association](../design/patterns-overload/pattern-relations-observation-and-extraction.md#92-direct-sum-arm-structural-association-)
+forms branch-local State/Resource relational Pattern structure, independent
+of Atomic. For a source sum, `A ~~ R | B` means `(A ~~ R) | B`;
+a single associated branch is legal, but `(C ~~ R, D)` cannot introduce
+the association into a Product entry. The association is not the directional
+`=>` callable extraction/generation arrow, a resource conversion or a
+CAS instruction. Its operands and structural incidence survive `$`,
+`R_Gamma` and complete Pattern normalization.
+
+An ordinary E-associated selected callable (illustratively `->::E`)
+may construct a *transform value* from E-relative source and target arms,
+using `~~` in a target arm when its resource is specified. Constructing
+that value does not execute a CAS. Target omission of an existing
+compatible Status/resource means inheritance/identity-preserving Keep;
+a target with no respective role cannot inherit it. Target-state
+omission requires no new resource and permits a same-arm Keep update;
+only same-arm Keep can partially match/mask Status. Changing arm
+requires **full source arm/Status matching** (possibly via registered
+nonpublic evidence), and resource replacement requires a genuine arm
+change, not merely Status arithmetic.
+
 [Atomic](../design/lifetime/atomic-pattern-transitions-and-causality.md)
-consumes already `$`-formed sum Pattern material, just like the ordinary
-`struct` consumer. Branches may use named ordinary members
-`(I Status, S own)` or `(I Status, S share)`, with I/S independently
-omissible. All named members preserve ordinary unordered Product
-rules, and roles are established through real structural/Pattern
-evidence, not bare-slot order or accidental Val2 name equality.
-`Status` can use ordinary numeric slice Patterns such as
-`NotZero = ((1u32:) NotZero)$`, with ordinary `Product |> slice` and
-no Atomic-only range grammar. Full retained I/S source closure
-remains mandatory; numeric values never create origin, authority
-or version identity.
+is a stronger **consumer** of already formed E and the selected transform
+value. It admits legal resource roles, illustrated by ordinary named
+`(S write)` or `(S read)` on the resource side of `~~`, retains
+all real N35 source closure, and performs one conditional atomic
+transaction with its actual Color, Region, ownership and causal Post.
+A source `write` ExitSlot returns old owned S; a source `read`
+ExitSlot delivers owned S to lawful Forget custody **and** a valid
+S share to Committed. Keep from write yields no old-resource access;
+Keep read->read yields share; Keep read->write yields no share.
+Changing resource protocol is an arm-changing CAS even with Keep,
+and subsequent take is a separate attempt. Its Pre must establish
+there are no conflicting live shares; numeric count alone is insufficient.
 
-One successful CAS atomically matches/transforms the actual state.
-When the old resource *leaves* its slot, source `S own` returns
-owned S to Committed while source `S share` transfers sole owned
-S to lawful Forget custody **and** returns an actual S share.
-If old S stays in the slot, Keep is distinct from both exit
-outcomes; only a specifically admitted successful operation
-creates new shared access. No source state may safely choose
-both exit dispositions. Changing between `own` and `share`
-requires a state-Pattern-changing CAS, not only a Status update;
-a later take is a separate CAS. `share -> own` requires actual
-proof that all conflicting old shares have legally ended:
-`n=1`/`n=0` alone does not prove it.
-
-The concrete CAS API family is not predetermined. Needed mechanisms
-include Pattern/slice matching, mode transition, optional I/S,
-incremental Status updates and preservation of unobservable
-Status components, Keep/exit/resource replacement and lawful
-share issuance. A rejected attempt leaves the atomic state
-unchanged and returns its **actually formed proposed new Status
-and resource** to Rejected, not silently Drop or Lose them.
-Actual result branches carry distinct causal histories and
-resource visibility commitments. No generic ARC/RCU/Mutex/GC,
-Boxlike, clone/COW, lazy-free receiver or retry policy is part
-of Atomic's definition; such libraries can be composed subject
-to their real Pre/Post proofs (F13/F14/F16/F18/F19). No
-per-operation relaxed/acquire/release operands, implicit retry,
-outer Atomic propagation or arbitrary safe-subset theorem is
-implied. Only extra SeqCst/fence remains undecided at F15.
+Failure returns all actually formed proposed new Status/resources
+and preserves the actual Atomic instance; it cannot silently Drop or
+invent unformed inputs. E's ordinary `?` observation can yield a
+coherent single-version copy of the **readable** branch/Status
+projection, omitting nonpublic components without implicitly granting
+source authority, hidden/full matching, S share or version freshness.
+The proposed `e transform ?` followed by ordinary success/failure
+branch extraction is target source syntax, not implemented code.
+Actual result branches and memory publication honor N39/N41.
+No generic ARC/RCU/Mutex/GC, fixed Boxlike, clone/COW, lazy-free
+receiver or retry policy becomes part of this basis. F13/F14/F16/
+F18/F19 remain proof/source/backend obligations, and F15 alone
+keeps the extra SeqCst/fence semantic decision.
 
 [Independent containers](../design/control-flow/heterogeneous-computation-containers.md)
 transform ordinary effect trees and separately check dispatch, Color and escape.

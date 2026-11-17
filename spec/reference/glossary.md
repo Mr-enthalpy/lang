@@ -787,23 +787,33 @@ executable Move/Drop. Ordinary extraction inherits those obligations; partial
 default-world recovery in reify cannot restore a hidden non-default dependency.
 An atomic version is a committed event identity, separate from a state number,
 LifeName/generation, origin and rf. Only actual observation imports its Past.
-Atomic's ordinary `$` Pattern may have named `Status`, `own` or
-`share` structural members: the resource role is bound to the
-source slot; I or S may be absent. Ordinary typed numeric
-`Product |> slice` material, for example `(1u32:)`, can describe
-Status patterns without a special Atomic counter ontology.
-A successful CAS atomically changes the selected Pattern and
-resource/Status consequences. If S leaves an `own` slot, the
-result gets owned S; if S leaves a `share` slot, its ownership
-goes to lawful Forget and the result gets actual `S share`.
-Keep means S remains in its slot and does not itself guarantee
-another share. Changing `own/share` needs a Pattern-changing
-CAS; `share -> own` requires proof that no conflicting live
-share remains, not mere count equality. Failed CAS returns
-formed proposed Status/resource material without silent Drop.
-Specific reader-count, clone/COW, ARC/RCU/GC/Mutex, lazy
-reclamation or scheduler protocols are library choices; the
-language fixes only the safety/proof obligations.
+An ordinary `$`-formed sum Pattern may associate a branch's
+state and resource Patterns using direct-arm `~~`, e.g.
+`A ~~ (S write) | B ~~ (T read)`. This preserves actual
+relational structure but does not extract, generate,
+convert, move or perform CAS. It is legal for a singleton
+arm, illegal as a general nested Product entry, and
+separate from directional `=>` callable declarations.
+The selected E-associated ordinary `->::E` may form
+a callable transform *value*; Atomic alone adds the
+trusted single-attempt commit/Color and custody effect.
+
+A source `write` resource that actually exits transfers
+owned S to Committed; `read` exits transfer old ownership
+to lawful Forget and return S share. Keep write returns
+no resource right, Keep read->read returns share,
+Keep read->write returns none. An arm change, including
+read/write protocol change, demands full source/Status
+matching; only a same-arm Keep may use partial masked
+Status matching/update. An omitted target I/S is inherited
+only when truly present/compatible. Rejected returns
+all actually formed proposed target I/S without silent
+Drop. E's `?` yields at most the legally readable,
+single-version state projection, not a resource borrow
+or hidden-field matching evidence. Resource/Region/
+Color and causal/visibility correctness remain real
+proof duties independent of library ARC/Mutex/GC
+or any specific CAS wrapper.
 The
 [atomic owner](../design/lifetime/atomic-pattern-transitions-and-causality.md)
 defines the one-attempt resource transition, F19 proof and bounded F15 decision.

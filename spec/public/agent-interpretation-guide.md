@@ -577,37 +577,42 @@ with Pending unexecuted, and all standard non-root locate requires universal
 guaranteed parent submission plus lazy acceptance. Ordinary custom heaps remain
 allowed. Production Pre owns escape rejection; QS is no language premise.
 
-Atomic consumes ordinary `$`-formed sum Pattern structures with
-named, independently optional `Status`, `own`, `share` roles.
-`(I Status, S own)` and `(I Status, S share)` are
-distinct fully named Product patterns, not a new atomic enum or
-position-based bare Product schema. `Status` can use ordinary
-finite numeric Slice Patterns such as `(1u32:)` or
-`0u32` with `(2u32:)` to distinguish count states;
-role names do not themselves erase external origins.
+Ordinary `$`-formed sum Pattern branches may associate their
+state Pattern and resource Pattern by the structural
+`~~` spelling: `A ~~ (Sa write) | B ~~ (Sb read) | C`.
+This is a branch-level relational association (singleton
+arm allowed), not `=>` extraction/generation, a Product
+operator, resource movement or CAS. Pattern relational
+identity retains the association; selected ordinary
+`->::E` can subsequently form an E-relative
+callable transform value without executing it.
 
-A real CAS succeeds at one atomic state/Status/resource/
-permission commit. A real old source `S own` exit returns
-owned S to Committed; `S share` exit gives owned S to
-a lawful Forget receiver and a valid `S share` to
-Committed. Keeping S in its slot is neither exit and need
-not issue a share. Failed CAS returns the **actually
-formed proposed new Status and resource** with their
-ownership, without silently Dropping them. Changes
-between own/share are actual Pattern-changing CAS,
-not Status-only updates, and share-to-own must prove
-that all conflicting live shares ended. A number
-alone never proves that.
+Atomic consumes such an admitted E/transform at one
+real CAS commit. The source associated resource role
+determines its result: `write` ExitSlot gives owned S,
+`read` ExitSlot gives owned S to lawful Forget and valid
+S share to Committed. Keep source write yields no
+old-resource right; Keep read->read delivers share;
+Keep read->write delivers none. Only a real Pattern-changing
+CAS can change the associated resource protocol, and
+the transition requires compatible access/Region/Color,
+including proof that all conflicting prior shares ended.
+Only a same-arm Keep update can mask/partially
+match Status; changing arms requires full matching.
+Targets may legally inherit compatible omitted I/S
+without manufacturing missing roles or source names.
+Failed CAS returns actually formed new Status and
+resource candidates without silent Drop.
 
-Partial/hidden Status observations, incremental counts,
-different registered CAS mechanisms, reader protocols,
-clone/COW, lazy free, retry and suspension are ordinary
-implementation/library choices, not language Atomic
-primitives or mandatory ARC/RCU/GC/Mutex facilities.
-Actual N35 source closure, Region/Color, transaction
-competition and branch causal/visibility requirements
-remain. F13/F14/F16/F18/F19 are pending proof/source/
-backend obligations; F15 is the only extra SeqCst
-semantic-order decision. No implicit subset certification,
-automatic retry, unsafe permission minting or payload
-from unprotected peek is licensed.
+Ordinary E `?` observation is a coherent readable
+state projection, not a newly owned resource,
+hidden-field access, automatic S share or full
+source match. Ordinary protocols may implement
+counted readers, cloned candidates, waiting,
+forgetting or storage management; no ARC/RCU/
+Mutex/GC/lazy algorithm is built into Atomic.
+N35 origin closure, branch causality and machine
+visibility are independent real obligations.
+F13/F14/F16/F18/F19 and source/backend proof
+are pending; F15 alone is the extra SeqCst
+semantic-order choice.

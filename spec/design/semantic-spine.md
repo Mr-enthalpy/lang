@@ -248,21 +248,30 @@ malloc/free and direct-parent relocation with lazy Pending custody; every
 standard non-root locate requires universal guaranteed submission. Independent
 [containers](control-flow/heterogeneous-computation-containers.md) separately
 check dispatch, Color and return/escape.
-[Atomic](lifetime/atomic-pattern-transitions-and-causality.md) consumes
-ordinary `$`-formed sum Pattern material with named optional
-`Status` and `S own/share` roles (not positional bare Product
-slots). Ordinary numeric slice Patterns can match Status values.
-Each actual CAS is one conditional atomic transition. On old
-resource exit, `own` gives the result owned S, or `share`
-transfers S to lawful Forget and yields S share; Keep has no
-exit and does not intrinsically mint a borrow. Failure returns
-the new Status/resource candidates, rather than Dropping them.
-Changing the slot's own/share role requires Pattern change,
-and share-to-own requires actual absence-of-conflicting-shares
-proof, not count matching alone. Library protocols and their
-reclamation/wait/retry choices remain open; source/causal
-visibility and proof gates F13/F14/F16/F18/F19 are pending.
-F15 extra SeqCst/fence remains the bounded decision.
+The ordinary sum Pattern extension `A ~~ R` preserves a direct
+state/resource **association**, not extraction, conversion,
+generation or an Atomic-specific operator. A standalone associated
+arm is legal; Product-local `~~` is not. `$` creates E first;
+an ordinary selected E-associated `->::E` may form a
+transform value, without executing the transform.
+
+[Atomic](lifetime/atomic-pattern-transitions-and-causality.md)
+consumes E plus a legal transform and gives its single
+attempt an actual conditional atomic state/resource/rights
+commit. State arm resource roles (example names `write/read`)
+determine old-resource ExitSlot custody or Keep sharing;
+changing arm requires full Status matching and a partial
+masked Status update is confined to in-place Keep.
+A failed attempt returns all genuinely formed target
+Status/resource candidates, not implicit Drop. E's `?`
+observation may yield a coherent readable-only State
+projection, never hidden-source authority or payload share
+by itself. Share-to-write change must prove prior conflicting
+borrow rights end, and no source/Color/Region premise is
+derived solely from a number. F13/F14/F16/F18/F19,
+producer and machine proof gates remain pending; F15
+extra SeqCst/fence remains the bounded decision.
+
 The [unified correspondence](unified-static-name-and-structural-semantics.md#cross-owner-correspondence)
 and [evidence ledger](../planning/lifetime-concurrency-consolidation.md) link these
 owners without another evaluator or duplicated Region definition.
