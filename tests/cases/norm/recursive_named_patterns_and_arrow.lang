@@ -1,8 +1,8 @@
-let read = read::atomic::;
-let write = write::atomic::;
+let ReadStorage = ReadBox read::atomic::;
+let WriteStorage = WriteBox write::atomic::;
 let E = ((
-    ((Source read) (I1 state1, I2 state2) A) |
-    ((Source write) (I3 state3) B) |
+    ((ReadStorage$ resource) (I1 state1, I2 state2) A) |
+    ((WriteStorage$ resource) (I3 state3) B) |
     ((I4 state4) C) |
     D
 ) E)$;

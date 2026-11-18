@@ -49,6 +49,11 @@ I = CompileInstance(CompileInstanceKey)
 n_I = InvokeName(I)
 ```
 
+[Compile invocation](static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers)
+fixes key admission for mixed-stage inputs. It uses canonical compile-side
+observations and admitted runtime source descriptions. The realized runtime
+input supplies neither an extra key coordinate nor an internal Pattern choice.
+
 The instance identity is independent of its result value. A compile call may
 return an integer, Product, closure, existing type, fresh self-rooted type, or
 another ordinary Object without changing the instance-formation rule.
@@ -842,10 +847,11 @@ Pattern 节点内的 `lifetime default` 是普通表达式材料，按子到父�
 
 ## U09 — Heap 回收不取代内存排序
 
-Heap 接收 Pending、Region 上界拒绝逃逸及单次责任交接解决存活/回收合法性；它们不自动建立发布/订阅的 rf、对象修改序或 fence 保证。
+malloc 登记实际 lazy Drop、各边界验证 Region 及单次责任交接解决存活/回收合法性；它们不自动建立发布/订阅的 rf、对象修改序或 fence 保证。
 
 malloc 的 Pre 只检查当下分配；HeapRelocate 的成功 Post 将已交接支持
-所用的局部 heap 名字重解释到直接父层，保留历史 origin 和 Places。
+证据中的实际遮蔽绑定重解释到已恢复的直接父层，保留历史 origin、
+Places 和独立借用。
 实际返回独立检查最新 Post 下的名字压缩。分配期建立的 lazy 责任
 覆盖 Atomic read 槽位退出及合法旧 share；Forget_read 为运行时 NoOp。
 回收寿命、实际读权和 rf/Past 发布事实各有证据。
@@ -862,7 +868,7 @@ general $-formed Pattern/type material
 ```
 
 普通递归命名 Pattern 保留实际层次和对应；选定 `->::E` 形成可调用值。
-Atomic 消费完整 E、真实 `T Box` 类型包装（资源存在时）与有限表示。
+Atomic 消费完整 E、实际外部类型叶子的包装形成及实例对应（N46）与有限表示。
 全源匹配约束真实 arm/协议变化；同 arm read 可在同一提交确认旧 Box
 后原位替换，同 arm write 不可替换。N39/N47–N50 定义提交、Keep/Exit
 权利、失败候选交还及 read→write 的读权结束；N41 仍拥有版本因果。
@@ -874,8 +880,8 @@ Atomic 消费完整 E、真实 `T Box` 类型包装（资源存在时）与有�
 ## U11 — reify 保留阶段代数与失败效果
 
 [Compile producer 的 runtime 入参](static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers)
-允许形成带真实 runtime 依赖的名字和 Pattern。对外 compile 计算不能依赖
-尚不可用的 runtime Val1；具体名字身份在输入可用时依实际材料形成。
+在实例形成前记录 compile 观察和已准入的 runtime 来源描述。内部 Pattern
+由 compile 观察确定；runtime 值只参与具体萃取及名字形成/比较。
 `$` 在各层执行普通极性翻转，选定的生产调用仍遵守同一阶段规则。
 
 默认世界恢复只是现有选定迁移中关于具体实例的准入条件。它不另立 Stage，不给 runtime 值写回过去 compile 世界，也不根据值的运行结果扩展 compile 已闭合接口。

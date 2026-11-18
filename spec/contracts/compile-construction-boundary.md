@@ -140,6 +140,13 @@ previously read snapshot. Argument material
 and observation rosters must agree in length and position; omitted positions
 cannot disappear from an invocation key.
 
+Mixed-stage key admission is specified by the
+[compile invocation owner](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers).
+It requires exact compile-side inputs and admitted runtime source descriptions
+before entry. Concrete runtime extraction/name observations belong to their
+reached frontier. The connected complete-snapshot argument carrier above does
+not implement this mixed-stage projection.
+
 General instance residency, accessible-result closure, opening-source meets,
 P1 completion and source body execution require their common E consumers.
 Structural source formation and ordinary struct helper formation are unavailable;

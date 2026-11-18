@@ -9,15 +9,20 @@ ordinary Pattern formation, transform selection and lifecycle contracts.
 Atomic 消费通过[普通递归命名 Pattern](../patterns-overload/pattern-relations-observation-and-extraction.md#92-recursive-named-pattern-material)形成的完整 E：
 
 ```lang
-let read = read::atomic::;
-let write = write::atomic::;
+let ReadStorage = ReadBox read::atomic::;
+let WriteStorage = WriteBox write::atomic::;
 let E = ((
-    ((Source read) (I1 state1, I2 state2) A) |
-    ((Source write) (I3 state3) B) |
+    ((ReadStorage$ resource) (I1 state1, I2 state2) A) |
+    ((WriteStorage$ resource) (I3 state3) B) |
     ((I4 state4) C) |
     D
 ) E)$;
 ```
+
+这里 `ReadBox` 和 `WriteBox` 是已形成的完整 `T Box` 分类器。
+前两次调用按普通 V 解释形成完整包装类型。`ReadStorage$` 和
+`WriteStorage$` 在 S 中读取这些类型值。各分支中的 `resource` 是
+结构名，协议由 N46 的形成证据确定。
 
 每层保留实际结构和名字对应。Atomic 由真实形成的类型包装和结构
 证据识别状态、Status 和资源。分支 I/S 均可缺省；实际保留名字遵守
@@ -240,12 +245,38 @@ async 与异构执行正交，异构执行与自动逃逸正交。基础内存�
 
 ### N46 — 普通结构、真实类型包装与表示预算 [定义]
 
-资源入口只接受实际 `T Box` 上的 `read::atomic::` 或
-`write::atomic::` 类型包装，由所选形成及注册证据识别。别名可解析
-到真实包装；同拼写字段、位置序号、偶然结构相等及用户自称箱化均
-不提供该证据。无资源状态合法。read 入口另外要求 [HeapStack N28](heap-stack-and-storage-responsibility.md) 的分配期
-lazy release 义务。该限制服务于 Atomic，普通递归 Pattern 仍可使用
-其他资源和状态结构。
+令 `m` 为 read 或 write，`Family_m` 为标准库 Path
+`read::atomic::` 或 `write::atomic::` 解析到的实际类型形成家族。
+以下为普通调用、完整类型和结构证据的合取，不是 Atomic 私有注册表：
+
+```text
+WrapperType(m, B, W, route)
+    iff B is the exact complete classifier formed by the ordinary T Box contract
+    and ordinary selection of (B, Family_m) commits the declared wrapper type W
+    and the selected formation of W proves a structural route to B with mode m
+
+WrapperLeaf(E, node, m, B, W, route)
+    iff the formed E registers the actual child at node with LeafSource(child, W)
+    and WrapperType(m, B, W, route)
+
+FormedWrapper(s, m, b)
+    iff s is the actual resource at such a child of the selected E arm
+    and ordinary construction/extraction along its registered route identifies
+        b of exact classifier B and preserves its actual allocation/ownership evidence
+```
+
+`WrapperType` 的来源是这一标准家族所选调用的成功交付及实际结构。
+别名或绑定在普通求值下交付同一个家族或完整类型时，使用该材料已具有的
+证据。`(ReadStorage$ resource)` 根据
+[普通外部类型叶子](../patterns-overload/pattern-relations-observation-and-extraction.md#external-typed-leaves)
+把实际 `W` 作为叶子来源。仅使用裸 `resource` 或同名 `read`，
+仅有同型布局，或返回不具该结构对应的类型，均不建立推导。
+`FormedWrapper` 检查实际资源，不能由仅有的类型规格虚构一个 Box。
+
+read 入口另消费 [HeapStack N28](heap-stack-and-storage-responsibility.md)
+对同一 Box 分配及世代建立的 lazy 责任。普通带所有权转换可检查实际句柄，
+依法构造 read 包装并保持义务；转换失败保持原资源责任。表示标签只是供
+所选普通检查验证的材料。无资源状态合法。具体包装/检查消费者仍待接通。
 
 I 可以用普通数值 Slice，含非公开分量。Atomic 要求实际 Status 能
 平凡移动、析构及合法原子比较。一次条件提交的逻辑表示至多两个
@@ -267,7 +298,7 @@ I 可以用普通数值 Slice，含非公开分量。Atomic 要求实际 Status 
 | 无源资源 | 无 | 无旧资源责任可交付 |
 
 `Forget_read(oldBox)` 的运行时回收动作是 NoOp。解除槽位持有资格
-与交付 share 属同一成功 CAS。已建立的最终释放责任继续承担唯一
+与交付 share 属同一成功 CAS。已登记的 Drop 续体及其最终释放责任继续承担唯一
 清理，并覆盖新交付的 share 及其他有效读者的实际 Region、origin、
 Color 和存储有效性。这里没有提交后接收人搜索、动态登记或重复
 析构；普通 share 仍只授予证明过的读权限。

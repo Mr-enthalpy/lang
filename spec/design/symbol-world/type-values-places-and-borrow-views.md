@@ -2122,7 +2122,7 @@ instance.
 
 The operator choice is decided by what the surface means, never by type-rank:
 
-| what the expression reads | `E ref` | `E |> (type ref)` needed |
+| what the expression reads | `E ref` | `E \|> (type ref)` needed |
 | --- | --- | --- |
 | ordinary value with `Val1` | borrow of the complete value-bearing object | no |
 | type-rank value with `Val1` | borrow of the complete object, named by its host Pattern | no |

@@ -1723,17 +1723,19 @@ relocate submits to up(H) without executing Pending. All standard non-root
 locate operations prove universal guaranteed parent submission and lazy
 acceptance before registration. Custom heaps remain ordinary permitted providers.
 A local allocation checks its current Region and establishes its actual
-release policy, including lazy duty when requested. Successful relocate
-reinterprets the covered local heap name in the lifecycle projection as
-its parent. An actual return independently checks name compression under
-the latest Post. Uncovered local dependencies fail at that return boundary.
+release policy. A successful lazy malloc registers its actual Drop continuation
+under [N28](../design/lifetime/heap-stack-and-storage-responsibility.md#n28--分配成功时注册-lazy-drop-不变量). Successful relocate maps only submitted
+support uses that depended on the removed binding to the actual restored
+parent under [N29](../design/lifetime/heap-stack-and-storage-responsibility.md#n29--relocate-精确向直接父层提交且不执行-pending-不变量). An actual return checks compression on
+the latest reached projection. Uncovered local dependencies fail at that return boundary.
 
 [Recursive named Pattern material](../design/patterns-overload/pattern-relations-observation-and-extraction.md#92-recursive-named-pattern-material)
 retains `E name`, `E (E name)name` and deeper groups at each Product or
 sum layer. LHS extraction and RHS construction share structural positions
-through ordinary `$` polarity. Compile producers admit runtime input
-under the ordinary dependency and identity rules, including runtime
-holes and staged names. This source structure has a Raw/Norm carrier;
+through ordinary `$` polarity. The [invocation owner](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers)
+fixes the compile instance and internal Pattern before runtime material is
+realized. Runtime holes and concrete name comparison consume the actual
+runtime material. This source structure has a Raw/Norm carrier;
 Pattern formation, extraction and runtime name identity still need
 their semantic consumers.
 
@@ -1747,6 +1749,9 @@ version.
 
 [Atomic](../design/lifetime/atomic-pattern-transitions-and-causality.md)
 consumes admitted E/transform and actual read/write wrappers over `T Box`.
+The [external typed leaf](../design/patterns-overload/pattern-relations-observation-and-extraction.md#external-typed-leaves) retains the complete type.
+[N46](../design/lifetime/atomic-pattern-transitions-and-causality.md#n46--普通结构真实类型包装与表示预算-定义) requires the actual wrapper construction/extraction
+correspondence.
 Status has trivial Move/Drop and valid atomic comparison within the total
 two-word budget. Arm or protocol change requires full comparison. A
 same-arm read update can replace an actual compared Box with a new read Box

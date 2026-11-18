@@ -167,14 +167,11 @@ Persistent dependency/source encoding remains open, not the propagation law.
 
 ## Lifetime, Color, and access
 
-- `lifetime default E` provisionally attaches to a specific RHS structural
-  Pattern node inside `(...)$`. It completely declares that node's local
-  relation items; descendants compose before ancestors; `lifetime pre` then
-  performs ordinary serial incremental relation modifications. Remaining
-  library syntax/representation questions include the exact `depends_on`,
-  `live_with`, `in` and `[]`/`||=` APIs, origin-line packaging and relation
-  overlap evidence. None authorizes a new type-wide Movable trait or a
-  generic Hoare-logic solver.
+- How should the fixed
+  [Pattern-local lifetime default](../design/patterns-overload/pattern-relations-observation-and-extraction.md#121-pattern-local-lifetime-defaults)
+  be parsed and connected to ordinary evaluation? Remaining library and
+  representation questions include exact relation APIs, origin-line packaging
+  and whole-item overlap evidence.
 - What concrete IR represents LifeName, NameView, LifetimeValue, Region
   generations, and cleanup placement?
 - What source/storage syntax names an open Color vocabulary?
@@ -186,7 +183,7 @@ Persistent dependency/source encoding remains open, not the propagation law.
   and readable observations from recursive named Patterns and staged compile
   producers? Which target layouts preserve the N46 two-word representation
   budget, compare the actual old Box and realize a whole conditional commit?
-  The allocation-time lazy duty, actual read/write type wrappers and role
+  The allocation-time Drop registration, typed wrapper formation and role
   matrix are fixed. The allocation/compare/reclamation implementations remain
   open. F15 retains the extra SeqCst/fence decision.
 

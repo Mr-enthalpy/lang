@@ -443,18 +443,22 @@ declared exception, and missing consumers remain unavailable.
 
 Standard malloc/free enter current top. Non-root locate requires guaranteed
 direct-parent submission. Malloc checks its current local Region and establishes
-the selected release policy. Relocate transfers covered support and Pending duty
+the selected release policy and registers the actual lazy Drop continuation
+when requested. Relocate transfers covered support and Pending duty
 unexecuted, restores the parent binding and reinterprets the covered heap name in
-the lifecycle projection. Return checks compression in the actual continuation.
+the lifecycle projection only for submitted support uses under the removed
+binding. Return checks compression in the actual continuation.
 
 Ordinary recursive Pattern layers retain their names under extraction and
 `$` construction. Compile producers accept admitted runtime inputs without
-reading runtime Val1 to complete outward compile work. `->` is ordinary
+using concrete runtime values to form the instance key or internal Pattern.
+Later runtime values participate in extraction and name comparison. `->` is ordinary
 binary operator sugar outside built-in return syntax. A selected `->::E`
 can form a callable transform using ordinary RHS `_` under its own contract.
 
 [Atomic](spec/design/lifetime/atomic-pattern-transitions-and-causality.md)
-consumes actual read/write wrappers over `T Box` with the N35 closure and
+consumes actual read/write wrappers over `T Box` derived from selected ordinary
+formation and explicit typed leaves. It checks N35 closure and
 two-word representation budget. Arm/protocol changes require full comparison.
 Same-arm read replacement may compare the old Box and return a valid share;
 same-arm write replacement is disallowed. Read exit or replacement discharges

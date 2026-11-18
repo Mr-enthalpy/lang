@@ -94,11 +94,11 @@ they do not run RequiredCapture fulfillment or an initializer.
 | C08 | Env Object forwards heap/IO fields normally | Wrapper grants no new access/lifetime or mandatory Box | D Pattern §11.2 | P ordinary forwarding | None |
 | H01 | mut let heap_locate = heap .. locate(pool); let heap = heap_locate ref forms local heap and explicit current borrow | No self-resolving new binding, owner Move into parent, or hidden parent rewrite | D heap §1 | P LC11 | None |
 | H02 | Subborrow next_pool, replenish outward and terminate at None; standard globalheap exposes the compatible terminal root and terminating root protocol | No reverse prev pointer or pool copy inferred; an incompatible standard root fails its contract, other user Heap/IO need no isomorphism, and root capacity is not infinite | D heap §1 | P standard provider/library | None |
-| H03 | Standard malloc starts at actual top, forms fresh independent allocation origin with Region below heap support, replenishes through next_pool | Physical provider may be outer; no unproved infinite capacity or forged unsafe Post | D heap §2 | P library | None |
-| H04 | Free submits real credentials and responsibility to current top, which handles/forwards | No preference arg or forced historical pool path | D heap §2 | P credentials | None |
-| H05 | Guaranteed submit preserves live Places and reveals old heap | Name deletion/history rewrite cannot substitute for transfer | D heap §4 | P LC11 | None |
+| H03 | Standard malloc starts at actual top and replenishes through next_pool. Its Post establishes fresh origin and support, and registers the actual Drop continuation on lazy success | No infinite capacity, forged unsafe Post or final registration at logical end | D heap §2 | P library | None |
+| H04 | Immediate free routes actual credentials and duty through the current top. Lazy release uses the verified existing registration | No preference arg, forced historical pool path or second Drop registration | D heap §2 | P credentials | None |
+| H05 | Guaranteed submit preserves live Places, restores the direct parent and maps only support uses covered by the actual duty handoff and removed binding | No equivalent mapping from spelling, arbitrary Region lengthening or history rewrite | D heap §4 | P LC11 | None |
 | H06 | At standard locate, every non-root pool proves universal direct-parent Submit and lazy acceptance over all admitted reachable states | No hidden metadata-allocation failure on legal submit | D heap §4 | P guarantee proof | None |
-| H07 | Post-submit free uses transferred complete duties | No orphaned or duplicate release duty | D heap §4 | P library | None |
+| H07 | After Submit, lawful finalization uses the same previously registered lazy Drop continuation at the parent | No speculative drain, orphaned duty or duplicate release | D heap §4 | P library | None |
 | H08 | Standard relocation requests exactly up(H); repeated legal operations traverse one link each | No no-action source rewrite or automatic alias repair | D heap §§4–5 | P library | None |
 | H09 | All local layers submitted eliminates covered local storage barrier | Unsubmitted/uncovered or independent ref barrier still blocks | D heap §5 | P regular proof | None |
 | L01 | Lifecycle-continuation id has equal complete Pre/Post; empty slicing composes that identity | No reset of names/generations/history/cleanup duties, weakening of complete observations or creation of unknown facts | D lifecycle §2.1.8 | P LC10 | None |
@@ -151,7 +151,7 @@ is pending; these rows add no Rust coverage claim.
 
 These are canonical **design targets**; no parser, lifetime source consumer,
 effect execution or proof is claimed as connected by this specification change.
-The source `lifetime default E` annotation is provisionally attached
+The source `lifetime default E` annotation attaches to a named node
 inside RHS structural Pattern material. Its relation API is ordinary compile
 material and actual runtime/source consumers remain pending; no new generic
 Hoare-logic engine is claimed.
@@ -185,25 +185,26 @@ Hoare-logic engine is claimed.
 ## Recursive Pattern, Atomic and Heap acceptance targets
 
 AS01–AS14 trace the redesign through grammar preservation, formation,
-admission, execution and remaining proof obligations. The linked parser and
-Norm goldens exercise syntax only. The contract outcomes below are normative
+admission, execution and remaining proof obligations. The [parser fixture](../../tests/cases/parser/recursive_named_patterns_and_arrow.lang)
+and [Norm fixture](../../tests/cases/norm/recursive_named_patterns_and_arrow.norm)
+exercise syntax. The owner rules for [typed leaves](../design/patterns-overload/pattern-relations-observation-and-extraction.md#external-typed-leaves), [staged inputs](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers), [wrappers](../design/lifetime/atomic-pattern-transitions-and-causality.md#n46--普通结构真实类型包装与表示预算-定义), [registered Drop](../design/lifetime/heap-stack-and-storage-responsibility.md#n28--分配成功时注册-lazy-drop-不变量), [submitted support](../design/lifetime/heap-stack-and-storage-responsibility.md#n29--relocate-精确向直接父层提交且不执行-pending-不变量) define the semantic cases. The contract outcomes below are normative
 scenarios even when the frontend boundary is executable.
 
 | ID | Positive required behavior | Negative or non-derivable boundary |
 |---|---|---|
 | AS01 | Raw/Norm goldens cover bare `uint8`, `uint8::`, `uint8$` and `uint8$$`. Under `R_Gamma`, bare `uint8` binds the classifier rank; the others follow Path and local polarity. | Each flip preserves rank/correspondence and adds no Move, Read or lifecycle action. Formation and extraction remain semantic obligations. |
-| AS02 | Runtime hole syntax is covered in the frontend. A selected compile producer can finish outward compile work and retain a lawful runtime dependency for future concrete name/Pattern formation. | Unavailable runtime Val1 cannot determine a compile interface. Runtime and compile input may produce different names, even if one particular migration gives object equality. Staged name/Pattern consumers pending. |
+| AS02 | The same sealed frame description with two lawful runtime realizations forms the same pre-body CompileInstance and compile-formed internal Pattern. Extraction and concrete runtime name comparison consume the respective actuals. | Missing required compile observation/source description is unavailable. A runtime value cannot choose the internal Pattern or extend the key even when already known. Equal instance/Pattern does not imply equal name. Mixed-stage execution pending. |
 | AS03 | Raw/Norm preserve `E name`, `E (E name)name`, deeper layers, Products and separate name/hole occurrences. Formation uses actual nested correspondences. | Never flatten grouped material into a Product or unify names from matching spelling. `R_Gamma` formation/extraction consumers remain pending. |
 | AS04 | Goldens cover built-in callable `->`, ordinary binary `->`, `->::E` and `.->`. An actual selected ordinary producer can form a callable transform. | Grammar uses syntactic context. Missing or ambiguous producer remains unavailable or ambiguous; no CAS, held authority or old resource follows from syntax. |
 | AS05 | Goldens preserve `_` in transform operands. The selected ordinary constructors interpret omission, same-arm partial matching and compatible inheritance. | No global `_` privilege or invented slot. Cross-arm partial status comparison rejects at applicability/Pre. Producer and Atomic execution pending. |
-| AS06 | A resource-free arm can be admitted. An arm with S must supply an actual `T Box` in the registered read/write type wrapper. | Same-spelled fields, ordinals, locally chosen types, or structural similarity grant no admission. Semantic and target consumers pending. |
+| AS06 | An ordinary selected canonical read/write producer on exact T Box forms a complete wrapper type; an explicit external leaf retains it in E. The actual occupied child supplies ordinary construction/extraction evidence of that Box. | A same-spelled bare structural name supplies no wrapper. A lexical binding or alias preserves the role only when it delivers the actual complete formed type; an eager allocation fails the separate read check. Semantic consumers pending. |
 | AS07 | Single-word or two-word logical representation satisfies the width gate with trivial Status Move/Drop and legal comparison. A target without native dual CAS may realize an equivalent whole commit. | Wider material violates admission. A target missing a validated way to compare and commit the whole state reports unavailable. Backend proof pending. |
 | AS08 | Same-arm read may partially update Status and replace S by comparing actual old Box identity in the single commit. Commit returns valid old share; failed comparison returns formed new Box. | No split comparison, immediate reclamation of old Box while the share lives, or dropped candidate. Execution and memory evidence pending. |
 | AS09 | A write source can replace Box on a real arm change with full comparison of actual source Status and a legal ownership handoff. | Same-arm write replacement rejects, and partial cross-arm matching cannot omit hidden Status. Execution pending. |
 | AS10 | Read-to-write Keep requires actual end of all conflicting readers and closed issuance. Commit grants no share; a fresh CAS may later deliver owned S. | A counter or the first CAS cannot certify the second. Permission and backend proof pending. |
-| AS11 | A lazy malloc success assigns final release before read registration. Read Forget is runtime NoOp; a commit releases slot custody and delivers valid share under the existing duty. | An eager-only Box cannot enter read. No late registration, duplicate destructor or lost release obligation. Allocation and retirement consumers pending. |
-| AS12 | Local malloc succeeds, later HeapRelocate submits covered support and restores parent interpretation, and actual return compresses permitted external input/capture dependencies. | Skipping relocation or retaining an independent invalid local borrow can reject the return. Allocation, projection and escape consumers pending. |
-| AS13 | Two paths share a successful local malloc and differ by their later actual Posts. Pre, commit and Post of each action use the reached state. | No future return choice feeds back into malloc Pre. Drop follows established duties. Full E/heap wiring pending. |
+| AS11 | Lazy malloc success registers the actual Drop continuation for an allocation/generation. Checked adoption may wrap that Box for read. Forget is runtime NoOp; the same registration survives until legitimate final execution. | A copied/stale tag and a matching type cannot convert an eager Box. Neither logical end nor CAS creates another cleanup continuation or duty. Allocation and retirement consumers pending. |
+| AS12 | After legal Submit, a support use tied to the actual removed heap binding and covered allocation maps to the restored direct parent; return compresses the latest reached LifeProject. | An identically named binding, unrelated borrow, foreign generation, skipped or failed Submit establishes no mapping. No Region extension by substitution. Projection and escape consumers pending. |
+| AS13 | Two paths share a local successful malloc and differ by their reached Submit Post. Return uses only the current committed projection, including any later invalidation, and ordinary input/capture correspondence. | Future return choices do not constrain allocation. Return cannot reconstruct missing Submit, extend a dying reference or register Drop. Full E/heap wiring pending. |
 | AS14 | Actual version observation imports its own rf/Past. Compare checks ABA/identity as required. CAS branches preserve Region/Color and their distinct Post, returning all formed candidate I/S on admitted failure. | An old observation grants no freshness, hidden match or share from E?. Unknown consumers/false Pre cannot become Rejected. Source/backend proof pending. |
 
 ## Stage, Policy and two-round calls
@@ -1341,8 +1342,10 @@ tests is neither a lifecycle-source test nor a summary/recursion proof.
 
 The [131 paired cases](lifetime-concurrency-acceptance.md) define the current
 paired source targets. [Evidence by N/M/U/F](lifetime-concurrency-consolidation.md)
-uses D/P/S/C/T/B explicitly. Existing table column P means pending consumer,
-not proof discharged. Full source acceptance for these 131 cases is pending;
+uses D/P/S/C/T/B explicitly. In that ledger P means proof discharged for a
+stated domain and C means a connected semantic consumer. The earlier
+Pending column in this document lists missing work. Full source acceptance
+for these 131 cases is pending;
 Rust event-set/transaction tests and the bounded Python model are separately
 identified. F15 is the sole open extra-memory-order decision; F17 is a fixed
 standard-locate obligation with proof/consumer pending.

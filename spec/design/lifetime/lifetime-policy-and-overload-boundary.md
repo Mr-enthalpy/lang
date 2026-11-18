@@ -2391,13 +2391,14 @@ It is not a fabricated `origin=None` or a fixed-depth universal root.
 无外部名字依赖的普通值不因匿名化凭空取得外部约束。值身份、实际资源所有权与析构责任仍保留；不可 Copy 不自动等于不可进入数组。
 
 Atomic read 槽位退出或替换在成功 CAS 中解除槽位持有资格并交付实际
-有效的 share。分配 Post 已建立唯一最终释放/Drop 责任；运行时
+有效的 share。分配 Post 已登记实际 Drop 续体及其唯一最终释放责任；运行时
 Forget_read 为 NoOp。活借用仍保留真实来源、Region 和存储支持，
 其责任守恒遵循 N22 与 [Atomic N47–N50](atomic-pattern-transitions-and-causality.md)。
 
-HeapRelocate 的成功 Post 对已交接支持建立
+HeapRelocate 的成功 Post 只对实际已交接且由撤除的绑定管辖的支持使用建立
 [局部 heap 名字的生命周期重解释](heap-stack-and-storage-responsibility.md#n29--relocate-精确向直接父层提交且不执行-pending-不变量)。
-返回边界按实际到达状态压缩名字；独立局部借用保留自己的义务，
+名字位置、Region 规则、历史来源和独立借用各自保留。返回边界按
+实际到达状态及已提交对应压缩名字；独立局部借用保留自己的义务，
 无法压缩时在该边界拒绝。局部分配 Pre 只消费实际分配上下文。
 
 ### N22 — 遗忘必须保留可执行的 Drop 和 Move [不变量]

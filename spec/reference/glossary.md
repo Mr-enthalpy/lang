@@ -793,9 +793,17 @@ actual name occurrence, including inside Products and sum alternatives.
 `E name` and `E (E name)name` share ordinary extraction and construction
 structure. Opposite-context construction uses `$`.
 
+A [mixed-stage compile input](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers) contributes complete compile-side
+observations and an admitted runtime source description. Runtime realization
+participates in extraction and concrete name comparison. The compile key and
+internal Pattern remain fixed.
+
 An E-relative transform is a callable value from a selected ordinary
 producer such as `->::E`. Atomic consumes it with a complete E, actual
 read/write-wrapped `T Box` where present, and finite atomic representation.
+The [typed leaf](../design/patterns-overload/pattern-relations-observation-and-extraction.md#external-typed-leaves) and [wrapper formation](../design/lifetime/atomic-pattern-transitions-and-causality.md#n46--普通结构真实类型包装与表示预算-定义) retain actual
+construction evidence. [Lazy malloc](../design/lifetime/heap-stack-and-storage-responsibility.md#n28--分配成功时注册-lazy-drop-不变量) registers the Drop continuation;
+[Submit](../design/lifetime/heap-stack-and-storage-responsibility.md#n29--relocate-精确向直接父层提交且不执行-pending-不变量) reinterprets only actual covered support uses.
 An actual arm/protocol change compares full Status. A same-arm read
 replacement requires old Box identity and preserves the allocation-time
 release duty. N47 specifies Keep and Exit rights. `E?` observes one

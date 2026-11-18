@@ -574,21 +574,23 @@ missing consumers remain unavailable.
 
 
 Standard malloc/free start at the current top. Allocation establishes actual
-support and release policy under local Pre. Relocate submits to the immediate
-parent, preserves history and reinterprets the covered heap name. Return checks
-compression in the actual continuation. An independent local borrow can still
+support and release policy under local Pre. [Lazy malloc](../design/lifetime/heap-stack-and-storage-responsibility.md#n28--分配成功时注册-lazy-drop-不变量) registers the
+actual Drop continuation. [Relocate](../design/lifetime/heap-stack-and-storage-responsibility.md#n29--relocate-精确向直接父层提交且不执行-pending-不变量) reinterprets only submitted support
+uses under the removed binding. Return compresses the actual latest projection. An independent local borrow can still
 block return.
 
 Keep recursive named layers in the ordinary Pattern algebra under extraction
 and `$` construction, including in Products. Compile producers carry admitted
-runtime input dependencies without reading runtime values for outward compile
-results. Preserve real hole identities and avoid deriving name equality from
-a Policy migration.
+runtime input dependencies under the [compile admission rule](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers). The key
+and internal Pattern are compile-determined. Runtime values supply extraction
+and name comparison. Preserve actual hole identities.
 
 `->` uses ordinary operator dispatch outside built-in callable arrows.
 `(->::E)` names an ordinary producer and `.->` an ADL selector. Selected
 constructors interpret `_` at the supplied positions. Atomic consumes a
-formed E and selected transform with actual Box wrappers, the allocation-time
+formed E and selected transform with [actual Box wrappers](../design/lifetime/atomic-pattern-transitions-and-causality.md#n46--普通结构真实类型包装与表示预算-定义). A
+[typed leaf](../design/patterns-overload/pattern-relations-observation-and-extraction.md#external-typed-leaves) obtains its classifier through ordinary lookup/selection.
+Atomic also checks the allocation-time
 read lazy duty and finite Status/representation evidence. N47–N48 define
 complete versus same-arm matching, same-arm read replacement and the Keep/Exit
 results. Read Forget performs no retirement-time registration. Preserve

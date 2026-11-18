@@ -76,7 +76,7 @@ remain architecture acceptance targets, separate from executed substrate tests.
 
 ## Contracts
 
-For Atomic work, follow the [ordinary Pattern association](design/patterns-overload/pattern-relations-observation-and-extraction.md#92-recursive-named-pattern-material),
+For Atomic work, follow the [ordinary recursive Pattern](design/patterns-overload/pattern-relations-observation-and-extraction.md#92-recursive-named-pattern-material),
 [selected ordinary transform/observation](design/patterns-overload/operator-patterns-and-generative-declarations.md#7-ordinary-e-relative-transforms-and-readable-observation)
 and [Atomic execution](design/lifetime/atomic-pattern-transitions-and-causality.md)
 owners in that order. The [status ledger](planning/lifetime-concurrency-consolidation.md)
@@ -92,6 +92,12 @@ separates their definitions from pending source, proof and backend gates.
 - [`compile-construction-boundary.md`](contracts/compile-construction-boundary.md)
 - [`policy-migration.md`](contracts/policy-migration.md)
 - [Heap/IO/effect migration closure and acceptance](planning/heap-io-effect-migration.md)
+
+The handoffs for [typed Pattern leaves](design/patterns-overload/pattern-relations-observation-and-extraction.md#external-typed-leaves), [mixed-stage invocation](design/static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers),
+[Atomic wrapper admission](design/lifetime/atomic-pattern-transitions-and-causality.md#n46--普通结构真实类型包装与表示预算-定义), [allocation-time Drop registration](design/lifetime/heap-stack-and-storage-responsibility.md#n28--分配成功时注册-lazy-drop-不变量)
+and [committed Heap submission](design/lifetime/heap-stack-and-storage-responsibility.md#n29--relocate-精确向直接父层提交且不执行-pending-不变量) identify the canonical relations.
+The [definition and consumer status](planning/lifetime-concurrency-consolidation.md#definition-and-consumer-status)
+tracks their source wiring and the open memory-order choice.
 
 ## Open questions
 

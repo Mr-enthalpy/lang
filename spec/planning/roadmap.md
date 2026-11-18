@@ -471,8 +471,8 @@ substrate tests do not establish HA execution.
 
 [Current evidence and F01–F19](lifetime-concurrency-consolidation.md) own the
 normative/proof status; [the 131 paired source targets](lifetime-concurrency-acceptance.md)
-are not executed source coverage. N01–N50 and U01–U12 are distributed across
-actual topic owners. F19 tracks pending recursive Pattern formation, staged producer identity,
+are not executed source coverage. The active N clauses and U01–U12 live across
+actual topic owners. F19 tracks source wiring for the defined typed wrapper, mixed-stage identity,
 E-relative transforms, matching, readable observation and resource/permission
 proofs. Raw/Norm goldens cover recursive named layers, sum choice, runtime
 hole syntax and contextual arrow. F15 retains the extra-order decision.
@@ -492,8 +492,10 @@ containers; F11/F12/F17 standard heap/lazy/universal locate; F13/F14/F16/F18
 atomic resource/causal/backend/protocol consumers; F19 additionally
 covers ordinary Pattern/transform consumers, full versus same-arm comparison,
 same-arm read replacement and allocation-time lazy release, readable E `?`,
-and complete Rejected I/S return. Heap handoff and actual boundary compression
-consume the committed direct-parent name reinterpretation.
+and complete Rejected I/S return. Heap handoff transfers the actual Drop registration and maps only covered
+support uses. Actual return compresses the latest committed projection.
+The [status ledger](lifetime-concurrency-consolidation.md#definition-and-consumer-status)
+separates defined rules awaiting consumers from the open F15 choice.
 Connect new facts to actual host dependencies at each step. Missing domains remain unavailable; no id,
 None/default origin, empty Post, cloned owner, hidden Box or backend substitute
 may fill them. F15 alone needs an additional semantic-order decision.

@@ -6,7 +6,7 @@ Program
           None
         pattern:
           Binder
-            TextName read
+            TextName ReadStorage
         annotation:
           None
         with_clause:
@@ -15,6 +15,9 @@ Program
           Expr
             Pipe
               Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name ReadBox
                 OperatorExpr
                   Atom
                     NavPath terminated
@@ -28,7 +31,7 @@ Program
           None
         pattern:
           Binder
-            TextName write
+            TextName WriteStorage
         annotation:
           None
         with_clause:
@@ -37,6 +40,9 @@ Program
           Expr
             Pipe
               Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name WriteBox
                 OperatorExpr
                   Atom
                     NavPath terminated
@@ -92,11 +98,13 @@ Program
                                                                             Pipe
                                                                               Segment has_incoming=false
                                                                                 OperatorExpr
-                                                                                  Atom
-                                                                                    Name Source
+                                                                                  OperatorSugar fixity=Postfix operator="$"
+                                                                                    arg:
+                                                                                      Atom
+                                                                                        Name ReadStorage
                                                                                 OperatorExpr
                                                                                   Atom
-                                                                                    Name read
+                                                                                    Name resource
                                                                     Product
                                                                       elements:
                                                                         Expr
@@ -133,11 +141,13 @@ Program
                                                                             Pipe
                                                                               Segment has_incoming=false
                                                                                 OperatorExpr
-                                                                                  Atom
-                                                                                    Name Source
+                                                                                  OperatorSugar fixity=Postfix operator="$"
+                                                                                    arg:
+                                                                                      Atom
+                                                                                        Name WriteStorage
                                                                                 OperatorExpr
                                                                                   Atom
-                                                                                    Name write
+                                                                                    Name resource
                                                                     OperatorExpr
                                                                       Atom
                                                                         Group

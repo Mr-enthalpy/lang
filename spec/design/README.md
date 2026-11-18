@@ -97,7 +97,7 @@ Type operations use the compile algebra. See the
 
 ## Lifecycle/concurrency implementation evidence
 
-The [N01–N50/M01–M31/U01–U12/F01–F19 ledger](../planning/lifetime-concurrency-consolidation.md)
+The [active N/M/U/F ledger](../planning/lifetime-concurrency-consolidation.md)
 records actual ownership, baseline, carrier/source coverage and proof gates.
 The [131 paired cases](../planning/lifetime-concurrency-acceptance.md) are
 normative source targets, not executed source tests. Definitions do not imply proofs or connected consumers;

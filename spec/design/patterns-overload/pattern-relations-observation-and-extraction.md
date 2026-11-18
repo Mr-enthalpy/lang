@@ -805,8 +805,10 @@ Where an ordinary selected compile producer supplies name or Pattern
 material (including under `$`), the
 [invocation rules](../static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers)
 apply. For `runtime let <val, length> val: length range = expr`, extraction
-can bind `length` with runtime Policy under the ordinary hole rules. The
-compile-determined structure may carry admitted runtime dependencies.
+can bind `length` with runtime Policy under the ordinary hole rules.
+The internal Pattern is formed from compile observations. Runtime material
+supplies extraction operands and concrete name observations at their actual
+frontiers; it does not participate in internal Pattern identity.
 When the Pattern rank is runtime, any present Val1 rank is runtime under
 the Policy rank law. This constrains the Object rank pair independently
 of the callable's P1/P2.
@@ -1240,9 +1242,30 @@ formation action. General `$` is still an interpretation-polarity flip, not an
 extra lifecycle action at every written occurrence. Neither a field signature
 nor a generated name substitutes for registered structural evidence.
 
+### External typed leaves
+
+A complete type expression `e` may supply an external leaf in structural
+context. For `(e$ n)`, apply `Interpret(e$,S)=Interpret(e,V)`. Evaluate the
+value expression normally and use its actual complete classifier as the
+leaf source in the selected structural formation. A lexical value binding
+may supply that classifier. A Path may also supply it through its ordinary
+completed name/resident read, including through an alias. The enclosing
+formation must establish the actual `DirectPatternChild` and `LeafSource`
+correspondence for `n`. A bare structural name at the same position follows
+ordinary S navigation and extraction. Equal spelling cannot supply the value
+read, complete classifier or child witness.
+
+For a constructed value at such a node, ordinary selected construction
+establishes the complete child, its source correspondence and its actual
+material. `R_Gamma` consumes that evidence when extracting or observing
+the child. This is how a formed Pattern retains a concrete type-wrapper
+route. Neither syntax, a bare field label, nor layout equality forms a
+wrapper. [Atomic N46](../lifetime/atomic-pattern-transitions-and-causality.md#n46--普通结构真实类型包装与表示预算-定义)
+specializes the ordinary witnesses for its two resource wrappers.
+
 ### 12.1 Pattern-local lifetime defaults
 
-The provisional `lifetime default E` annotation is attached to a *particular
+The `lifetime default E` annotation is attached to a *particular
 named node* inside RHS structural Pattern material `(...)$`:
 
 ```lang

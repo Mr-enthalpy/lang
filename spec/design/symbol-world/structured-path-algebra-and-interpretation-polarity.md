@@ -526,7 +526,8 @@ For recursive named Patterns, the flip preserves the same actual structural
 positions across construction and extraction. A compile producer invoked by
 the selected interpretation follows the [ordinary staged-input rules](../static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers).
 A name that depends on runtime input uses that actual input at the lawful
-frontier. Polarity does not manufacture a compile-time NameValue for it.
+frontier. The sealed compile instance and compile-formed internal Pattern stay
+fixed. Polarity does not manufacture a compile-time NameValue for it.
 
 ### 4.2 No textual macros or implicit binders
 
