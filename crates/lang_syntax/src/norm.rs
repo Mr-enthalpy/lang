@@ -2267,6 +2267,9 @@ fn normalize_operator_expr(expr: &OperatorExprAst) -> NormExpr {
             args,
             span,
         } => normalize_operator_sugar(operator, *fixity, args, *span),
+        OperatorExprKind::QualifiedBinarySugar { lhs, target, rhs } => {
+            normalize_binary_operator(lhs, rhs, normalize_operator_expr(target), expr.span)
+        }
         OperatorExprKind::NavPath {
             components,
             span,
@@ -2409,26 +2412,12 @@ fn normalize_operator_sugar(
                 },
             )
         }
-        OperatorFixity::Binary if args.len() == 2 => {
-            let source = NormProduct {
-                elements: vec![
-                    NormProductElem::Expr(normalize_operator_expr(&args[0])),
-                    NormProductElem::Expr(normalize_operator_expr(&args[1])),
-                ],
-                origin: NormOrigin::Generated {
-                    rule: NormRule::OperatorLowering,
-                    span,
-                },
-            };
-            make_call(
-                source,
-                operator_target(operator, NormOperatorFixity::Binary, 2),
-                NormOrigin::Generated {
-                    rule: NormRule::OperatorLowering,
-                    span,
-                },
-            )
-        }
+        OperatorFixity::Binary if args.len() == 2 => normalize_binary_operator(
+            &args[0],
+            &args[1],
+            operator_target(operator, NormOperatorFixity::Binary, 2),
+            span,
+        ),
         _ => NormExpr::Unsupported {
             raw_kind_summary: format!(
                 "operator sugar fixity={} arity={}",
@@ -2441,6 +2430,26 @@ fn normalize_operator_sugar(
             },
         },
     }
+}
+
+fn normalize_binary_operator(
+    lhs: &OperatorExprAst,
+    rhs: &OperatorExprAst,
+    target: NormExpr,
+    span: Span,
+) -> NormExpr {
+    let origin = NormOrigin::Generated {
+        rule: NormRule::OperatorLowering,
+        span,
+    };
+    let source = NormProduct {
+        elements: vec![
+            NormProductElem::Expr(normalize_operator_expr(lhs)),
+            NormProductElem::Expr(normalize_operator_expr(rhs)),
+        ],
+        origin: origin.clone(),
+    };
+    make_call(source, target, origin)
 }
 
 fn normalize_member_sugar(object: NormExpr, selector: &SelectorAst, span: Span) -> NormExpr {
@@ -3871,7 +3880,7 @@ fn skeleton_span(skeleton: &CanonicalSkeletonAst) -> Span {
 
 fn annotation_operator_pattern_summary(kind: &OperatorExprKind) -> String {
     match kind {
-        OperatorExprKind::OperatorSugar { .. } => {
+        OperatorExprKind::OperatorSugar { .. } | OperatorExprKind::QualifiedBinarySugar { .. } => {
             "operator sugar in annotation pattern".to_string()
         }
         OperatorExprKind::MemberSugar { .. } => "member sugar in annotation pattern".to_string(),

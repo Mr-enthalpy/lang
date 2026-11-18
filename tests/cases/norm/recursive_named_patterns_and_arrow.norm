@@ -1,4 +1,4 @@
-NormProgram origin=Source@1:1[0..1043]
+NormProgram origin=Source@1:1[0..1148]
   forms:
     Form Let
       Decl Let origin=Source@1:1[0..38]
@@ -563,8 +563,8 @@ NormProgram origin=Source@1:1[0..1043]
                     Name "->" origin=Generated(DotNameLowering)@25:16[738..741]
                     Name "adl" origin=Generated(DotNameLowering)@25:16[738..741]
     Form Let
-      Decl Let origin=Source@26:1[743..817]
-        BindingSlot let=true origin=Generated(PatternNormalize)@26:5[747..817]
+      Decl Let origin=Source@26:1[743..815]
+        BindingSlot let=true origin=Generated(PatternNormalize)@26:5[747..815]
           deduce:
             None
           value_pattern:
@@ -574,9 +574,9 @@ NormProgram origin=Source@1:1[0..1043]
           with_clause:
             None
           initializer:
-            Call origin=Derived(SecondLegalityRepair; repaired product target in expression chain)@26:17[759..817]
+            Call origin=Generated(OperatorLowering)@26:17[759..815]
               source:
-                Product origin=Generated(ProductLift)@26:18[760..783]
+                Product origin=Generated(OperatorLowering)@26:17[759..815]
                   elements:
                     ExprElem
                       Call origin=Derived(SecondLegalityRepair; repaired product-before-target)@26:18[760..783]
@@ -603,206 +603,196 @@ NormProgram origin=Source@1:1[0..1043]
                             components:
                               Name "A" origin=Source@26:37[779..780]
                               Name "E" origin=Source@26:40[782..783]
+                    ExprElem
+                      Call origin=Derived(PipeFallback; ordinary expression-chain growth)@26:50[792..814]
+                        source:
+                          Product origin=Generated(ProductLift)@26:51[793..802]
+                            elements:
+                              ExprElem
+                                Name "newSource" origin=Source@26:51[793..802]
+                        target:
+                          Call origin=Derived(PipeFallback; ordinary expression-chain growth)@26:62[804..813]
+                            source:
+                              Product origin=Generated(ProductLift)@26:62[804..808]
+                                elements:
+                                  ExprElem
+                                    Name "val3" origin=Source@26:62[804..808]
+                            target:
+                              Nav origin=Source@26:67[809..813]
+                                components:
+                                  Name "B" origin=Source@26:67[809..810]
+                                  Name "E" origin=Source@26:70[812..813]
               target:
-                Call origin=Derived(SecondLegalityRepair; repaired product-before-target)@26:17[759..817]
-                  source:
-                    Product origin=Generated(ProductLift)@26:43[785..792]
-                      elements:
-                        ExprElem
-                          Nav origin=Source@26:44[786..791]
-                            components:
-                              Operator "->" origin=Source@26:44[786..788]
-                              Name "E" origin=Source@26:48[790..791]
-                  target:
-                    Call origin=Derived(PipeFallback; ordinary expression-chain growth)@26:52[794..816]
-                      source:
-                        Product origin=Generated(ProductLift)@26:53[795..804]
-                          elements:
-                            ExprElem
-                              Name "newSource" origin=Source@26:53[795..804]
-                      target:
-                        Call origin=Derived(PipeFallback; ordinary expression-chain growth)@26:64[806..815]
-                          source:
-                            Product origin=Generated(ProductLift)@26:64[806..810]
-                              elements:
-                                ExprElem
-                                  Name "val3" origin=Source@26:64[806..810]
-                          target:
-                            Nav origin=Source@26:69[811..815]
-                              components:
-                                Name "B" origin=Source@26:69[811..812]
-                                Name "E" origin=Source@26:72[814..815]
+                Nav origin=Source@26:43[785..790]
+                  components:
+                    Operator "->" origin=Source@26:43[785..787]
+                    Name "E" origin=Source@26:47[789..790]
     Form Let
-      Decl Let origin=Source@27:1[819..898]
-        BindingSlot let=true origin=Generated(PatternNormalize)@27:5[823..898]
+      Decl Let origin=Source@27:1[817..894]
+        BindingSlot let=true origin=Generated(PatternNormalize)@27:5[821..894]
           deduce:
             None
           value_pattern:
-            Binder "keepSource" origin=Source@27:5[823..833]
+            Binder "keepSource" origin=Source@27:5[821..831]
           annotation:
             None
           with_clause:
             None
           initializer:
-            Call origin=Derived(SecondLegalityRepair; repaired product target in expression chain)@27:18[836..898]
+            Call origin=Generated(OperatorLowering)@27:18[834..894]
               source:
-                Product origin=Generated(ProductLift)@27:19[837..872]
+                Product origin=Generated(OperatorLowering)@27:18[834..894]
                   elements:
                     ExprElem
-                      Call origin=Derived(SecondLegalityRepair; repaired product-before-target)@27:19[837..872]
+                      Call origin=Derived(SecondLegalityRepair; repaired product-before-target)@27:19[835..870]
                         source:
-                          Product origin=Source@27:19[837..867]
+                          Product origin=Source@27:19[835..865]
                             elements:
                               ExprElem
-                                Call origin=Derived(PipeFallback; ordinary expression-chain growth)@27:20[838..851]
+                                Call origin=Derived(PipeFallback; ordinary expression-chain growth)@27:20[836..849]
                                   source:
-                                    Product origin=Generated(ProductLift)@27:20[838..842]
+                                    Product origin=Generated(ProductLift)@27:20[836..840]
                                       elements:
                                         ExprElem
-                                          Name "val1" origin=Source@27:20[838..842]
+                                          Name "val1" origin=Source@27:20[836..840]
                                   target:
-                                    Nav origin=Source@27:25[843..851]
+                                    Nav origin=Source@27:25[841..849]
                                       components:
-                                        Name "n1" origin=Source@27:25[843..845]
-                                        Name "A" origin=Source@27:29[847..848]
-                                        Name "E" origin=Source@27:32[850..851]
+                                        Name "n1" origin=Source@27:25[841..843]
+                                        Name "A" origin=Source@27:29[845..846]
+                                        Name "E" origin=Source@27:32[848..849]
                               ExprElem
-                                Call origin=Derived(PipeFallback; ordinary expression-chain growth)@27:35[853..866]
+                                Call origin=Derived(PipeFallback; ordinary expression-chain growth)@27:35[851..864]
                                   source:
-                                    Product origin=Generated(ProductLift)@27:35[853..857]
+                                    Product origin=Generated(ProductLift)@27:35[851..855]
                                       elements:
                                         ExprElem
-                                          Name "val2" origin=Source@27:35[853..857]
+                                          Name "val2" origin=Source@27:35[851..855]
                                   target:
-                                    Nav origin=Source@27:40[858..866]
+                                    Nav origin=Source@27:40[856..864]
                                       components:
-                                        Name "n2" origin=Source@27:40[858..860]
-                                        Name "A" origin=Source@27:44[862..863]
-                                        Name "E" origin=Source@27:47[865..866]
+                                        Name "n2" origin=Source@27:40[856..858]
+                                        Name "A" origin=Source@27:44[860..861]
+                                        Name "E" origin=Source@27:47[863..864]
                         target:
-                          Nav origin=Source@27:50[868..872]
+                          Nav origin=Source@27:50[866..870]
                             components:
-                              Name "A" origin=Source@27:50[868..869]
-                              Name "E" origin=Source@27:53[871..872]
+                              Name "A" origin=Source@27:50[866..867]
+                              Name "E" origin=Source@27:53[869..870]
+                    ExprElem
+                      Call origin=Derived(PipeFallback; ordinary expression-chain growth)@27:63[879..893]
+                        source:
+                          Product origin=Generated(ProductLift)@27:64[880..881]
+                            elements:
+                              ExprElem
+                                UniverseRank origin=Source@27:64[880..881]
+                        target:
+                          Call origin=Derived(PipeFallback; ordinary expression-chain growth)@27:67[883..892]
+                            source:
+                              Product origin=Generated(ProductLift)@27:67[883..887]
+                                elements:
+                                  ExprElem
+                                    Name "val3" origin=Source@27:67[883..887]
+                            target:
+                              Nav origin=Source@27:72[888..892]
+                                components:
+                                  Name "B" origin=Source@27:72[888..889]
+                                  Name "E" origin=Source@27:75[891..892]
               target:
-                Call origin=Derived(SecondLegalityRepair; repaired product-before-target)@27:18[836..898]
-                  source:
-                    Product origin=Generated(ProductLift)@27:56[874..881]
-                      elements:
-                        ExprElem
-                          Nav origin=Source@27:57[875..880]
-                            components:
-                              Operator "->" origin=Source@27:57[875..877]
-                              Name "E" origin=Source@27:61[879..880]
-                  target:
-                    Call origin=Derived(PipeFallback; ordinary expression-chain growth)@27:65[883..897]
-                      source:
-                        Product origin=Generated(ProductLift)@27:66[884..885]
-                          elements:
-                            ExprElem
-                              UniverseRank origin=Source@27:66[884..885]
-                      target:
-                        Call origin=Derived(PipeFallback; ordinary expression-chain growth)@27:69[887..896]
-                          source:
-                            Product origin=Generated(ProductLift)@27:69[887..891]
-                              elements:
-                                ExprElem
-                                  Name "val3" origin=Source@27:69[887..891]
-                          target:
-                            Nav origin=Source@27:74[892..896]
-                              components:
-                                Name "B" origin=Source@27:74[892..893]
-                                Name "E" origin=Source@27:77[895..896]
+                Nav origin=Source@27:56[872..877]
+                  components:
+                    Operator "->" origin=Source@27:56[872..874]
+                    Name "E" origin=Source@27:60[876..877]
     Form Let
-      Decl Let origin=Source@28:1[900..930]
-        BindingSlot let=true origin=Generated(PatternNormalize)@28:5[904..930]
+      Decl Let origin=Source@28:1[896..926]
+        BindingSlot let=true origin=Generated(PatternNormalize)@28:5[900..926]
           deduce:
             None
           value_pattern:
-            Binder "compare" origin=Source@28:5[904..911]
+            Binder "compare" origin=Source@28:5[900..907]
           annotation:
             None
           with_clause:
             None
           initializer:
-            Call origin=Generated(OperatorLowering)@28:15[914..930]
+            Call origin=Generated(OperatorLowering)@28:15[910..926]
               source:
-                Product origin=Generated(OperatorLowering)@28:15[914..930]
+                Product origin=Generated(OperatorLowering)@28:15[910..926]
                   elements:
                     ExprElem
-                      Call origin=Generated(OperatorLowering)@28:15[914..920]
+                      Call origin=Generated(OperatorLowering)@28:15[910..916]
                         source:
-                          Product origin=Generated(OperatorLowering)@28:15[914..920]
+                          Product origin=Generated(OperatorLowering)@28:15[910..916]
                             elements:
                               ExprElem
-                                Name "a" origin=Source@28:15[914..915]
+                                Name "a" origin=Source@28:15[910..911]
                               ExprElem
-                                Name "b" origin=Source@28:20[919..920]
+                                Name "b" origin=Source@28:20[915..916]
                         target:
-                          OperatorTarget spelling="==" fixity=Binary arity=2 origin=Source@28:17[916..918]
+                          OperatorTarget spelling="==" fixity=Binary arity=2 origin=Source@28:17[912..914]
                     ExprElem
-                      Call origin=Generated(OperatorLowering)@28:25[924..930]
+                      Call origin=Generated(OperatorLowering)@28:25[920..926]
                         source:
-                          Product origin=Generated(OperatorLowering)@28:25[924..930]
+                          Product origin=Generated(OperatorLowering)@28:25[920..926]
                             elements:
                               ExprElem
-                                Name "c" origin=Source@28:25[924..925]
+                                Name "c" origin=Source@28:25[920..921]
                               ExprElem
-                                Name "d" origin=Source@28:30[929..930]
+                                Name "d" origin=Source@28:30[925..926]
                         target:
-                          OperatorTarget spelling="==" fixity=Binary arity=2 origin=Source@28:27[926..928]
+                          OperatorTarget spelling="==" fixity=Binary arity=2 origin=Source@28:27[922..924]
               target:
-                OperatorTarget spelling="->" fixity=Binary arity=2 origin=Source@28:22[921..923]
+                OperatorTarget spelling="->" fixity=Binary arity=2 origin=Source@28:22[917..919]
     Form Let
-      Decl Let origin=Source@29:1[932..1003]
-        BindingSlot let=true origin=Generated(PatternNormalize)@29:5[936..1003]
+      Decl Let origin=Source@29:1[928..999]
+        BindingSlot let=true origin=Generated(PatternNormalize)@29:5[932..999]
           deduce:
             None
           value_pattern:
-            PatternProduct origin=Generated(PatternNormalize)@29:5[936..996]
+            PatternProduct origin=Generated(PatternNormalize)@29:5[932..992]
               elements:
                 BindingSlotElem
-                  BindingSlot let=true origin=Generated(PatternNormalize)@29:6[937..962]
+                  BindingSlot let=true origin=Generated(PatternNormalize)@29:6[933..958]
                     deduce:
-                      HoleDecl "idx" origin=Generated(PatternNormalize)@29:11[942..945]
+                      HoleDecl "idx" origin=Generated(PatternNormalize)@29:11[938..941]
                         annotation:
                           None
                     value_pattern:
-                      Binder "a" origin=Source@29:16[947..948]
+                      Binder "a" origin=Source@29:16[943..944]
                     annotation:
-                      AnnotationPattern origin=Generated(PatternNormalize)@29:19[950..962]
-                        PatternSequence origin=Generated(PatternNormalize)@29:19[950..962]
+                      AnnotationPattern origin=Generated(PatternNormalize)@29:19[946..958]
+                        PatternSequence origin=Generated(PatternNormalize)@29:19[946..958]
                           elements:
-                            PatternName "E" origin=Source@29:19[950..951]
-                            PatternNamedLayer origin=Source@29:21[952..962] group=@29:21[952..959]
-                              PatternSequence origin=Generated(PatternNormalize)@29:22[953..958]
+                            PatternName "E" origin=Source@29:19[946..947]
+                            PatternNamedLayer origin=Source@29:21[948..958] group=@29:21[948..955]
+                              PatternSequence origin=Generated(PatternNormalize)@29:22[949..954]
                                 elements:
-                                  PatternName "E" origin=Source@29:22[953..954]
-                                  HoleRef "idx" origin=Source@29:24[955..958]
-                              HoleRef "idx" origin=Source@29:28[959..962]
+                                  PatternName "E" origin=Source@29:22[949..950]
+                                  HoleRef "idx" origin=Source@29:24[951..954]
+                              HoleRef "idx" origin=Source@29:28[955..958]
                     with_clause:
                       None
                     initializer:
                       None
                 BindingSlotElem
-                  BindingSlot let=true origin=Generated(PatternNormalize)@29:33[964..995]
+                  BindingSlot let=true origin=Generated(PatternNormalize)@29:33[960..991]
                     deduce:
-                      HoleDecl "other" origin=Generated(PatternNormalize)@29:38[969..974]
+                      HoleDecl "other" origin=Generated(PatternNormalize)@29:38[965..970]
                         annotation:
                           None
                     value_pattern:
-                      Binder "b" origin=Source@29:45[976..977]
+                      Binder "b" origin=Source@29:45[972..973]
                     annotation:
-                      AnnotationPattern origin=Generated(PatternNormalize)@29:48[979..995]
-                        PatternSequence origin=Generated(PatternNormalize)@29:48[979..995]
+                      AnnotationPattern origin=Generated(PatternNormalize)@29:48[975..991]
+                        PatternSequence origin=Generated(PatternNormalize)@29:48[975..991]
                           elements:
-                            PatternName "E" origin=Source@29:48[979..980]
-                            PatternNamedLayer origin=Source@29:50[981..995] group=@29:50[981..990]
-                              PatternSequence origin=Generated(PatternNormalize)@29:51[982..989]
+                            PatternName "E" origin=Source@29:48[975..976]
+                            PatternNamedLayer origin=Source@29:50[977..991] group=@29:50[977..986]
+                              PatternSequence origin=Generated(PatternNormalize)@29:51[978..985]
                                 elements:
-                                  PatternName "E" origin=Source@29:51[982..983]
-                                  HoleRef "other" origin=Source@29:53[984..989]
-                              HoleRef "other" origin=Source@29:59[990..995]
+                                  PatternName "E" origin=Source@29:51[978..979]
+                                  HoleRef "other" origin=Source@29:53[980..985]
+                              HoleRef "other" origin=Source@29:59[986..991]
                     with_clause:
                       None
                     initializer:
@@ -812,28 +802,84 @@ NormProgram origin=Source@1:1[0..1043]
           with_clause:
             None
           initializer:
-            Name "expr" origin=Source@29:68[999..1003]
+            Name "expr" origin=Source@29:68[995..999]
     Form Let
-      Decl Let origin=Source@30:1[1005..1041]
-        BindingSlot let=true origin=Generated(PatternNormalize)@30:5[1009..1041]
+      Decl Let origin=Source@30:1[1001..1037]
+        BindingSlot let=true origin=Generated(PatternNormalize)@30:5[1005..1037]
           deduce:
-            HoleDecl "idx" origin=Generated(PatternNormalize)@30:6[1010..1013]
+            HoleDecl "idx" origin=Generated(PatternNormalize)@30:6[1006..1009]
               annotation:
                 None
           value_pattern:
-            Binder "fresh" origin=Source@30:11[1015..1020]
+            Binder "fresh" origin=Source@30:11[1011..1016]
           annotation:
-            AnnotationPattern origin=Generated(PatternNormalize)@30:18[1022..1034]
-              PatternSequence origin=Generated(PatternNormalize)@30:18[1022..1034]
+            AnnotationPattern origin=Generated(PatternNormalize)@30:18[1018..1030]
+              PatternSequence origin=Generated(PatternNormalize)@30:18[1018..1030]
                 elements:
-                  PatternName "E" origin=Source@30:18[1022..1023]
-                  PatternNamedLayer origin=Source@30:20[1024..1034] group=@30:20[1024..1031]
-                    PatternSequence origin=Generated(PatternNormalize)@30:21[1025..1030]
+                  PatternName "E" origin=Source@30:18[1018..1019]
+                  PatternNamedLayer origin=Source@30:20[1020..1030] group=@30:20[1020..1027]
+                    PatternSequence origin=Generated(PatternNormalize)@30:21[1021..1026]
                       elements:
-                        PatternName "E" origin=Source@30:21[1025..1026]
-                        HoleRef "idx" origin=Source@30:23[1027..1030]
-                    HoleRef "idx" origin=Source@30:27[1031..1034]
+                        PatternName "E" origin=Source@30:21[1021..1022]
+                        HoleRef "idx" origin=Source@30:23[1023..1026]
+                    HoleRef "idx" origin=Source@30:27[1027..1030]
           with_clause:
             None
           initializer:
-            Name "expr" origin=Source@30:33[1037..1041]
+            Name "expr" origin=Source@30:33[1033..1037]
+    Form Let
+      Decl Let origin=Source@31:1[1039..1088]
+        BindingSlot let=true origin=Generated(PatternNormalize)@31:5[1043..1088]
+          deduce:
+            HoleDecl "inner" origin=Generated(PatternNormalize)@31:6[1044..1049]
+              annotation:
+                None
+            HoleDecl "outer" origin=Generated(PatternNormalize)@31:13[1051..1056]
+              annotation:
+                None
+          value_pattern:
+            Binder "value" origin=Source@31:20[1058..1063]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@31:27[1065..1081]
+              PatternSequence origin=Generated(PatternNormalize)@31:27[1065..1081]
+                elements:
+                  PatternName "E" origin=Source@31:27[1065..1066]
+                  PatternNamedLayer origin=Source@31:29[1067..1081] group=@31:29[1067..1076]
+                    PatternSequence origin=Generated(PatternNormalize)@31:30[1068..1075]
+                      elements:
+                        PatternName "E" origin=Source@31:30[1068..1069]
+                        HoleRef "inner" origin=Source@31:32[1070..1075]
+                    HoleRef "outer" origin=Source@31:38[1076..1081]
+          with_clause:
+            None
+          initializer:
+            Name "expr" origin=Source@31:46[1084..1088]
+    Form Let
+      Decl Let origin=Source@32:1[1090..1146]
+        BindingSlot let=true origin=Generated(PatternNormalize)@32:5[1094..1146]
+          deduce:
+            HoleDecl "idx" origin=Generated(PatternNormalize)@32:6[1095..1098]
+              annotation:
+                None
+          value_pattern:
+            Binder "conflict" origin=Source@32:11[1100..1108]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@32:21[1110..1129]
+              PatternSequence origin=Generated(PatternNormalize)@32:21[1110..1129]
+                elements:
+                  PatternName "E" origin=Source@32:21[1110..1111]
+                  PatternNamedLayer origin=Source@32:23[1112..1129] group=@32:23[1112..1126]
+                    PatternSequence origin=Generated(PatternNormalize)@32:24[1113..1125]
+                      elements:
+                        PatternName "E" origin=Source@32:24[1113..1114]
+                        PatternNamedLayer origin=Source@32:26[1115..1125] group=@32:26[1115..1122]
+                          PatternSequence origin=Generated(PatternNormalize)@32:27[1116..1121]
+                            elements:
+                              PatternName "E" origin=Source@32:27[1116..1117]
+                              HoleRef "idx" origin=Source@32:29[1118..1121]
+                          HoleRef "idx" origin=Source@32:33[1122..1125]
+                    HoleRef "idx" origin=Source@32:37[1126..1129]
+          with_clause:
+            None
+          initializer:
+            Name "differentNames" origin=Source@32:43[1132..1146]

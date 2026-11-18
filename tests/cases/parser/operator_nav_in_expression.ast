@@ -7,11 +7,17 @@ Program
             Atom
               Name value
           OperatorExpr
-            NavPath
-              components:
-                component Operator +
-                component Name int
-                component Name std
+            Atom
+              Group
+                Expr
+                  Pipe
+                    Segment has_incoming=false
+                      OperatorExpr
+                        NavPath
+                          components:
+                            component Operator +
+                            component Name int
+                            component Name std
           OperatorExpr
             Atom
               Name next

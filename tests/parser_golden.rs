@@ -1,5 +1,15 @@
 use std::fs;
 #[test]
+fn qualified_infix() {
+    assert_parser_case("qualified_infix", false);
+}
+
+#[test]
+fn qualified_infix_errors() {
+    assert_parser_case("qualified_infix_errors", true);
+}
+
+#[test]
 fn recursive_named_patterns_and_arrow() {
     assert_parser_case("recursive_named_patterns_and_arrow", false);
 }

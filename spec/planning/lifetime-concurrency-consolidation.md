@@ -7,6 +7,10 @@
 - The preserved finite Region-carrier and bounded-model evidence has its own recorded commit/hash scope below. It is not evidence of a connected Atomic, transform, parser or backend consumer.
 - Current authority is the topic-owner map. This ledger records dependencies and D/P/S/C/T/B status, not another semantic definition.
 
+Clause identifiers are stable keys. The owner headings and ledger enumerate
+the active ranges `N01–N29` and `N31–N50`. Gaps carry no obligations and
+existing identifiers retain their meaning.
+
 ## Source-consumer status
 
 The connected `lifecycle.rs` slice carries discrete events, supplied Pre/Post
@@ -40,6 +44,8 @@ the extra ordering decision.
 | Mixed-stage inputs | [Invocation](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers) | Defined | Source consumer pending |
 | Lazy registration | [N28](../design/lifetime/heap-stack-and-storage-responsibility.md#n28--分配成功时注册-lazy-drop-不变量) | Defined | Source consumer pending |
 | Heap submission | [N29](../design/lifetime/heap-stack-and-storage-responsibility.md#n29--relocate-精确向直接父层提交且不执行-pending-不变量) | Defined | Source consumer pending |
+| Qualified infix | [Operator Patterns](../design/patterns-overload/operator-patterns-and-generative-declarations.md#qualified-binary-operator-targets) | Defined | Raw/Norm covered |
+| Named layers | [Pattern relation](../design/patterns-overload/pattern-relations-observation-and-extraction.md#formation-and-relational-derivation) | Defined | Source consumer pending |
 | Extra memory order | [F15](#f-admission-gates) | Open | Semantic choice pending |
 
 ## N clauses to owners and executable slices
@@ -216,13 +222,13 @@ python spec/planning/evidence/lifetime-concurrency/audit_consolidation.py
 ```
 
 The checker discovers every tracked Markdown file outside history. It validates
-owner references, status and clause/case inventories, retired-rule signatures,
+owner references, definition and consumer statuses, and clause/case inventories,
 local links and Markdown structure, and the preserved model hashes and stdout.
 It is not a semantic consistency proof. Repository fmt/check/test runs cover
 their implemented Rust slices, not pending Pattern formation, transform and CAS semantics.
 
 
-## Fresh-reader answers and residual limits
+## Current rules and pending consumers
 
 | Question | Answer derived from current owners |
 |---|---|
@@ -259,16 +265,7 @@ read-only repository permissions. Link/inventory, preserved-hash or bounded
 stdout failures fail the job. Passing it proves neither textual semantic
 consistency nor source/permission/backend execution.
 
-## Input provenance and bounded evidence
-
-The preserved package manifest describes its own 45-N/18-F/105-case evidence
-scope; it is not the inventory or authority of the current specification.
-Its 01_SPEC.md SHA-256 is
-`f1e0a5d2dca964b1ddbe966643db74113592caf9ce6d96753d988238da835ab9`;
-02_LOCAL_AGENT_TASK.md is
-`3fd0c0b8cf31023dafa476eb25d22c6f12e9563af4329d451fc7e60803887cff`.
-Current clause/case inventories are computed by the checker, independently of
-that manifest. External instructions are not another specification owner.
+## Bounded evidence
 
 [Preserved bounded model](evidence/lifetime-concurrency/expressiveness_checks_v0_1.py)
 SHA-256: `ab3749e73d086dc8f069a94acafb1d0bb90c039d1715c05d99105770c427e5ab`.

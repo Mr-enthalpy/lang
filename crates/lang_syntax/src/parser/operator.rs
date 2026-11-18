@@ -35,13 +35,6 @@ fn parse_binary_expr(
             break;
         };
 
-        if matches!(
-            parser.cursor.peek_next_non_trivia().kind,
-            TokenKind::Symbol(Symbol::ColonColon)
-        ) {
-            break;
-        }
-
         let Some(binary) = binary_info(current.spelling) else {
             break;
         };
@@ -50,7 +43,12 @@ fn parse_binary_expr(
             break;
         }
 
-        let operator = bump_operator(parser, current);
+        let target = has_path_suffix(parser).then(|| parse_operator_nav_path(parser, current));
+        let spelling = current.spelling.as_source_text();
+        let target_span = target.as_ref().map_or(current.span, |path| path.span);
+        if target.is_none() {
+            parser.cursor.bump_non_trivia();
+        }
 
         if binary.associativity == Associativity::NonAssociative {
             let is_arrow = current.spelling == OperatorSpelling::Arrow;
@@ -58,7 +56,7 @@ fn parse_binary_expr(
                 parser.error(
                     DiagnosticCode::ChainedNonAssociativeOperator,
                     "chained non-associative operator requires explicit grouping",
-                    operator.span,
+                    target_span,
                 );
             }
             seen_nonassoc = Some(is_arrow);
@@ -69,23 +67,30 @@ fn parse_binary_expr(
             None => {
                 parser.error(
                     DiagnosticCode::InvalidOperatorExpression,
-                    format!(
-                        "expected right-hand side after operator `{}`",
-                        operator.spelling
-                    ),
-                    operator.span,
+                    format!("expected right-hand side after operator `{spelling}`"),
+                    target_span,
                 );
-                error_operator_expr(parser, "expected operator right-hand side", operator.span)
+                error_operator_expr(parser, "expected operator right-hand side", target_span)
             }
         };
 
         let span = lhs.span.join(rhs.span);
         lhs = OperatorExprAst {
-            kind: OperatorExprKind::OperatorSugar {
-                operator,
-                fixity: OperatorFixity::Binary,
-                args: vec![lhs, rhs],
-                span,
+            kind: match target {
+                Some(target) => OperatorExprKind::QualifiedBinarySugar {
+                    lhs: Box::new(lhs),
+                    target: Box::new(target),
+                    rhs: Box::new(rhs),
+                },
+                None => OperatorExprKind::OperatorSugar {
+                    operator: OperatorNameAst {
+                        spelling: spelling.to_string(),
+                        span: current.span,
+                    },
+                    fixity: OperatorFixity::Binary,
+                    args: vec![lhs, rhs],
+                    span,
+                },
             },
             span,
         };
@@ -138,6 +143,9 @@ fn parse_prefix_expr(
     }
 
     if let Some(current) = current_operator(parser) {
+        if has_path_suffix(parser) {
+            return Some(parse_operator_nav_path(parser, current));
+        }
         let next_index = parser.cursor.current_index() + 1;
         let (_, next) = parser.cursor.peek_at_skip_trivia(next_index);
         if matches!(
@@ -188,13 +196,6 @@ fn parse_prefix_expr(
         }
 
         if is_operator_token_at_expr_start(current.spelling) {
-            if matches!(
-                parser.cursor.peek_next_non_trivia().kind,
-                TokenKind::Symbol(Symbol::ColonColon)
-            ) {
-                return Some(parse_operator_nav_path(parser, current));
-            }
-
             let operator = bump_operator(parser, current);
             parser.error(
                 DiagnosticCode::InvalidOperatorExpression,
@@ -679,6 +680,19 @@ fn current_operator(parser: &mut Parser<'_>) -> Option<CurrentOperator> {
         spelling,
         span: token.span,
     })
+}
+
+fn has_path_suffix(parser: &Parser<'_>) -> bool {
+    parser.cursor.peek_next_non_trivia().kind == TokenKind::Symbol(Symbol::ColonColon)
+}
+
+pub(super) fn token_index_starts_qualified_binary(parser: &Parser<'_>, from: usize) -> bool {
+    let (index, token) = parser.cursor.peek_at_skip_trivia(from);
+    operator_spelling_in_expr_context(&token.kind)
+        .and_then(binary_info)
+        .is_some()
+        && parser.cursor.peek_at_skip_trivia(index + 1).1.kind
+            == TokenKind::Symbol(Symbol::ColonColon)
 }
 
 fn bump_operator(parser: &mut Parser<'_>, current: CurrentOperator) -> OperatorNameAst {

@@ -8,7 +8,7 @@ use super::{
     closure::{parse_body_block, parse_pipe_branch_closure},
     cursor::ParenClassification,
     form::Parser,
-    operator::parse_operator_expr,
+    operator::{parse_operator_expr, token_index_starts_qualified_binary},
     product::parse_product_expr,
 };
 
@@ -306,6 +306,7 @@ fn parse_segment_element(
             if let Some(idx) = after_idx {
                 if super::closure::token_index_starts_closure_head_continuation(parser, idx)
                     || super::closure::token_index_starts_bare_arrow(parser, idx)
+                    || token_index_starts_qualified_binary(parser, idx)
                 {
                     let op_expr = parse_operator_expr(parser, stop)?;
                     return Some(SegmentElementAst::OperatorExpr(op_expr));
@@ -370,6 +371,10 @@ fn operator_expr_contains_headless_in_place_closure(op_expr: &OperatorExprAst) -
         OperatorExprKind::OperatorSugar { args, .. } => args
             .iter()
             .any(operator_expr_contains_headless_in_place_closure),
+        OperatorExprKind::QualifiedBinarySugar { lhs, rhs, .. } => {
+            operator_expr_contains_headless_in_place_closure(lhs)
+                || operator_expr_contains_headless_in_place_closure(rhs)
+        }
         OperatorExprKind::MemberSugar { object, .. }
         | OperatorExprKind::DoubleDotSugar { object, .. }
         | OperatorExprKind::BracketCallSugar { object, .. } => {

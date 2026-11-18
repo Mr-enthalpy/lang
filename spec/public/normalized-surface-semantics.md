@@ -322,6 +322,23 @@ OperatorTarget carrier does not itself implement family lookup or the registered
 Pattern/generative projections described by the
 [operator owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md).
 
+### Qualified infix targets
+
+```lang
+source ->::E target
+(source, target) |> (->::E)
+```
+
+Both forms normalize to a call with an ordered Product of two entries
+and a `Nav` target with the written components. The first uses
+`OperatorLowering` provenance. The corresponding bare operator supplies
+the same precedence and associativity but uses the ordinary unresolved
+operator dispatch target. An explicit Path preserves its ordinary
+lookup identity. A standalone `->::E` is a Path expression.
+`source (->::E) target` preserves ordinary expression-sequence call
+binding. In particular, grouping a Path does not put it into infix
+position. Built-in callable return arrows keep their syntax priority.
+
 ### Prefix negative
 
 ```text
@@ -1739,9 +1756,10 @@ runtime material. This source structure has a Raw/Norm carrier;
 Pattern formation, extraction and runtime name identity still need
 their semantic consumers.
 
-Ordinary `lhs -> rhs` lowers through binary operator dispatch. Built-in
-return arrows take priority in callable heads, `(->::E)` supplies a Path
-and `.->` an ADL name. Selected A::E, B::E and ->::E contracts determine
+Ordinary `lhs -> rhs` lowers through binary operator dispatch.
+`lhs ->::E rhs` targets the explicitly written Path with the same
+two-input Product. Callable return arrows keep their existing priority,
+and `.->` supplies an ADL name. Selected A::E, B::E and ->::E contracts determine
 the meaning of RHS `_` in a transform description and whether the target
 can inherit actual material. Transform formation grants no held-subject
 access. Ordinary E `?` exposes the proved readable projection of one

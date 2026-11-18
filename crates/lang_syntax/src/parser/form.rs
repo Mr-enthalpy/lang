@@ -468,6 +468,9 @@ fn operator_expr_contains_name(op: &crate::OperatorExprAst, name: &str) -> bool 
         crate::OperatorExprKind::OperatorSugar { args, .. } => args
             .iter()
             .any(|arg| operator_expr_contains_name(arg, name)),
+        crate::OperatorExprKind::QualifiedBinarySugar { lhs, target, rhs } => [lhs, target, rhs]
+            .into_iter()
+            .any(|expr| operator_expr_contains_name(expr, name)),
         crate::OperatorExprKind::MemberSugar { object, .. }
         | crate::OperatorExprKind::DoubleDotSugar { object, .. }
         | crate::OperatorExprKind::BracketCallSugar { object, .. } => {

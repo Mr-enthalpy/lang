@@ -475,7 +475,8 @@ are not executed source coverage. The active N clauses and U01–U12 live across
 actual topic owners. F19 tracks source wiring for the defined typed wrapper, mixed-stage identity,
 E-relative transforms, matching, readable observation and resource/permission
 proofs. Raw/Norm goldens cover recursive named layers, sum choice, runtime
-hole syntax and contextual arrow. F15 retains the extra-order decision.
+hole syntax and bare/qualified infix targets. The recursive layer derivation
+is defined in the Pattern owner and its semantic consumer remains pending. F15 retains the extra-order decision.
 
 The implemented D1 slice replaces the continuous Region carrier with discrete
 event sets and actual continuation/generation identity. Event membership is

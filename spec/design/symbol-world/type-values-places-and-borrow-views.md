@@ -502,7 +502,7 @@ Norm(Q_x) != Norm(Q_y) or Norm_V(V_x) != Norm_V(V_y)
 The first line holds even when the closures are stored in different places; the
 second holds even when two snapshots share a first-order root. These equations
 state when two snapshots are the same snapshot; they do not by themselves decide
-which observation a particular old rule must use (see the classification in
+which observation a individual rule must use (see the classification in
 §2.2). A list of
 allocated value ids under each name is not a normal form:
 allocation order is not semantic content. For a live place observation, first

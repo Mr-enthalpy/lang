@@ -586,13 +586,14 @@ and internal Pattern are compile-determined. Runtime values supply extraction
 and name comparison. Preserve actual hole identities.
 
 `->` uses ordinary operator dispatch outside built-in callable arrows.
-`(->::E)` names an ordinary producer and `.->` an ADL selector. Selected
+Infix `a ->::E b` calls the explicit Path with a two-entry Product.
+`a (->::E) b` is an ordinary expression sequence. `.->` is an ADL selector. Selected
 constructors interpret `_` at the supplied positions. Atomic consumes a
 formed E and selected transform with [actual Box wrappers](../design/lifetime/atomic-pattern-transitions-and-causality.md#n46--普通结构真实类型包装与表示预算-定义). A
 [typed leaf](../design/patterns-overload/pattern-relations-observation-and-extraction.md#external-typed-leaves) obtains its classifier through ordinary lookup/selection.
 Atomic also checks the allocation-time
 read lazy duty and finite Status/representation evidence. N47–N48 define
 complete versus same-arm matching, same-arm read replacement and the Keep/Exit
-results. Read Forget performs no retirement-time registration. Preserve
+results. Read Forget is a runtime NoOp and preserves the allocation-time Drop registration. Preserve
 Region, Color, origin, candidate custody and version causality independently.
 F13/F14/F16/F18/F19 remain pending; F15 retains only the extra ordering decision.

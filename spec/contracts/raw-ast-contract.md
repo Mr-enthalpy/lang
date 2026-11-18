@@ -683,14 +683,21 @@ construction under `$`. Norm records grouped named layers and ordinary
 sum alternatives, and visits their name occurrences under the current
 PatternRoot and HoleBinder environment.
 
-Outside an applicable built-in callable head, bare `->` is an ordinary
-binary operator. A syntactic callable tail anchors the built-in return
-clause, including recoverable malformed tails. An explicit `->::E` is a
-Path, and `.->` uses ordinary dot-name sugar. Binary arrow uses ordinary
-operator-call normalization at the weakest, non-associative tier. The
-frontend therefore preserves applicability material, operator/name spans
-and source structure. Semantic formation, selected E-relative producers
-and Atomic transactions require their own consumers.
+Outside an applicable callable head, bare `->` is a binary operator at
+the weakest, non-associative tier. A syntactic callable tail anchors the
+built-in return clause, including recoverable malformed tails. An infix
+binary-capable operator followed by `::` uses an ordinary operator-rooted
+Path target. `QualifiedBinarySugar` retains the left operand, that Path
+including its component spans, and the right operand. The token at the
+start of the Path supplies the same precedence and associativity as
+the corresponding bare operator.
+
+A Path in operand position (such as `let arrow = ->::E;`) remains a
+Path expression. A grouped Path in `source (->::E) target` preserves
+its Raw Group and the ordinary sequence. `.->` uses ordinary dot-name
+sugar. Infix lowering and the explicit Product call use the same
+two-entry input structure and written Path target. Semantic lookup
+and selection remain ordinary consumers.
 
 ## Structural interpretation handoff
 

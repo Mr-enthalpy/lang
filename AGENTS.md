@@ -63,6 +63,11 @@ alternate relation or identity.
 - Parse left to right without semantic backtracking.
 - Traditional `f(args)` call syntax does not exist.
 - Calls preserve P |> E == P E, never E P; ()f, x f and (x,y) f keep pipeline direction.
+- A binary operator in infix position can carry an explicit Path target and
+  retains the corresponding bare operator's precedence and associativity.
+  `a ->::E b` supplies a two-entry Product to the written Path. Prefix and
+  parenthesized Paths keep ordinary expression interpretation. Built-in
+  callable arrows retain syntactic priority.
 - Products participate in the documented expression/call-binding skeleton.
 - `{ ... }` in atom position is an in-place closure with no head.
 - A headed closure without `=>` is in-place; `=>` forms an ordinary closure.

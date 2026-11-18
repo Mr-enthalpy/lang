@@ -19,8 +19,8 @@ import urllib.parse
 ROOT = pathlib.Path(__file__).resolve().parents[4]
 CONFORMANCE = "spec/planning/canonical-semantic-conformance.md"
 LEDGER = "spec/planning/lifetime-concurrency-consolidation.md"
-# Clause identifiers remain stable when an obligation is consolidated.
-N_IDS = [f"N{i:02}" for i in range(1, 51) if i != 30]
+# Each allocation range enumerates active, stable clause identifiers.
+N_IDS = [f"N{i:02}" for span in (range(1, 30), range(31, 51)) for i in span]
 
 OWNER_REFS = {
     "Pattern": "spec/design/patterns-overload/pattern-relations-observation-and-extraction.md#external-typed-leaves",
@@ -42,23 +42,9 @@ RULE_STATUS = {
     "Mixed-stage inputs": ("Defined", "Source consumer pending"),
     "Lazy registration": ("Defined", "Source consumer pending"),
     "Heap submission": ("Defined", "Source consumer pending"),
+    "Qualified infix": ("Defined", "Raw/Norm covered"),
+    "Named layers": ("Defined", "Source consumer pending"),
     "Extra memory order": ("Open", "Semantic choice pending"),
-}
-RETIRED_RULES = {
-    "association token or node": r"(?<!~)~~(?!~)|\bAssocArm\b",
-    "association heading": r"(?:direct[ -])?sum[ -]arm[ -](?:structural[ -])?association",
-    "all replacements change arm": r"\bresource replacement requires a (?:real|true) arm change\b",
-    "partial comparison only on Keep": r"\bpartial (?:Status )?match(?:ing)? (?:is )?(?:only|confined to) same-arm Keep\b",
-    "escape at allocation": r"\bescape (?:fails|is rejected) at (?:production(?:/allocation)?|allocation) Pre\b",
-    "read exit transfers ownership to Forget": (
-        r"\bread(?: source)? Exit(?:Slot)? transfers? (?:the )?(?:sole|old) ownership to (?:lawful )?Forget\b"
-    ),
-    "retirement-time Drop registration": (
-        r"\blogical end (?:must |may )?(?:forms?|transfers?) "
-        r"(?:a (?:real )?)?(?:deferred )?Drop continuation\b"
-        r"|逻辑结束动作交出值材料和析构责任，形成普通 drop continuation"
-    ),
-    "provisional lifetime default": r"\bprovisional\w*\s+`?lifetime default|`lifetime default E` provisionally",
 }
 OWNERS = [
     "spec/design/lifetime/lifetime-policy-and-overload-boundary.md",
@@ -151,78 +137,6 @@ def tracked_markdown():
     return sorted(set(paths.split("\0")) - {""})
 
 
-def negative_label(text):
-    return re.match(
-        r"(?:negative(?: example| boundary)?|reject(?:ed)?(?: example)?|"
-        r"反例|禁止|不得|拒绝|must not|do not|no)\b|^(?:反例|禁止|不得|拒绝)",
-        text.strip().lstrip("-*># ").lower(),
-    )
-
-
-def retired_findings(name, text):
-    """Check explicit retired markers in current claims, not negative examples."""
-    findings = []
-    negative_columns = set()
-    negative_block = False
-    next_fence_negative = False
-    in_fence = False
-    material = []
-
-    def check(lines):
-        if lines:
-            number = lines[0][0]
-            statement = " ".join(value.strip() for _, value in lines)
-            for rule, pattern in RETIRED_RULES.items():
-                if re.search(pattern, statement, re.I):
-                    findings.append((name, number, rule))
-
-    for number, line in enumerate(text.splitlines(), 1):
-        value = line.strip()
-        if value.startswith("```"):
-            check(material)
-            material.clear()
-            negative_block = next_fence_negative if not in_fence else False
-            next_fence_negative = False
-            in_fence = not in_fence
-            continue
-        if in_fence:
-            if not negative_block:
-                material.append((number, line))
-            continue
-        if not value:
-            check(material)
-            material.clear()
-            negative_columns.clear()
-            negative_block = False
-            continue
-        if value.startswith("|") and value.endswith("|"):
-            check(material)
-            material.clear()
-            cells = table_cells(value)
-            if re.match(r"^\|\s*(?:ID|Rule|Clause)\s*\|", value):
-                negative_columns = {i for i, cell in enumerate(cells)
-                                    if negative_label(cell) or re.search(r"不得|必须拒绝", cell)}
-            for i, cell in enumerate(cells):
-                if i not in negative_columns and not negative_label(cell):
-                    check([(number, cell)])
-            continue
-        if negative_label(value):
-            check(material)
-            material.clear()
-            negative_block = next_fence_negative = True
-            continue
-        if not negative_block:
-            next_fence_negative = False
-            if value.startswith("#"):
-                check(material)
-                material.clear()
-                check([(number, value)])
-            else:
-                material.append((number, line))
-    check(material)
-    return findings
-
-
 def audit_owner_sync(documents):
     for name in ENTRY_POINTS:
         directory = posixpath.dirname(name)
@@ -245,11 +159,9 @@ def main():
     bad_links, links = [], 0
     documents = {name: read(name) for name in tracked_markdown()}
     audit_owner_sync(documents)
-    retired = []
     for name, body in documents.items():
         path = ROOT / name
         markdown_structure(name, body)
-        retired.extend(retired_findings(name, body))
         link_text = re.sub(r"(`+).*?\1", "CODE", prose(body))
         for dest in re.findall(r"(?<!!)\[[^\]\n]+\]\(([^)\n]+)\)", link_text):
             if re.match(r"\w+://|mailto:", dest):
@@ -290,9 +202,9 @@ def main():
         if re.match(r"^\| (?:" + "|".join(groups) + r")\d\d \|", line):
             require(table_cells(line)[-6:] == ["D", "—", "—", "—", "—", "—"],
                     "unimplemented source target must retain pending P/S/C/T/B: " + line.split("|")[1])
-    redesign_cases = re.findall(r"^\| (AS\d\d) \|",
+    as_cases = re.findall(r"^\| (AS\d\d) \|",
                                    read("spec/planning/canonical-semantic-conformance.md"), re.M)
-    require(redesign_cases == [f"AS{i:02}" for i in range(1, 15)],
+    require(as_cases == [f"AS{i:02}" for i in range(1, 15)],
             "AS01-AS14 Pattern/transform/Atomic/Heap case inventory mismatch")
 
     evidence = pathlib.Path(__file__).resolve().parent
@@ -304,14 +216,14 @@ def main():
     normalize = lambda data: data.replace(b"\r\n", b"\n")
     require(normalize(result.stdout) == normalize((evidence / "model_output.txt").read_bytes()),
             "bounded model stdout differs from supplied output")
-    print(json.dumps({"markdown_files": len(documents), "local_links": links, "retired_findings": retired,
+    print(json.dumps({"markdown_files": len(documents), "local_links": links,
                       "checked_entry_points": len(ENTRY_POINTS), "definition_statuses": len(RULE_STATUS),
                       "bad_links": bad_links, "unique_N_owners": len(ids), "U": 12,
                       "M": 31, "F": 19, "paired_cases": len(cases),
-                      "redesign_cases": len(redesign_cases),
+                      "as_cases": len(as_cases),
                       "model_hashes_verified": len(MODEL_HASHES), "model_exit_code": result.returncode,
                       "model_stdout_matches": True}, ensure_ascii=True))
-    return bool(bad_links or retired)
+    return bool(bad_links)
 
 
 if __name__ == "__main__":

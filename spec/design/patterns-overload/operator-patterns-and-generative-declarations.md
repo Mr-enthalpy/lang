@@ -142,6 +142,36 @@ argument of operator[op] reads the ordinary operator name and does not
 recursively invoke operator[op]. Ordinary lookup, type, policy and lifetime
 checks still apply; this rule is not a raw token bypass.
 
+### Qualified binary operator targets
+
+In an operator expression, a binary-capable operator after its left
+operand may start the target with a written Path suffix. In that
+infix position, `a op::Path b` parses as a binary operation. The
+ordinary Path production consumes its components and the expression
+parser then consumes one right operand at the operator's usual
+precedence. The initial operator token determines both precedence
+and associativity, independent of the qualifier. Required operands
+use ordinary operator recovery. No selection or lookup decides this
+syntax.
+
+```lang
+source ->::E target
+(source, target) |> (->::E)
+
+let arrow = ->::E;
+source (->::E) target
+```
+
+The first two expressions deliver the same ordered two-entry Product
+to the same explicit Path target. Raw preserves the two operands and
+the written operator-rooted Path. Norm uses ordinary binary operator
+lowering with that Path as the call target. At the start of an
+operand, `->::E` is an ordinary Path value expression. A grouped Path
+within a sequence remains ordinary Product/expression call material,
+as in the final example. Its parentheses do not become transparent
+to the infix recognizer. A bare arrow in a callable head retains its
+existing syntactic priority.
+
 ### 2.1 OperatorOverloadGroup and current-slot selection
 
 ```text
@@ -382,8 +412,7 @@ through a Path and `.->` uses ordinary dot-name dispatch. Grammar decides
 which form is present before resolving any candidate.
 The built-in input/output relation also uses the ordinary operator algebra
 in its own context. A qualified Path and a dot-name selector retain their
-ordinary call binding. An explicit two-input call can use
-`(source, target) |> (->::E)`.
+ordinary call binding. The direct `source ->::E target` call uses the qualified binary rule.
 
 For a complete E formed by ordinary Pattern construction, ordinary
 registered members can construct descriptions and a callable transform:
@@ -391,11 +420,11 @@ registered members can construct descriptions and a callable transform:
 ```lang
 let transform =
     ((val1 n1::A::E, _) A::E)
-    (->::E)
+    ->::E
     ((newSource)(val3 B::E));
 let keepSource =
     ((val1 n1::A::E, val2 n2::A::E) A::E)
-    (->::E)
+    ->::E
     ((_)(val3 B::E));
 ```
 

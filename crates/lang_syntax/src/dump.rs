@@ -455,6 +455,15 @@ fn dump_operator_expr(output: &mut String, op_expr: &crate::OperatorExprAst, ind
                 }
             }
         }
+        OperatorExprKind::QualifiedBinarySugar { lhs, target, rhs } => {
+            line(output, indent, "QualifiedBinarySugar");
+            line(output, indent + 1, "lhs:");
+            dump_operator_expr(output, lhs, indent + 2);
+            line(output, indent + 1, "target:");
+            dump_operator_expr(output, target, indent + 2);
+            line(output, indent + 1, "rhs:");
+            dump_operator_expr(output, rhs, indent + 2);
+        }
         OperatorExprKind::NavPath { components, .. } => {
             line(output, indent, "NavPath");
             line(output, indent + 1, "components:");

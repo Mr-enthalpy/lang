@@ -99,6 +99,10 @@ and [committed Heap submission](design/lifetime/heap-stack-and-storage-responsib
 The [definition and consumer status](planning/lifetime-concurrency-consolidation.md#definition-and-consumer-status)
 tracks their source wiring and the open memory-order choice.
 
+The [qualified infix rule](design/patterns-overload/operator-patterns-and-generative-declarations.md#qualified-binary-operator-targets)
+defines the explicit Path call target. The [recursive layer rule](design/patterns-overload/pattern-relations-observation-and-extraction.md#formation-and-relational-derivation)
+uses ordinary structural formation and intermediate-layer extraction.
+
 ## Open questions
 
 Only [`planning/open-questions.md`](planning/open-questions.md) may classify a

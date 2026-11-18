@@ -773,15 +773,124 @@ group, each name occurrence and the material associated at that layer.
 A Product layer keeps its own ordering and correspondence under §7.
 Ordinary sum choice `|` keeps its existing meaning.
 
-Formation and extraction use the same recursive structural positions.
-`R_Gamma` observes the applicable complete subject and extracts at each
-position using its admitted structural correspondence. Construction uses
-the same positions with ordinary producers and complete identity commit.
-Alpha normalization follows actual PatternRoot/HoleBinder identity at each
-layer, including shadowing and external Path correspondence. Equal spelling
-cannot merge two layers or equate their names. The recursive form adds no
-independent source of NameBindings, Places or registration. Evidence needed
-by a particular consumer comes from the actual formed structure.
+#### Formation and relational derivation
+
+Let `p` be the admitted structural position of a grouped layer `(Q)n`.
+Write `NamedLayer(p,n*,P_Q,beta)` for its ordinary formed Pattern
+material. The fields abbreviate evidence already used by the relation.
+`n*` is the formed occurrence of the written name under ordinary scope
+and interpretation, including its actual HoleBinderId, external
+constraint, or structural name role as applicable. `beta` records the
+admitted structural correspondence to the inner material. It is part of
+the formed Pattern. Actual subject evidence is checked at extraction.
+The formation rule is inductive:
+
+```text
+the enclosing structural formation admits position p in its Product or sum context
+the ordinary name rules form n at p as n* in the established PatternRoot
+the same structural formation forms Q at p's inner position as P_Q
+the admitted outer-to-inner structural incidence at p is beta
+-------------------------------------------------------------------------
+S formation of (Q)n at p yields NamedLayer(p,n*,P_Q,beta)
+```
+
+The induction terminates at the ordinary leaf/name cases. Products use
+the ordinary layer order and incidence rules. A sum admits the same
+formation in each alternative and keeps the ordinary alternative
+correspondence. Forming the child does not introduce a second root or
+binder scope except where the existing scope rules introduce one.
+`Norm_P` preserves the layer position in the canonical structural
+incidence, the name role/reference, the correspondence and the recursively
+normalized child. Alpha-renaming preserves these observations and renames
+only identities that are bound under the existing rules. Source spelling,
+source spans and a flat list of names cannot establish relational identity.
+
+For `L = NamedLayer(p,n*,P_Q,beta)`, specialize the intermediate-layer
+rule of §8.2 using the formed occurrence and correspondence. Here `u` is
+the actual observable inner material reached inside the complete content
+`c`. It need not already be a detached Object.
+
+```text
+OuterExtract_Gamma((p,n*,beta), c, rho0, u)     -- actual outer observation and inner material
+R_(Gamma,rho0)(P_Q, u, rho1)
+CompatibleValuations_Gamma(rho0, rho1)
+----------------------------------------------------------------------
+R_Gamma(L, c, rho0 join rho1)
+```
+
+For this layer, a derivation exists exactly when the premises have a
+joint witness. The joined derivation retains the outer and inner
+evidence, including the actual name observation and the reached
+material as distinct observations. Recursing calls the same
+`R_Gamma` on that actual material. It does not retry lookup by spelling.
+The compatibility premise is the existing valuation join: take the
+union on disjoint binder identities and require ordinary observation
+equality at each shared binder identity. A demonstrated inequality
+eliminates that derivation. Apply the ordinary Match/Mismatch/Unavailable
+boundary to the complete query, including other legal derivations and
+missing equality or route evidence. Repeated occurrences of the same
+HoleBinderId test the same binding. Distinct binder identities and
+distinct structural positions stay distinct even when spelled alike.
+This does not admit duplicate declarations of one binder.
+
+The selected RHS constructor uses the same admitted positions and
+correspondence to assemble its input material. If its declared
+formation succeeds, the committed complete Object supplies the
+observations promised by the constructor at those positions, so the
+same layer rule applies when an admitted extraction later reaches them.
+Correspondence alone supplies neither a callable constructor nor
+permission to transfer ownership. Actual construction and consuming
+extraction separately satisfy their selected Pre and complete Object
+commit rules (§3.2). Applicability and field observations do not issue
+those commits.
+
+`Interpret(e$, C)=Interpret(e, Flip(C))` applies at every occurrence.
+When the effective context is S, grouped layers use the formation
+rule above. A flipped leaf within S may obtain ordinary typed material
+from V under the external-typed-leaf rule. The same actual outer route,
+inner judgment and joined valuation govern extraction. Polarity
+does not allocate a binder or perform a lifecycle action.
+
+#### Construction and extraction examples
+
+With `ReadStorage` and `WriteStorage` the complete classifiers formed
+by the ordinary type producers in Atomic N34, the following `$`
+expression forms an ordinary complete structural type:
+
+```lang
+let E = ((
+    ((ReadStorage$ resource) (I1 state1, I2 state2) A) |
+    ((WriteStorage$ resource) (I3 state3) B) |
+    D
+) E)$;
+```
+
+The V-to-S flip forms the registered sum structure. Each inner S-to-V
+flip supplies its actual external classifier and the named layer retains
+it at `resource`. The two occurrences of `resource` have distinct
+alternative positions. An ordinary constructor for this formed type,
+when actually selected and supplied compatible input, commits one
+complete selected alternative with its own typed child evidence.
+This formation and construction use no Atomic consumer.
+
+```lang
+let <inner, outer> value: E (E inner)outer = expr;
+let <idx> item: E (E (E idx)idx)idx = expr;
+let <idx> conflict: E (E (E idx)idx)idx = differentNames;
+```
+
+For the first extraction, if `expr` supplies both admitted layer routes,
+the outer observation binds `outer` and the recursive judgment over
+that layer's actual inner material binds `inner`. The distinct
+bindings need not agree. In the second, when the three reached
+observations agree as required by their common `idx`, the join makes
+one binding for all three occurrences. If `differentNames` has the
+same routes but gives decided unequal observations for two occurrences,
+the joined derivation fails. With no other legal derivation, extraction
+rejects at its ordinary applicability or Pre boundary. When a required route
+or equality observation is missing, the query follows the ordinary
+Unavailable boundary. These
+examples are relation and consumer requirements.
 
 The construction/extraction correspondence is structural. A call consumes
 its selected input by extraction, and its return constructs under its own

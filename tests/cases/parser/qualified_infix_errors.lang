@@ -1,0 +1,4 @@
+let missing = source ->::E;
+let chained = a ->::E b -> c;
+let malformed = a ->::E::+ b;
+let next = x;

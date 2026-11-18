@@ -164,7 +164,10 @@ CommitSubmit(K^-, r) = K^+
 位置和 `Region_K(n)=R(NamePosition_K(n))` 的规则继续成立；历史
 origin、原 Place/世代、外部名字、独立借用、Color 和已选 Path 的
 证据无凭据不得改写。将旧名字替换为任意更长 Region 不能证明本规则。
-失败或尚未完成的提交不发布 `rho_r`。
+成功 Post 明确携带以上支持对应、实际下一层绑定及责任事实。按
+[普通边界 Post admit](lifetime-policy-and-overload-boundary.md) 将其写入
+当前语义状态。后续动作消费该状态。失败或尚未完成的提交不发布
+`rho_r`，admit 不重放提交。
 
 Object relocate 与 pool relocate 仍不同：前者实际取得目标存储并搬运；后者只交接管理责任。前者不得因后者成功而假设独立借用/移动限制已经解除。
 

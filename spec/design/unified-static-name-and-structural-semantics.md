@@ -867,7 +867,11 @@ general $-formed Pattern/type material
     -> ordinary safe operations / Pattern branches / effects
 ```
 
-普通递归命名 Pattern 保留实际层次和对应；选定 `->::E` 形成可调用值。
+[普通递归命名 Pattern](patterns-overload/pattern-relations-observation-and-extraction.md#92-recursive-named-pattern-material)
+按普通中间层规则观察实际内层材料，再递归调用同一个 `R_Gamma`。
+共享 HoleBinder 的估值必须相容。构造使用同一已准入结构对应及独立的
+Pre/commit。普通限定中序 `source ->::E target` 向显式 Path 交付双输入
+Product，已选构造器决定可调用变换是否成立。
 Atomic 消费完整 E、实际外部类型叶子的包装形成及实例对应（N46）与有限表示。
 全源匹配约束真实 arm/协议变化；同 arm read 可在同一提交确认旧 Box
 后原位替换，同 arm write 不可替换。N39/N47–N50 定义提交、Keep/Exit

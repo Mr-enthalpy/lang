@@ -1,0 +1,10 @@
+let direct = source ->::E target;
+let explicit = (source, target) |> (->::E);
+let standalone = ->::E;
+let grouped = source (->::E) target;
+let products = (a, b) ->::E (c, d);
+let precedence = a +::math b * c ->::E d | e;
+let scope = a ->::(qualifier)::E b?;
+let subtractionPath = -::math;
+let closure = (x, y) -> result => { x };
+let groupedInfix = (source ->::E target) ->::F next;

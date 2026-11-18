@@ -2,9 +2,9 @@
 
 This directory preserves the handoff's Python model and expected stdout without
 editing. The separately authored [audit script](audit_consolidation.py) checks
-all tracked Markdown outside `spec/history/**` for links, table/fence structure
-and known retired normative rules. It checks shared owner links, the definition
-and consumer status ledger, N/M/U/F inventories, 131 paired cases plus AS01–AS14,
+all tracked current Markdown for links and table/fence structure. It checks
+shared owner links, the definition and consumer status ledger, stable N/M/U/F
+inventories, 131 paired cases plus AS01–AS14,
 and the preserved model hashes and actual output. Run from a checkout with Python 3:
 
 ```text
@@ -19,10 +19,9 @@ the job. This structural check does not establish that every normative sentence
 is consistent, execute the 131 source targets or discharge semantic proof gates;
 those still require separate review and their actual consumers.
 
-Git's tracked Markdown inventory defines the scope; no original handoff material
-is required. The retired-rule checks recognize known signatures in current
-claims while allowing explicitly negative examples. The owner-link and status
-checks enforce traceability, with semantic agreement reviewed independently. It is auxiliary evidence, not lang syntax,
+Git's tracked Markdown inventory defines the scope. The owner-link and
+status checks enforce traceability, and semantic agreement is reviewed
+independently. It is auxiliary evidence, not lang syntax,
 a source consumer, an ISA
 model or normative ontology. Its explanatory implementation-language words
 (including atomic enum) define no lang Pattern or declaration. Execution and

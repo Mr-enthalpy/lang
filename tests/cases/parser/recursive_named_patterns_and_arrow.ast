@@ -895,79 +895,75 @@ Program
             Pipe
               Segment has_incoming=false
                 OperatorExpr
-                  Atom
-                    Group
-                      Expr
-                        Pipe
-                          Segment has_incoming=false
-                            Product
-                              elements:
-                                Expr
-                                  Pipe
-                                    Segment has_incoming=false
-                                      OperatorExpr
-                                        Atom
-                                          Name val1
-                                      OperatorExpr
-                                        Atom
-                                          NavPath
-                                            components:
-                                              component Name n1
-                                              component Name A
-                                              component Name E
-                                Expr
-                                  Pipe
-                                    Segment has_incoming=false
-                                      OperatorExpr
-                                        Atom
-                                          Name _
-                            OperatorExpr
-                              Atom
-                                NavPath
-                                  components:
-                                    component Name A
-                                    component Name E
-                OperatorExpr
-                  Atom
-                    Group
-                      Expr
-                        Pipe
-                          Segment has_incoming=false
-                            OperatorExpr
-                              NavPath
-                                components:
-                                  component Operator ->
-                                  component Name E
-                OperatorExpr
-                  Atom
-                    Group
-                      Expr
-                        Pipe
-                          Segment has_incoming=false
-                            OperatorExpr
-                              Atom
-                                Group
-                                  Expr
-                                    Pipe
-                                      Segment has_incoming=false
-                                        OperatorExpr
-                                          Atom
-                                            Name newSource
-                            OperatorExpr
-                              Atom
-                                Group
-                                  Expr
-                                    Pipe
-                                      Segment has_incoming=false
-                                        OperatorExpr
-                                          Atom
-                                            Name val3
-                                        OperatorExpr
-                                          Atom
-                                            NavPath
-                                              components:
-                                                component Name B
-                                                component Name E
+                  QualifiedBinarySugar
+                    lhs:
+                      Atom
+                        Group
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                Product
+                                  elements:
+                                    Expr
+                                      Pipe
+                                        Segment has_incoming=false
+                                          OperatorExpr
+                                            Atom
+                                              Name val1
+                                          OperatorExpr
+                                            Atom
+                                              NavPath
+                                                components:
+                                                  component Name n1
+                                                  component Name A
+                                                  component Name E
+                                    Expr
+                                      Pipe
+                                        Segment has_incoming=false
+                                          OperatorExpr
+                                            Atom
+                                              Name _
+                                OperatorExpr
+                                  Atom
+                                    NavPath
+                                      components:
+                                        component Name A
+                                        component Name E
+                    target:
+                      NavPath
+                        components:
+                          component Operator ->
+                          component Name E
+                    rhs:
+                      Atom
+                        Group
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  Atom
+                                    Group
+                                      Expr
+                                        Pipe
+                                          Segment has_incoming=false
+                                            OperatorExpr
+                                              Atom
+                                                Name newSource
+                                OperatorExpr
+                                  Atom
+                                    Group
+                                      Expr
+                                        Pipe
+                                          Segment has_incoming=false
+                                            OperatorExpr
+                                              Atom
+                                                Name val3
+                                            OperatorExpr
+                                              Atom
+                                                NavPath
+                                                  components:
+                                                    component Name B
+                                                    component Name E
   Let
     slot:
       BindingSlot let=true
@@ -985,86 +981,82 @@ Program
             Pipe
               Segment has_incoming=false
                 OperatorExpr
-                  Atom
-                    Group
-                      Expr
-                        Pipe
-                          Segment has_incoming=false
-                            Product
-                              elements:
-                                Expr
-                                  Pipe
-                                    Segment has_incoming=false
-                                      OperatorExpr
-                                        Atom
-                                          Name val1
-                                      OperatorExpr
-                                        Atom
-                                          NavPath
-                                            components:
-                                              component Name n1
-                                              component Name A
-                                              component Name E
-                                Expr
-                                  Pipe
-                                    Segment has_incoming=false
-                                      OperatorExpr
-                                        Atom
-                                          Name val2
-                                      OperatorExpr
-                                        Atom
-                                          NavPath
-                                            components:
-                                              component Name n2
-                                              component Name A
-                                              component Name E
-                            OperatorExpr
-                              Atom
-                                NavPath
-                                  components:
-                                    component Name A
-                                    component Name E
-                OperatorExpr
-                  Atom
-                    Group
-                      Expr
-                        Pipe
-                          Segment has_incoming=false
-                            OperatorExpr
-                              NavPath
-                                components:
-                                  component Operator ->
-                                  component Name E
-                OperatorExpr
-                  Atom
-                    Group
-                      Expr
-                        Pipe
-                          Segment has_incoming=false
-                            OperatorExpr
-                              Atom
-                                Group
-                                  Expr
-                                    Pipe
-                                      Segment has_incoming=false
-                                        OperatorExpr
-                                          Atom
-                                            Name _
-                            OperatorExpr
-                              Atom
-                                Group
-                                  Expr
-                                    Pipe
-                                      Segment has_incoming=false
-                                        OperatorExpr
-                                          Atom
-                                            Name val3
-                                        OperatorExpr
-                                          Atom
-                                            NavPath
-                                              components:
-                                                component Name B
-                                                component Name E
+                  QualifiedBinarySugar
+                    lhs:
+                      Atom
+                        Group
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                Product
+                                  elements:
+                                    Expr
+                                      Pipe
+                                        Segment has_incoming=false
+                                          OperatorExpr
+                                            Atom
+                                              Name val1
+                                          OperatorExpr
+                                            Atom
+                                              NavPath
+                                                components:
+                                                  component Name n1
+                                                  component Name A
+                                                  component Name E
+                                    Expr
+                                      Pipe
+                                        Segment has_incoming=false
+                                          OperatorExpr
+                                            Atom
+                                              Name val2
+                                          OperatorExpr
+                                            Atom
+                                              NavPath
+                                                components:
+                                                  component Name n2
+                                                  component Name A
+                                                  component Name E
+                                OperatorExpr
+                                  Atom
+                                    NavPath
+                                      components:
+                                        component Name A
+                                        component Name E
+                    target:
+                      NavPath
+                        components:
+                          component Operator ->
+                          component Name E
+                    rhs:
+                      Atom
+                        Group
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  Atom
+                                    Group
+                                      Expr
+                                        Pipe
+                                          Segment has_incoming=false
+                                            OperatorExpr
+                                              Atom
+                                                Name _
+                                OperatorExpr
+                                  Atom
+                                    Group
+                                      Expr
+                                        Pipe
+                                          Segment has_incoming=false
+                                            OperatorExpr
+                                              Atom
+                                                Name val3
+                                            OperatorExpr
+                                              Atom
+                                                NavPath
+                                                  components:
+                                                    component Name B
+                                                    component Name E
   Let
     slot:
       BindingSlot let=true
@@ -1236,3 +1228,106 @@ Program
                 OperatorExpr
                   Atom
                     Name expr
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          DeduceList
+            binders:
+              BinderDecl name=inner
+                annotation:
+                  None
+              BinderDecl name=outer
+                annotation:
+                  None
+        pattern:
+          Binder
+            TextName value
+        annotation:
+          AnnotationExpr
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    Atom
+                      Name E
+                  OperatorExpr
+                    Atom
+                      Group
+                        Expr
+                          Pipe
+                            Segment has_incoming=false
+                              OperatorExpr
+                                Atom
+                                  Name E
+                              OperatorExpr
+                                Atom
+                                  Name inner
+                  OperatorExpr
+                    Atom
+                      Name outer
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name expr
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          DeduceList
+            binders:
+              BinderDecl name=idx
+                annotation:
+                  None
+        pattern:
+          Binder
+            TextName conflict
+        annotation:
+          AnnotationExpr
+            Expr
+              Pipe
+                Segment has_incoming=false
+                  OperatorExpr
+                    Atom
+                      Name E
+                  OperatorExpr
+                    Atom
+                      Group
+                        Expr
+                          Pipe
+                            Segment has_incoming=false
+                              OperatorExpr
+                                Atom
+                                  Name E
+                              OperatorExpr
+                                Atom
+                                  Group
+                                    Expr
+                                      Pipe
+                                        Segment has_incoming=false
+                                          OperatorExpr
+                                            Atom
+                                              Name E
+                                          OperatorExpr
+                                            Atom
+                                              Name idx
+                              OperatorExpr
+                                Atom
+                                  Name idx
+                  OperatorExpr
+                    Atom
+                      Name idx
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name differentNames
