@@ -327,7 +327,12 @@ read → write 的 Keep 必须证明此前全部冲突读权结束并已关闭�
 
 普通变换值的形成、省略正规化、源匹配义务及一致可读观察由
 [普通 callable owner §7](../patterns-overload/operator-patterns-and-generative-declarations.md#7-ordinary-e-relative-transforms-and-readable-observation)
-定义。Atomic 只消费真实形成的完整 E、已选普通生产者形成的
+定义。[普通借用 transform](../patterns-overload/operator-patterns-and-generative-declarations.md#ordinary-borrowed-sum-transforms)
+规定普通 take/retain 的结果。Atomic 复用同一描述及普通匹配、交付关系，
+额外为获准的操作保证单点条件原子提交。资源结果和访问由 N47/N48 的
+read/write 规则确定，普通 retain 的 share 不覆盖这些限制。
+
+Atomic 只消费真实形成的完整 E、已选普通生产者形成的
 可调用 t 及其实际 E/arm/binder 对应；拼写 `->::E` 本身不证明
 注册、选择或可调用性，构造 t 也不取得旧资源权限。
 

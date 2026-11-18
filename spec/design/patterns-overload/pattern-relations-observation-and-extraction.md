@@ -907,8 +907,11 @@ An ordinary owned sum can consume M and construct O in S − M + O. The
 input M can have its own nested structure. The ordinary forms
 `|> (self, val: A$ M)` and `|> (self, val: A M)` respectively use external
 material at that position and extract its inner material. Both follow
-ordinary passing and lifecycle actions. Borrowed input instead requires
-its own available observation/replacement authority.
+ordinary passing and lifecycle actions. An exclusive borrow can instead use an
+[ordinary borrowed sum transform](operator-patterns-and-generative-declarations.md#ordinary-borrowed-sum-transforms)
+on the actual resident. The selected operation matches the source and
+commits a complete destination with the specified resource disposition.
+Borrowed structural projection by itself continues to yield only a view.
 
 Where an ordinary selected compile producer supplies name or Pattern
 material (including under `$`), the

@@ -208,6 +208,20 @@ scenarios even when the frontend boundary is executable.
 | AS13 | Two paths share a local successful malloc and differ by their reached Submit Post. Return uses only the current committed projection, including any later invalidation, and ordinary input/capture correspondence. | Future return choices do not constrain allocation. Return cannot reconstruct missing Submit, extend a dying reference or register Drop. Full E/heap wiring pending. |
 | AS14 | Actual version observation imports its own rf/Past. Compare checks ABA/identity as required. CAS branches preserve Region/Color and their distinct Post, returning all formed candidate I/S on admitted failure. | An old observation grants no freshness, hidden match or share from E?. Unknown consumers/false Pre cannot become Rejected. Source/backend proof pending. |
 
+## Ordinary borrowed sum transform acceptance
+
+These are required source behaviors for the
+[ordinary transform consumer](../design/patterns-overload/operator-patterns-and-generative-declarations.md#ordinary-borrowed-sum-transforms).
+Execution remains pending.
+
+| ID | Positive required behavior | Negative or non-derivable boundary |
+|---|---|---|
+| BT01 | Owned material can use ordinary S − M + O. An exclusive borrow uses a selected source-to-destination transform on the actual resident. | Borrowed projection and a shared view do not authorize take or replacement. |
+| BT02 | On an admitted match of Some(T), take installs complete None and delivers owned T once. Replace can install a new complete Some, including within the same ordinary arm, and delivers the old T and its duties. None to Some installs the new resource with no old resource to deliver. | A bare ref cannot consume its target. A non-movable payload prevents take. No empty intermediate Place, retargeted saved projection, or duplicate Drop. |
+| BT03 | Keep returns a read-only share of the actual retained payload through a lawful projection of the committed generation. Pre checks the borrow and storage windows, actual access and Color. Post records actual origin dependencies, and ordinary access bars conflicting mutation while the share lives. | Equal selectors or values cannot restore an invalidated generation. False Region or Color Pre rejects before the update. Missing evidence is unavailable. A resource-free source produces no share. |
+| BT04 | Decided source mismatch on an admitted ordinary attempt leaves the resident unchanged by that action and accounts for incoming material and duties. | Neither missing evidence nor false borrow/replacement Pre becomes an ordinary match failure. No selected reopen or retry. |
+| BT05 | Atomic consumes the same transform description for admitted material with one conditional atomic commit and its N47–N48 read/write rights. | The ordinary complete commit confers no cross-execution atomicity, ordering or Atomic rights. Its retaining share rule confers no share on Atomic write Keep. |
+
 ## Stage, Policy and two-round calls
 
 | ID | Scenario | Required result |

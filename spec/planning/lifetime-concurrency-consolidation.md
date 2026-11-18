@@ -46,6 +46,7 @@ the extra ordering decision.
 | Heap submission | [N29](../design/lifetime/heap-stack-and-storage-responsibility.md#n29--relocate-精确向直接父层提交且不执行-pending-不变量) | Defined | Source consumer pending |
 | Qualified infix | [Operator Patterns](../design/patterns-overload/operator-patterns-and-generative-declarations.md#qualified-binary-operator-targets) | Defined | Raw/Norm covered |
 | Named layers | [Pattern relation](../design/patterns-overload/pattern-relations-observation-and-extraction.md#formation-and-relational-derivation) | Defined | Source consumer pending |
+| Ordinary borrowed transform | [Operator Patterns](../design/patterns-overload/operator-patterns-and-generative-declarations.md#ordinary-borrowed-sum-transforms) | Defined | Source consumer pending |
 | Extra memory order | [F15](#f-admission-gates) | Open | Semantic choice pending |
 
 ## N clauses to owners and executable slices
@@ -188,7 +189,7 @@ selected transforms and Atomic access-right handoff without deciding memory-orde
 | F16 | Backend correctness of single-point Pattern/Status/resource/right handoff including valid published share visibility; x86-TSO/AArch64/RVWMO/LLVM validated separately. | No finite ARC/RCU model or relaxed CAS instruction proves selected source ownership/synchronization; do not claim unconnected backend support. |
 | F17 | 标准 locate 在构造 Pre 对所有非根 Pool 验证普遍保证式父层提交、lazy 接收和非根/根边界；保证不依赖无限内存 | **规范已定，消费者与证明待接通**；不可注册仅在部分状态偶然可迁移的标准层 |
 | F18 | Safe library composition of all Atomic source-slot operations, ordinary counted-reader/hidden Status/version/clone/retirement/wait implementations under actual Pre/Post. | No mandatory ARC/RCU/GC/Mutex or lazy scheme; no share interior mutation, protocol-subset theorem or automatic progress from individual safe actions. |
-| F19 | Recursive Pattern formation, pre-body mixed-stage identity, typed wrapper and actual Box evidence, selected transform, comparison and one-version projection, read registration and two-word target proof | No purely syntactic or numeric authorization; missing backend proof is unavailable |
+| F19 | Recursive Pattern formation, pre-body mixed-stage identity, typed wrapper and actual Box evidence, ordinary borrowed take/retain and selected transform, comparison and one-version projection, read registration and two-word target proof | No purely syntactic or numeric authorization; missing backend proof is unavailable |
 
 The dependency order is event/source material → correlated join/index/forget
 → founded repair → standard heap/lazy responsibility → atomic/causal backend

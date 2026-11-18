@@ -1765,8 +1765,16 @@ can inherit actual material. Transform formation grants no held-subject
 access. Ordinary E `?` exposes the proved readable projection of one
 version.
 
+An [ordinary borrowed sum transform](../design/patterns-overload/operator-patterns-and-generative-declarations.md#ordinary-borrowed-sum-transforms)
+describes a conditional complete update through an exclusive borrow.
+A `Some → None` take returns the owned payload and installs complete
+`None`. A retaining success returns a shared borrow of the actual
+resource when the Region and access Pre hold. Its Post records the
+actual borrowing origin. These are ordinary operations under E.
+
 [Atomic](../design/lifetime/atomic-pattern-transitions-and-causality.md)
-consumes admitted E/transform and actual read/write wrappers over `T Box`.
+adds a single conditional atomic commit and the read/write resource
+protocol for the same E-relative transform. It consumes admitted E/transform and actual read/write wrappers over `T Box`.
 The [external typed leaf](../design/patterns-overload/pattern-relations-observation-and-extraction.md#external-typed-leaves) retains the complete type.
 [N46](../design/lifetime/atomic-pattern-transitions-and-causality.md#n46--普通结构真实类型包装与表示预算-定义) requires the actual wrapper construction/extraction
 correspondence.

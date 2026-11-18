@@ -872,7 +872,11 @@ general $-formed Pattern/type material
 共享 HoleBinder 的估值必须相容。构造使用同一已准入结构对应及独立的
 Pre/commit。普通限定中序 `source ->::E target` 向显式 Path 交付双输入
 Product，已选构造器决定可调用变换是否成立。
-Atomic 消费完整 E、实际外部类型叶子的包装形成及实例对应（N46）与有限表示。
+[普通借用和模式变换](patterns-overload/operator-patterns-and-generative-declarations.md#ordinary-borrowed-sum-transforms)
+在独占借用下匹配实际源并提交完整目标。take 交付实际旧资源及其责任。
+保留资源的成功分支按普通 Region Pre 构造 share，并在 Post 记录真实
+origin 依赖。Atomic 消费同一变换描述，提供条件原子提交。Atomic 的
+准入另查完整 E、实际外部类型叶子的包装形成及实例对应（N46）与有限表示。
 全源匹配约束真实 arm/协议变化；同 arm read 可在同一提交确认旧 Box
 后原位替换，同 arm write 不可替换。N39/N47–N50 定义提交、Keep/Exit
 权利、失败候选交还及 read→write 的读权结束；N41 仍拥有版本因果。

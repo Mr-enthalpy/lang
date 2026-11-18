@@ -44,6 +44,7 @@ RULE_STATUS = {
     "Heap submission": ("Defined", "Source consumer pending"),
     "Qualified infix": ("Defined", "Raw/Norm covered"),
     "Named layers": ("Defined", "Source consumer pending"),
+    "Ordinary borrowed transform": ("Defined", "Source consumer pending"),
     "Extra memory order": ("Open", "Semantic choice pending"),
 }
 OWNERS = [
@@ -202,10 +203,13 @@ def main():
         if re.match(r"^\| (?:" + "|".join(groups) + r")\d\d \|", line):
             require(table_cells(line)[-6:] == ["D", "—", "—", "—", "—", "—"],
                     "unimplemented source target must retain pending P/S/C/T/B: " + line.split("|")[1])
-    as_cases = re.findall(r"^\| (AS\d\d) \|",
-                                   read("spec/planning/canonical-semantic-conformance.md"), re.M)
+    conformance = documents[CONFORMANCE]
+    as_cases = re.findall(r"^\| (AS\d\d) \|", conformance, re.M)
     require(as_cases == [f"AS{i:02}" for i in range(1, 15)],
             "AS01-AS14 Pattern/transform/Atomic/Heap case inventory mismatch")
+    bt_cases = re.findall(r"^\| (BT\d\d) \|", conformance, re.M)
+    require(bt_cases == [f"BT{i:02}" for i in range(1, 6)],
+            "BT01-BT05 ordinary borrowed-transform case inventory mismatch")
 
     evidence = pathlib.Path(__file__).resolve().parent
     for name, expected_hash in MODEL_HASHES.items():
@@ -220,7 +224,7 @@ def main():
                       "checked_entry_points": len(ENTRY_POINTS), "definition_statuses": len(RULE_STATUS),
                       "bad_links": bad_links, "unique_N_owners": len(ids), "U": 12,
                       "M": 31, "F": 19, "paired_cases": len(cases),
-                      "as_cases": len(as_cases),
+                      "as_cases": len(as_cases), "bt_cases": len(bt_cases),
                       "model_hashes_verified": len(MODEL_HASHES), "model_exit_code": result.returncode,
                       "model_stdout_matches": True}, ensure_ascii=True))
     return bool(bad_links)

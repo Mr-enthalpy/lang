@@ -4,7 +4,7 @@ This directory preserves the handoff's Python model and expected stdout without
 editing. The separately authored [audit script](audit_consolidation.py) checks
 all tracked current Markdown for links and table/fence structure. It checks
 shared owner links, the definition and consumer status ledger, stable N/M/U/F
-inventories, 131 paired cases plus AS01–AS14,
+inventories, 131 paired cases, AS01–AS14 and BT01–BT05,
 and the preserved model hashes and actual output. Run from a checkout with Python 3:
 
 ```text

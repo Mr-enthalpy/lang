@@ -588,8 +588,12 @@ and name comparison. Preserve actual hole identities.
 `->` uses ordinary operator dispatch outside built-in callable arrows.
 Infix `a ->::E b` calls the explicit Path with a two-entry Product.
 `a (->::E) b` is an ordinary expression sequence. `.->` is an ADL selector. Selected
-constructors interpret `_` at the supplied positions. Atomic consumes a
-formed E and selected transform with [actual Box wrappers](../design/lifetime/atomic-pattern-transitions-and-causality.md#n46--普通结构真实类型包装与表示预算-定义). A
+constructors interpret `_` at the supplied positions. An [ordinary borrowed sum transform](../design/patterns-overload/operator-patterns-and-generative-declarations.md#ordinary-borrowed-sum-transforms)
+uses actual exclusive authority to conditionally install a complete
+target. Take returns owned material. Retain gives a valid share under
+ordinary Region Pre and records its actual origin in Post. Atomic adds
+one conditional atomic commit and its read/write rights to the same
+transform description, consuming a formed E and selected transform with [actual Box wrappers](../design/lifetime/atomic-pattern-transitions-and-causality.md#n46--普通结构真实类型包装与表示预算-定义). A
 [typed leaf](../design/patterns-overload/pattern-relations-observation-and-extraction.md#external-typed-leaves) obtains its classifier through ordinary lookup/selection.
 Atomic also checks the allocation-time
 read lazy duty and finite Status/representation evidence. N47–N48 define

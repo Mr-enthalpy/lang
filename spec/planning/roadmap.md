@@ -491,7 +491,9 @@ material; F02–F04 source-driven repair and explicit responsibility; F05–F09
 correlated joins, index, anonymous Move/Drop and recovery; F10 independent
 containers; F11/F12/F17 standard heap/lazy/universal locate; F13/F14/F16/F18
 atomic resource/causal/backend/protocol consumers; F19 additionally
-covers ordinary Pattern/transform consumers, full versus same-arm comparison,
+covers ordinary Pattern/transform consumers, including safe borrowed take,
+replace and retaining share under ordinary Region and origin obligations.
+Atomic additionally requires full versus same-arm comparison,
 same-arm read replacement and allocation-time lazy release, readable E `?`,
 and complete Rejected I/S return. Heap handoff transfers the actual Drop registration and maps only covered
 support uses. Actual return compresses the latest committed projection.

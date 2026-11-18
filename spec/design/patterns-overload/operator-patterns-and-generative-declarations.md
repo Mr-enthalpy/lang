@@ -440,12 +440,126 @@ slot cannot supply a value, resource or permission. Ordinary Pattern-side
 The transform retains correspondence to E, its selected producers and
 actual source/target positions. Formation uses ordinary selection,
 dependencies and lifecycle, and confers no access to a held subject.
-An ordinary owned sum uses ordinary Move, extraction and construction.
-An exclusive borrow supplies only the authority of the selected borrowed
-consumer. In particular, the [Atomic owner](../lifetime/atomic-pattern-transitions-and-causality.md)
-defines the full source comparison on arm/protocol change, the permitted
-same-arm partial comparison and the atomic update on exclusive borrowed
-Atomic material.
+
+### Ordinary borrowed sum transforms
+
+With an owned sum `S`, ordinary `S − M + O` consumes the actual
+`M` and constructs `O` under the selected ownership and delivery
+contracts. A borrow of `S` is a capability to access its resident.
+`S ref − M ref + O ref` supplies neither ownership of the old payload
+nor authority to install the new arm. Even a real child projection
+yields only the related borrow. A conditional change through an
+exclusive borrow needs one operation that describes the expected
+source and complete destination, along with the disposition of
+the actual resource. An ordinary transform formed by `->::E`
+supplies that description.
+
+Write `t = Transform_E(M,O)` for the callable value formed by the
+selected ordinary producer from source description `M` and target
+description `O`. In the rule below `M` denotes its formed source
+Pattern. Formation does
+not observe or modify the borrowed resident or acquire its payload.
+
+The ordinary borrowed consumer uses the selected transform on the actual
+exclusive view of a resident of `E`. Its attempt Pre admits the
+observation of the actual source through that live view. A match
+uses the ordinary Pattern relation. Before a matched change can
+commit, the selected operation also checks the target correspondence
+and applicable replacement, Writable, ownership, Region, Color, and
+cleanup premises. A change of resident requires a compatible complete
+replacement of the same declared type. Taking a payload requires
+actual transfer of the resident's owned material through the selected
+operation. Exclusive access and Writable alone do not supply that
+transfer. A shared borrow does not authorize replacement.
+
+The successful action is an ordinary conditional commit. For actual
+continuation `K`, occupied Place `q` and view `u`, the premises are:
+
+```text
+formed t = Transform_E(M,O) and the ordinary attempt through u is admitted
+Exclusive_K(u,q) and Resident_K(q) = v
+R_Gamma(M, Content(v), rho)
+Pre_t(K,q,u,rho,O) proves complete destination, lawful disposition and result
+------------------------------------------------------------------------
+<K,q,u,t> --commit--> <K',q,u',Success(r)> with Post_t
+```
+
+These are observations and actions of the same E. `u'` stands for any
+authority the ordinary Post actually retains or delivers. The rule
+replaces or retains the resident of `q` as selected and grants no
+implicit revival of a view whose target generation ended.
+
+Once admitted, a decided source mismatch follows the selected normal
+failure branch with the resident unchanged by this attempt. The branch
+accounts for any formed candidate materials passed to the operation
+and their remaining duties. Missing required observation or authority
+is unavailable, and a proved-false operation Pre rejects before
+commit. A failed selected operation does not reopen or retry.
+On success the ordinary action commits the complete destination,
+resource disposition and result together through the existing
+Pre/commit/Post. Semantically there is no intermediate empty Place
+or partial Object. Existing views retain their ordinary generation
+and access restrictions.
+
+| Ordinary successful resource disposition | Resource delivered to the caller | Post requirement |
+|---|---|---|
+| Take the actual old payload, by removing it or replacing it with a new payload | Owned old payload | Transfer its ownership and associated duties once. The destination retains the newly installed material, if any. |
+| Keep the actual payload in the resident through the selected correspondence | Shared borrow of that payload | Preserve the actual resource identity and custody. Record the borrow's source and target generation. |
+| The source has no resource at the selected position | No old-resource material | Account for any new material under the ordinary target contract. |
+
+Take and Keep follow from the actual material correspondence. The
+ordinary consumer checks the [lifecycle rules for Take and Keep](../lifetime/lifetime-policy-and-overload-boundary.md#borrowed-sum-transform-lifecycle).
+The Keep result's Pre must establish the borrow window through the
+exclusive view and actual storage support for that window. Its Post
+records the actual origin dependencies and constrains subsequent
+access while the share is live. If the containing generation changes,
+the share needs a lawful projection of the supported resulting
+resident. A failed share Pre prevents the complete change.
+
+An ordinary Option uses an explicitly grouped payload alternative.
+For a live exclusive view `r` of `Opt`, and with the named source and
+target descriptions already formed by ordinary producers, a take
+can be described as:
+
+```lang
+let Opt = (((T Some) | None) Opt)$;
+let take = someSource ->::Opt noneTarget;
+let outcome = r take ?;
+```
+
+| Actual source of an admitted attempt | Selected complete destination or failure | Delivered resource |
+|---|---|---|
+| Some(x), Take | None | Owned x |
+| Some(x), Take by replacement | Some(y) | Owned old x, with y installed |
+| Some(x), Keep | Some(x), with any other lawful update | Share of the actual x |
+| None | Some(y) | No old resource |
+| Decided source mismatch | Failure, no destination committed | Uncommitted candidate material and duties returned |
+
+A realization can exchange complete residents and extract from the
+owned old `Some` via its ordinary consuming correspondence. The caller
+can therefore express safe take or replace through the ordinary
+transform under its actual Move, access and storage Pre. The example
+and table specify consumer behavior. They introduce no take syntax.
+
+### Atomic consumes the same transform
+
+The [Atomic owner](../lifetime/atomic-pattern-transitions-and-causality.md)
+consumes the same E-relative transform descriptions for the material
+it admits. Its consumer adds a single externally atomic conditional
+commit and the associated causal evidence. Its registered access
+can admit controlled overlap under N36. The read/write resource
+protocol determines which admitted updates are legal and which rights
+success delivers, including N47's read Exit share and write Keep with
+no old-resource access. Ordinary transforms use the ordinary result
+table above and carry the usual exclusivity, with no Atomic protocol
+or ordering premise. Both consumers use ordinary Pattern matching
+and complete delivery. The ordinary commit rule alone supplies no
+cross-execution atomicity or memory-order guarantee. In particular,
+the ordinary commit does not establish an atomic modification order
+or rf/Past publication facts. Atomic comparison failures and any
+declared lawful spurious failure follow the Atomic consumer's contract.
+
+### Readable observation
 
 The selected ordinary `E?` producer exposes a coherent readable projection
 of one actual admissible version. The result grants only its proved readable

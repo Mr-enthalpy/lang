@@ -1182,6 +1182,39 @@ though the reference remains lifetime-valid. Weakening to `share` surrenders
 write capability, but does not alter the value's anchor or window state and never extends the
 target lifetime.
 
+### Borrowed sum transform lifecycle
+
+An [ordinary borrowed sum transform](../patterns-overload/operator-patterns-and-generative-declarations.md#ordinary-borrowed-sum-transforms)
+uses the actual exclusive access route and complete resident/delivery
+correspondence. For Take, the selected transfer must satisfy ordinary
+Move, alias, storage and cleanup Pre for the actual owned payload. Its
+Post delivers ownership and the pending duties once, preserving deeper
+origin dependencies. Any ended generation follows the selected
+MoveEffect and ordinary cleanup rules. No destructor is duplicated
+for the payload transferred to the result.
+
+For Keep, let `b` be the proposed share result, `u` the actual
+exclusive view and `q_S` the actual supported resource location. The
+ordinary share realization derives its parent and governing storage
+names through the selected retaining correspondence. Its Pre checks
+both the borrow window through `u` and continued storage validity of
+`q_S` for that window. For example, where separate source and storage
+names govern those windows, the strict endpoint obligations are
+`R(b) ≺ R(u)` and `R(b) ≺ R(q_S)` in the actual event interpretation.
+`R(q_S)` here refers to the governing lifecycle name's Region.
+Actual source, target generation, access and Color are independent
+requirements. All required evidence precedes commit.
+
+Successful Post identifies the new share and its actual origin
+dependencies through the admitted projection, including the view,
+resource source and storage support it relies on. Delivery maps
+those dependencies through the ordinary boundary correspondence.
+While the share is live, conflicting mutation through the original
+exclusive route is disallowed under ordinary access and Color.
+A retained payload grants no continued access through an invalidated
+generation. If a fresh projection is needed, the Pre must justify
+its formation at the commit and Post records its actual target.
+
 ## 4. `@` and lifetime rules never reselect an ordinary call
 
 The boundary between lifetime work and ordinary overload resolution is frozen:
