@@ -248,29 +248,20 @@ malloc/free and direct-parent relocation with lazy Pending custody; every
 standard non-root locate requires universal guaranteed submission. Independent
 [containers](control-flow/heterogeneous-computation-containers.md) separately
 check dispatch, Color and return/escape.
-The ordinary sum Pattern extension `A ~~ R` preserves a direct
-state/resource **association**, not extraction, conversion,
-generation or an Atomic-specific operator. A standalone associated
-arm is legal; Product-local `~~` is not. `$` creates E first;
-an ordinary selected E-associated `->::E` may form a
-transform value, without executing the transform.
+Recursive named Pattern material is available in Products and sums. LHS
+extraction and RHS construction share its ordinary structural positions.
+A selected compile producer can carry runtime dependencies into that
+structure when outward compile work stays independent of runtime values.
+Ordinary `->` dispatch and `->::E` formation precede any specialized
+consumer.
 
-[Atomic](lifetime/atomic-pattern-transitions-and-causality.md)
-consumes E plus a legal transform and gives its single
-attempt an actual conditional atomic state/resource/rights
-commit. State arm resource roles (example names `write/read`)
-determine old-resource ExitSlot custody or Keep sharing;
-changing arm requires full Status matching and a partial
-masked Status update is confined to in-place Keep.
-A failed attempt returns all genuinely formed target
-Status/resource candidates, not implicit Drop. E's `?`
-observation may yield a coherent readable-only State
-projection, never hidden-source authority or payload share
-by itself. Read-to-write protocol change must prove prior conflicting
-borrow rights end, and no source/Color/Region premise is
-derived solely from a number. F13/F14/F16/F18/F19,
-producer and machine proof gates remain pending; F15
-extra SeqCst/fence remains the bounded decision.
+[Atomic](lifetime/atomic-pattern-transitions-and-causality.md) consumes complete
+E, selected transform, actual wrapped Box and admitted two-word representation.
+Read exit or same-arm replacement discharges slot custody under an existing
+allocation-time lazy duty. Write replacement requires a real arm change.
+Actual commit and failure preserve the rights, causal and candidate rules.
+Heap relocation maps covered local support to the direct parent's name in
+the lifecycle projection; the actual return consumes that Post.
 
 The [unified correspondence](unified-static-name-and-structural-semantics.md#cross-owner-correspondence)
 and [evidence ledger](../planning/lifetime-concurrency-consolidation.md) link these

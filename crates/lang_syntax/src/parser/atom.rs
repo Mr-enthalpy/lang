@@ -282,7 +282,7 @@ fn consume_invalid_operator_selector(parser: &mut Parser<'_>) {
 pub fn parse_member_selector(parser: &mut Parser<'_>) -> Option<SelectorAst> {
     let token = parser.cursor.peek_non_trivia();
     match token.kind {
-        TokenKind::Name => {
+        TokenKind::Name | TokenKind::Symbol(Symbol::ThinArrow) => {
             let token = parser.cursor.bump_non_trivia();
             Some(SelectorAst::Text(NameAst {
                 text: token.text.clone(),

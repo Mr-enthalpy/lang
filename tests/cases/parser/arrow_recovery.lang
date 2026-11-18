@@ -1,0 +1,3 @@
+let missing = (a, b) -> ;
+let chained = a -> b -> c;
+let next = x;

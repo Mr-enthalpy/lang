@@ -15,7 +15,7 @@ pub fn parse_operator_expr(
     parser: &mut Parser<'_>,
     stop: &mut impl FnMut(&mut Parser<'_>) -> bool,
 ) -> Option<OperatorExprAst> {
-    parse_binary_expr(parser, stop, 1)
+    parse_binary_expr(parser, stop, 0)
 }
 
 fn parse_binary_expr(
@@ -24,7 +24,7 @@ fn parse_binary_expr(
     min_precedence: u8,
 ) -> Option<OperatorExprAst> {
     let mut lhs = parse_prefix_expr(parser, stop)?;
-    let mut seen_nonassoc = false;
+    let mut seen_nonassoc = None;
 
     loop {
         if is_operator_expr_boundary(parser, stop) {
@@ -53,14 +53,15 @@ fn parse_binary_expr(
         let operator = bump_operator(parser, current);
 
         if binary.associativity == Associativity::NonAssociative {
-            if seen_nonassoc {
+            let is_arrow = current.spelling == OperatorSpelling::Arrow;
+            if seen_nonassoc == Some(is_arrow) {
                 parser.error(
                     DiagnosticCode::ChainedNonAssociativeOperator,
                     "chained non-associative operator requires explicit grouping",
                     operator.span,
                 );
             }
-            seen_nonassoc = true;
+            seen_nonassoc = Some(is_arrow);
         }
 
         let rhs = match parse_binary_expr(parser, stop, binary.precedence + 1) {
@@ -659,7 +660,6 @@ fn is_operator_expr_boundary(
                     | Symbol::Semicolon
                     | Symbol::PipeGreater
                     | Symbol::FatArrow
-                    | Symbol::ThinArrow
                     | Symbol::Equal
                     | Symbol::Colon
             )
@@ -750,6 +750,10 @@ fn binary_info(spelling: OperatorSpelling) -> Option<BinaryInfo> {
         PlusEqual | MinusEqual | StarEqual | SlashEqual | AmpEqual | PipeEqual | LessLessEqual
         | GreaterGreaterEqual => BinaryInfo {
             precedence: 1,
+            associativity: Associativity::NonAssociative,
+        },
+        Arrow => BinaryInfo {
+            precedence: 0,
             associativity: Associativity::NonAssociative,
         },
         Bang | At | Tilde | Caret | Dollar | PlusPlus | MinusMinus | Question | BracketCall => {

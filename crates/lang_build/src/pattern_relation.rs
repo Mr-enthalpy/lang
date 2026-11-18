@@ -856,6 +856,12 @@ fn first_root_in_pattern(pattern: &NormPattern) -> Option<lang_syntax::PatternRo
         NormPattern::Product { elements, .. } => elements.iter().find_map(first_root_in_element),
         NormPattern::Pack { inner, .. } => first_root_in_pattern(inner),
         NormPattern::Sequence { elements, .. } => elements.iter().find_map(first_root_in_pattern),
+        NormPattern::NamedLayer { material, name, .. } => {
+            first_root_in_pattern(material).or_else(|| first_root_in_pattern(name))
+        }
+        NormPattern::Sum { alternatives, .. } => {
+            alternatives.iter().find_map(first_root_in_pattern)
+        }
         NormPattern::Skeleton { skeleton, .. } => first_root_in_skeleton(skeleton),
         NormPattern::BindingSlot { slot, .. } => first_root_in_slot(slot),
         _ => None,
@@ -957,6 +963,8 @@ fn pattern_origin(pattern: &NormPattern) -> &lang_syntax::NormOrigin {
         | NormPattern::Literal { origin, .. }
         | NormPattern::Nav { origin, .. }
         | NormPattern::Sequence { origin, .. }
+        | NormPattern::NamedLayer { origin, .. }
+        | NormPattern::Sum { origin, .. }
         | NormPattern::Skeleton { origin, .. }
         | NormPattern::BindingSlot { origin, .. }
         | NormPattern::InterpretationFlip { origin, .. }

@@ -94,6 +94,10 @@ Nested layers decide independently. Named extraction followed by explicit
 ordered assembly is required to turn an unordered layer into a bare sequence;
 neither map order nor `?` supplies that sequence.
 
+A Product can contain [recursive named Pattern layers](pattern-relations-observation-and-extraction.md#92-recursive-named-pattern-material).
+Their group and name incidence survive contextual exposure. Product ordering
+is still decided independently at each actual Product layer.
+
 ## 3. Underscore and the singleton form
 
 ```text

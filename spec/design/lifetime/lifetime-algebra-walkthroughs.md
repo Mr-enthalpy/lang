@@ -111,6 +111,14 @@ remains pending (LC9–LC12); the traces are positive/negative acceptance eviden
    NameExpr. Reify with fixed A || B may choose either runtime branch; a shape
    inferred from runtime values must first be closed by an ordinary wrapper.
 
+A Box may first satisfy malloc Pre under the current located heap H1.
+If that action succeeds, a later guaranteed HeapRelocate can submit its
+covered support to up(H1) and reinterpret the local heap name in the
+lifecycle projection. The actually reached return then compresses that
+support through its real input/capture correspondence. On a path that
+skips relocate, or retains an independent borrow of a local, the same malloc
+can succeed and the applicable return can reject. See HeapStack N28–N32.
+
 ## 1. Branches, recursion and nested InPlace exits
 
 ### Source and selected actions

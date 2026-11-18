@@ -280,12 +280,12 @@ fn pipe_branch_body(parser: &mut Parser<'_>) -> SegmentElementAst {
     let span = body.span;
     SegmentElementAst::OperatorExpr(OperatorExprAst {
         kind: OperatorExprKind::Atom(AtomAst {
-            kind: AtomKind::Closure(ClosureAst {
+            kind: AtomKind::Closure(Box::new(ClosureAst {
                 placement: ClosurePlacementAst::InPlace,
                 head: None,
                 body: ClosureBodyAst::Block(body),
                 span,
-            }),
+            })),
             span,
         }),
         span,
@@ -304,7 +304,9 @@ fn parse_segment_element(
             // A `(...)` followed by any centralized closure-head continuation
             // is a parameter clause rather than an ordinary Product.
             if let Some(idx) = after_idx {
-                if super::closure::token_index_starts_closure_head_continuation(parser, idx) {
+                if super::closure::token_index_starts_closure_head_continuation(parser, idx)
+                    || super::closure::token_index_starts_bare_arrow(parser, idx)
+                {
                     let op_expr = parse_operator_expr(parser, stop)?;
                     return Some(SegmentElementAst::OperatorExpr(op_expr));
                 }
@@ -360,14 +362,10 @@ fn is_headless_in_place_closure_segment_element(element: &SegmentElementAst) -> 
 
 fn operator_expr_contains_headless_in_place_closure(op_expr: &OperatorExprAst) -> bool {
     match &op_expr.kind {
-        OperatorExprKind::Atom(atom) => matches!(
-            atom.kind,
-            AtomKind::Closure(ClosureAst {
-                placement: ClosurePlacementAst::InPlace,
-                head: None,
-                ..
-            })
-        ),
+        OperatorExprKind::Atom(atom) => {
+            matches!(&atom.kind, AtomKind::Closure(closure)
+                if closure.placement == ClosurePlacementAst::InPlace && closure.head.is_none())
+        }
         OperatorExprKind::Product(_) => false,
         OperatorExprKind::OperatorSugar { args, .. } => args
             .iter()

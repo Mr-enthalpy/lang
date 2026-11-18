@@ -1722,62 +1722,43 @@ has no preference parameter: malloc/free enter current top and standard
 relocate submits to up(H) without executing Pending. All standard non-root
 locate operations prove universal guaranteed parent submission and lazy
 acceptance before registration. Custom heaps remain ordinary permitted providers.
-Escape fails at production Pre, not by a last-minute reader check at heap Drop.
+A local allocation checks its current Region and establishes its actual
+release policy, including lazy duty when requested. Successful relocate
+reinterprets the covered local heap name in the lifecycle projection as
+its parent. An actual return independently checks name compression under
+the latest Post. Uncovered local dependencies fail at that return boundary.
 
-[Ordinary sum-arm `~~` association](../design/patterns-overload/pattern-relations-observation-and-extraction.md#92-direct-sum-arm-structural-association-)
-forms branch-local State/Resource relational Pattern structure, independent
-of Atomic. For a source sum, `A ~~ R | B` means `(A ~~ R) | B`;
-a single associated branch is legal, but `(C ~~ R, D)` cannot introduce
-the association into a Product entry. The association is not the directional
-`=>` callable extraction/generation arrow, a resource conversion or a
-CAS instruction. Its operands and structural incidence survive `$`,
-`R_Gamma` and complete Pattern normalization.
+[Recursive named Pattern material](../design/patterns-overload/pattern-relations-observation-and-extraction.md#92-recursive-named-pattern-material)
+retains `E name`, `E (E name)name` and deeper groups at each Product or
+sum layer. LHS extraction and RHS construction share structural positions
+through ordinary `$` polarity. Compile producers admit runtime input
+under the ordinary dependency and identity rules, including runtime
+holes and staged names. This source structure has a Raw/Norm carrier;
+Pattern formation, extraction and runtime name identity still need
+their semantic consumers.
 
-An ordinary E-associated selected callable (illustratively `->::E`)
-may construct a *transform value* from E-relative source and target arms,
-using `~~` in a target arm when its resource is specified. Constructing
-that value does not execute a CAS. Target omission of an existing
-compatible Status/resource means inheritance/identity-preserving Keep;
-a target with no respective role cannot inherit it. Target-state
-omission requires no new resource and permits a same-arm Keep update;
-only same-arm Keep can partially match/mask Status. Changing arm
-requires **full source arm/Status matching** (possibly via registered
-nonpublic evidence), and resource replacement requires a genuine arm
-change, not merely Status arithmetic.
+Ordinary `lhs -> rhs` lowers through binary operator dispatch. Built-in
+return arrows take priority in callable heads, `(->::E)` supplies a Path
+and `.->` an ADL name. Selected A::E, B::E and ->::E contracts determine
+the meaning of RHS `_` in a transform description and whether the target
+can inherit actual material. Transform formation grants no held-subject
+access. Ordinary E `?` exposes the proved readable projection of one
+version.
 
 [Atomic](../design/lifetime/atomic-pattern-transitions-and-causality.md)
-is a stronger **consumer** of already formed E and the selected transform
-value. It admits legal resource roles, illustrated by ordinary named
-`(S write)` or `(S read)` on the resource side of `~~`, retains
-all real N35 source closure, and performs one conditional atomic
-transaction with its actual Color, Region, ownership and causal Post.
-A source `write` ExitSlot returns old owned S; a source `read`
-ExitSlot delivers owned S to lawful Forget custody **and** a valid
-S share to Committed. Keep from write yields no old-resource access;
-Keep read->read yields share; Keep read->write yields no share.
-Changing resource protocol is an arm-changing CAS even with Keep,
-and subsequent take is a separate attempt. The first read-to-write CAS must
-already prove that conflicting live shares have ended and issuance is closed;
-the later extraction still needs its own ordinary Pre. Numeric count alone
-is insufficient for either step.
-
-Failure returns all actually formed proposed new Status/resources
-and preserves the actual Atomic instance; it cannot silently Drop or
-invent unformed inputs. E's ordinary `?` observation can yield a
-coherent single-version copy of the **readable** branch/Status
-projection, omitting nonpublic components without implicitly granting
-source authority, hidden/full matching, S share or version freshness.
-The proposed `e transform ?` followed by ordinary success/failure
-branch extraction is target source syntax, not implemented code.
-Actual result branches and memory publication honor N39/N41.
-No generic ARC/RCU/Mutex/GC, fixed Boxlike, clone/COW, lazy-free
-receiver or retry policy becomes part of this basis. F13/F14/F16/
-F18/F19 remain proof/source/backend obligations, and F15 alone
-keeps the extra SeqCst/fence semantic decision.
+consumes admitted E/transform and actual read/write wrappers over `T Box`.
+Status has trivial Move/Drop and valid atomic comparison within the total
+two-word budget. Arm or protocol change requires full comparison. A
+same-arm read update can replace an actual compared Box with a new read Box
+whose lazy release duty was installed at allocation. A same-arm write
+replacement fails. Read exit discharges slot custody under existing lazy
+duty and returns a valid share. Write exit returns owned S. Keep and
+read-to-write follow N47–N48, including closure of prior conflicting read
+authority. A real failed comparison returns all formed incoming material.
 
 [Independent containers](../design/control-flow/heterogeneous-computation-containers.md)
 transform ordinary effect trees and separately check dispatch, Color and escape.
 [Status and paired acceptance](../planning/lifetime-concurrency-consolidation.md)
 distinguish definitions, proofs, syntax, consumers, tests and backends. This
-section changes no lexer/parser/Norm/diagnostic behavior and claims no source
-implementation of these pending protocols.
+section records Raw/Norm syntax coverage separately from the pending
+source protocols and proof consumers.

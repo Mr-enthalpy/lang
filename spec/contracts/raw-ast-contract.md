@@ -41,22 +41,9 @@ const / mut / compile / close / let
 
 are not lexer keywords.
 
-The current lexer has 20 structural `Symbol` variants. The proposed
-sum-arm association extension adds a **distinct target** structural `~~`
-carrier (21 after wiring), not a new semantic Object axis or an already
-implemented operator. `Ellipsis` remains structural Pattern syntax.
-
-For the pending direct-sum-arm `~~` syntax, maximal munch must
-recognize `~~` as one structural association token before ordinary
-postfix `~` or any generic operator fallback. `~` keeps its existing
-Function Pattern repetition meaning. The association token is legal
-only in the structural sum-arm grammar (including its singleton form and
-arm-shaped transform operands). Parsing preserves this shape without deciding
-producer availability, E-relative compatibility or selection. It is **not** a general
-Product infix operator; e.g. `(C ~~ (Sc write), D)` is not a
-legal product-level association. `A ~~ R | B` groups as
-`(A ~~ R) | B`. Raw parsing must not confuse it with
-existing directional `=>` callable heads/tails.
+The lexer retains its 20 structural Symbol variants. `ThinArrow` is shared by
+the built-in callable return boundary and the ordinary arrow operator.
+`Ellipsis` and postfix `~` retain their ordinary roles.
 
 Dot-family maximal munch is:
 
@@ -687,30 +674,23 @@ and reparses it as contribution. New source wiring requires span/recovery and
 golden coverage, and may not feed semantic facts back into parsing.
 
 
-## Direct sum-arm association handoff (pending)
+## Recursive named Pattern and arrow handoff
 
-An ordinary RHS sum arm may have explicit structural association:
-`StatePattern ~~ ResourcePattern`, with `|` remaining the sum
-separator. A singleton associated arm is legal. Raw and Norm
-must retain an arm-local `AssocArm(state,resource,source_span)`
-carrier (name schematic, not an existing implemented node) with
-both operands and their spans, the `~~` span, enclosing arm/group boundaries
-and recovery provenance. It is **not** a plain Product of
-two children, an extraction edge, generated resident, or an
-Atomic-owned syntax tree. Syntax-directed parsing validates arm placement;
-the later Pattern consumer validates selected structural witnesses and the
-observable relational identity of the complete `$` result.
-No partial lexer/parser implementation is claimed.
+In S context, `E name`, `E (E name)name` and deeper nesting retain their
+ordinary Raw expressions, group spans, Product layers and name occurrences.
+This applies to extraction slots, annotations and opposite-context
+construction under `$`. Norm records grouped named layers and ordinary
+sum alternatives, and visits their name occurrences under the current
+PatternRoot and HoleBinder environment.
 
-A transform operand for an ordinary E-associated producer
-(e.g. `->::E`) may use the same arm association shape;
-the selected producer, not the tokenizer, must establish
-source/target relation, compatible omitted material, and
-whether a callable transform value exists. Constructing
-such a value does not execute CAS. A later Atomic consumer
-may interpret that value with one-point CAS and real rights
-transfer. `~~` is not the generative callable `=>` and
-does not rewrite any existing named callable/closure syntax.
+Outside an applicable built-in callable head, bare `->` is an ordinary
+binary operator. A syntactic callable tail anchors the built-in return
+clause, including recoverable malformed tails. An explicit `->::E` is a
+Path, and `.->` uses ordinary dot-name sugar. Binary arrow uses ordinary
+operator-call normalization at the weakest, non-associative tier. The
+frontend therefore preserves applicability material, operator/name spans
+and source structure. Semantic formation, selected E-relative producers
+and Atomic transactions require their own consumers.
 
 ## Structural interpretation handoff
 

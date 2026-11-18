@@ -472,9 +472,10 @@ substrate tests do not establish HA execution.
 [Current evidence and F01–F19](lifetime-concurrency-consolidation.md) own the
 normative/proof status; [the 131 paired source targets](lifetime-concurrency-acceptance.md)
 are not executed source coverage. N01–N50 and U01–U12 are distributed across
-actual topic owners. F19 is a pending `~~` sum-arm/`->::E` transform, source matching,
-readable `?`, resource/permission and failed input return consumer gate, not an
-extra memory-order decision; F15 remains explicitly unselected.
+actual topic owners. F19 tracks pending recursive Pattern formation, staged producer identity,
+E-relative transforms, matching, readable observation and resource/permission
+proofs. Raw/Norm goldens cover recursive named layers, sum choice, runtime
+hole syntax and contextual arrow. F15 retains the extra-order decision.
 
 The implemented D1 slice replaces the continuous Region carrier with discrete
 event sets and actual continuation/generation identity. Event membership is
@@ -489,10 +490,10 @@ material; F02–F04 source-driven repair and explicit responsibility; F05–F09
 correlated joins, index, anonymous Move/Drop and recovery; F10 independent
 containers; F11/F12/F17 standard heap/lazy/universal locate; F13/F14/F16/F18
 atomic resource/causal/backend/protocol consumers; F19 additionally
-covers direct sum-arm `~~`, E-relative callable transform production,
-full source matching for arm changes versus same-arm masked Status,
-readable one-version `?`, source write/read Exit/Keep rights, and complete
-Rejected I/S candidate return without mandatory recovery algorithm.
+covers ordinary Pattern/transform consumers, full versus same-arm comparison,
+same-arm read replacement and allocation-time lazy release, readable E `?`,
+and complete Rejected I/S return. Heap handoff and actual boundary compression
+consume the committed direct-parent name reinterpretation.
 Connect new facts to actual host dependencies at each step. Missing domains remain unavailable; no id,
 None/default origin, empty Post, cloned owner, hidden Box or backend substitute
 may fill them. F15 alone needs an additional semantic-order decision.

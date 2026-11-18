@@ -256,3 +256,34 @@ Remaining-continuation facts alone authorize Residual. Unsupported source or
 missing facts report the actual unavailable boundary, without reopening the
 selected family or fabricating success. Persistent key/storage representation
 and checked access summaries remain implementation work.
+
+### Runtime inputs to compile producers
+
+A compile callable may accept runtime inputs under ordinary selection and
+input admissibility. Its outward compile computation completes using only
+admitted compile observations. A required runtime-to-compile dependency
+is unavailable outside the established reify boundary. E can retain the
+selected producer, deferred input and its structural correspondence while
+the runtime material is unavailable. The compile instance still forms
+before body entry from complete canonical observations of the admitted
+inputs, such as an actual runtime input identity and its admitted dependency.
+If a required value-sensitive key component is unavailable, that invocation
+cannot enter with a fabricated key. Reify retains ClosedReturn and a
+compile-determined outward interface.
+
+An ordinary compile call used in a NameExpr or to supply flipped Pattern
+material has the same rule. Compile-known structure may describe an
+identity that depends on a later actual runtime input. Form its concrete
+NameValue at the frontier where those inputs are admitted, keeping its
+identity separate from the compile producer's stable instance/self-name.
+Opaque input evidence does not equate distinct concrete runtime values.
+The selected producer, input identity and policy observations constrain
+correspondence under ordinary NameValue and compile-instance rules.
+
+With the same name producer, runtime input and corresponding compile
+input do not imply the same semantic name. There is no general bijection
+or partial migration law between their names. If a particular selected
+migration produces an equal object, that equality comes from its actual
+contract and committed result. When runtime-dependent Pattern material
+has runtime policy, any present preceding Val1 rank is runtime by the
+rank law. This is independent of callable P1/P2.

@@ -2372,7 +2372,7 @@ It is not a fabricated `origin=None` or a fixed-depth universal root.
 - 非默认部分只有在能够保守化为更深 origin 链中的真实 unknown 边界时才允许隐藏；
 - 无法这样表达而又不扩大权限的，拒绝该遗忘。
 
-合法 unknown 化是一个有实际来源、由遗忘操作建立的观察边界；不是把缺失证据、失效借用、任意环或已死亡目标伪装成 unknown。不能借默认的独占根独立性掩盖实际共享/父子依赖。尤其是 Atomic `~~` 关联的 read 源臂依法交付过的真实共享借用，不能因状态变换、名字压缩或源资源离槽而擅自失效；其 Drop、来源与 Region 责任不能被普通 Type 摘要抹除。
+合法 unknown 化是一个有实际来源、由遗忘操作建立的观察边界；不是把缺失证据、失效借用、任意环或已死亡目标伪装成 unknown。不能借默认的独占根独立性掩盖实际共享/父子依赖。尤其是 Atomic read 源臂依法交付过的真实共享借用，不能因状态变换、名字压缩或源资源离槽而擅自失效；其 Drop、来源与 Region 责任不能被普通 Type 摘要抹除。
 
 遗忘丢失观察精度，不消除已有历史，不增加 Region，不删除既有 Color，不恢复被裁剪的访问权限。
 
@@ -2390,14 +2390,15 @@ It is not a fabricated `origin=None` or a fixed-depth universal root.
 
 无外部名字依赖的普通值不因匿名化凭空取得外部约束。值身份、实际资源所有权与析构责任仍保留；不可 Copy 不自动等于不可进入数组。
 
-Atomic `~~` 关联的 read 源资源在实际 CAS 离槽时执行 Forget：旧资源的
-**唯一所有权/可执行 Drop 责任**交付给实际合法接收者，同时
-CAS 成功结果取得真正的 `S share`。这不是强制的 lazy-free
-回收或 Boxlike 变换；接收者不得因此令现存读取的 Region、
-origin 或 storage support 失效。资源留在原槽位的 Keep 则
-不触发 Forget。这一交接遵守本节普通名字遗忘和 N22 责任
-守恒，不把原来源洗成 None；Atomic 另在 N47–N50 检查
-单次提交与模式/共享权相容性。
+Atomic read 槽位退出或替换在成功 CAS 中解除槽位持有资格并交付实际
+有效的 share。分配 Post 已建立唯一最终释放/Drop 责任；运行时
+Forget_read 为 NoOp。活借用仍保留真实来源、Region 和存储支持，
+其责任守恒遵循 N22 与 [Atomic N47–N50](atomic-pattern-transitions-and-causality.md)。
+
+HeapRelocate 的成功 Post 对已交接支持建立
+[局部 heap 名字的生命周期重解释](heap-stack-and-storage-responsibility.md#n29--relocate-精确向直接父层提交且不执行-pending-不变量)。
+返回边界按实际到达状态压缩名字；独立局部借用保留自己的义务，
+无法压缩时在该边界拒绝。局部分配 Pre 只消费实际分配上下文。
 
 ### N22 — 遗忘必须保留可执行的 Drop 和 Move [不变量]
 

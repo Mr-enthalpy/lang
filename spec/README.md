@@ -76,7 +76,7 @@ remain architecture acceptance targets, separate from executed substrate tests.
 
 ## Contracts
 
-For Atomic work, follow the [ordinary Pattern association](design/patterns-overload/pattern-relations-observation-and-extraction.md#92-direct-sum-arm-structural-association-),
+For Atomic work, follow the [ordinary Pattern association](design/patterns-overload/pattern-relations-observation-and-extraction.md#92-recursive-named-pattern-material),
 [selected ordinary transform/observation](design/patterns-overload/operator-patterns-and-generative-declarations.md#7-ordinary-e-relative-transforms-and-readable-observation)
 and [Atomic execution](design/lifetime/atomic-pattern-transitions-and-causality.md)
 owners in that order. The [status ledger](planning/lifetime-concurrency-consolidation.md)

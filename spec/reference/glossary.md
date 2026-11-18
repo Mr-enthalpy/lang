@@ -787,33 +787,18 @@ executable Move/Drop. Ordinary extraction inherits those obligations; partial
 default-world recovery in reify cannot restore a hidden non-default dependency.
 An atomic version is a committed event identity, separate from a state number,
 LifeName/generation, origin and rf. Only actual observation imports its Past.
-An ordinary `$`-formed sum Pattern may associate a branch's
-state and resource Patterns using direct-arm `~~`, e.g.
-`A ~~ (S write) | B ~~ (T read)`. This preserves actual
-relational structure but does not extract, generate,
-convert, move or perform CAS. It is legal for a singleton
-arm, illegal as a general nested Product entry, and
-separate from directional `=>` callable declarations.
-The selected E-associated ordinary `->::E` may form
-a callable transform *value*; Atomic alone adds the
-trusted single-attempt commit/Color and custody effect.
 
-A source `write` resource that actually exits transfers
-owned S to Committed; `read` exits transfer old ownership
-to lawful Forget and return S share. Keep write returns
-no resource right, Keep read->read returns share,
-Keep read->write returns none. An arm change, including
-read/write protocol change, demands full source/Status
-matching; only a same-arm Keep may use partial masked
-Status matching/update. An omitted target I/S is inherited
-only when truly present/compatible. Rejected returns
-all actually formed proposed target I/S without silent
-Drop. E's `?` yields at most the legally readable,
-single-version state projection, not a resource borrow
-or hidden-field matching evidence. Resource/Region/
-Color and causal/visibility correctness remain real
-proof duties independent of library ARC/Mutex/GC
-or any specific CAS wrapper.
-The
-[atomic owner](../design/lifetime/atomic-pattern-transitions-and-causality.md)
-defines the one-attempt resource transition, F19 proof and bounded F15 decision.
+A recursive named Pattern retains its grouped structural material and each
+actual name occurrence, including inside Products and sum alternatives.
+`E name` and `E (E name)name` share ordinary extraction and construction
+structure. Opposite-context construction uses `$`.
+
+An E-relative transform is a callable value from a selected ordinary
+producer such as `->::E`. Atomic consumes it with a complete E, actual
+read/write-wrapped `T Box` where present, and finite atomic representation.
+An actual arm/protocol change compares full Status. A same-arm read
+replacement requires old Box identity and preserves the allocation-time
+release duty. N47 specifies Keep and Exit rights. `E?` observes one
+coherent readable projection. Failure returns formed input material.
+The [Atomic owner](../design/lifetime/atomic-pattern-transitions-and-causality.md)
+defines the complete transaction and causal obligations.

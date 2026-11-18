@@ -375,7 +375,7 @@ pub enum AtomKind {
         object: Box<AtomAst>,
         visibility: MemberVisibilityAst,
     },
-    Closure(ClosureAst),
+    Closure(Box<ClosureAst>),
     Error(ErrorAst),
 }
 

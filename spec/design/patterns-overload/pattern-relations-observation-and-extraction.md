@@ -369,8 +369,8 @@ and preserves, up to alpha-renaming / canonical binder renaming:
 - direct structural incidence;
 - attached node-local `lifetime default` expression material, scope/binder
   identity and its complete recursively composed relation observation;
-- direct sum-arm `~~` association structure and its two role-specific Pattern
-  operands, even when bare satisfaction or field layout agrees.
+- recursive named Pattern layers, their name correspondences and admitted
+  material at each layer
 
 Therefore:
 
@@ -760,112 +760,60 @@ Unavailable; a known value outside the admitted interval mismatches.
 Such ordinary interval relations may constrain state-number material within a
 formed state arm. An Atomic consumer uses that relation without adding range
 matching rules or inferring provenance/permission from the numeric predicate.
-Its source resource protocol comes from the arm's actual `~~` association,
-not a mandatory field name or Product position.
+Atomic separately checks the actual resource wrapper and the represented
+Status in the complete ordinary structure.
 
-### 9.2 Direct sum-arm structural association (`~~`)
+### 9.2 Recursive named Pattern material
 
-The ordinary sum Pattern may associate a branch's state Pattern with its
-resource Pattern as **formed relational structure**, independent of any
-Atomic or CAS consumer. The source-level association spelling is `~~`;
-it does **not** imply extraction, generation, copying, movement, a
-function arrow, a conversion, or execution. Its operands have distinct
-roles, so `A ~~ R` does not entail `R ~~ A` or symmetry/equality.
+The name position of ordinary `E name` can itself contain a grouped named
+Pattern followed by its own name. In that position, the production
+`name → (E name)name` recurs, including in Products and sum alternatives.
+For example, `E (E name)name` and `E (E (E name)name)name` preserve each
+group, each name occurrence and the material associated at that layer.
+A Product layer keeps its own ordering and correspondence under §7.
+Ordinary sum choice `|` keeps its existing meaning.
 
-```text
-Arm ::= StatePattern
-      | StatePattern ~~ ResourcePattern
-Sum ::= Arm ("|" Arm)*        // a standalone associated Arm is legal
-```
+Formation and extraction use the same recursive structural positions.
+`R_Gamma` observes the applicable complete subject and extracts at each
+position using its admitted structural correspondence. Construction uses
+the same positions with ordinary producers and complete identity commit.
+Alpha normalization follows actual PatternRoot/HoleBinder identity at each
+layer, including shadowing and external Path correspondence. Equal spelling
+cannot merge two layers or equate their names. The recursive form adds no
+independent source of NameBindings, Places or registration. Evidence needed
+by a particular consumer comes from the actual formed structure.
 
-Examples of target Pattern formation (still requiring real ordinary
-Pattern/structural witnesses and a legal `$` conversion):
+The construction/extraction correspondence is structural. A call consumes
+its selected input by extraction, and its return constructs under its own
+Pattern and delivery contract. Neither direction infers the other's
+operational actions. The ordinary local flip
+`Interpret(e$, C) = Interpret(e, Flip(C))` composes at every nesting depth.
+For example, `let a: uint8 = expr` extracts at adjacent ranks and binds
+the bare classifier name, whereas `uint8::` and `uint8$` supply external
+material. In `|> (self, val: t option::std::)`, `t` extracts the inner
+material. In `|> (self, val: uint8$ option::std::)`, the corresponding
+inner position requests the external material.
 
-```lang
-let E = ((
-    (Ia1 n1, Ia2 n2) A ~~ (Sa write) |
-    (Ib1 m1) B         ~~ (Sb read)  |
-    C                  ~~ (Sc write) |
-    D
-) E)$;
-```
+An ordinary owned sum can consume M and construct O in S − M + O. The
+input M can have its own nested structure. The ordinary forms
+`|> (self, val: A$ M)` and `|> (self, val: A M)` respectively use external
+material at that position and extract its inner material. Both follow
+ordinary passing and lifecycle actions. Borrowed input instead requires
+its own available observation/replacement authority.
 
-Here `|` chooses an ordinary sum alternative. `~~` associates
-**that direct arm**, and binds more tightly than `|`;
-`A ~~ R | B` means `(A ~~ R) | B`.
-A standalone `A ~~ R` arm needs no artificial `|` neighbor.
-The spelling `(C ~~ (Sc write), D)` is **not** a valid product-level
-association: `~~` is neither a general Product entry nor a global
-binary Pattern connective. An enclosing group that consists of a
-single arm does not turn that arm into an ordered Product.
-The weak ordinary names `write` and `read` in this example
-are illustrative resource-role member names, not lexer keywords;
-the precise final role vocabulary is not fixed by choosing `~~`.
+Where an ordinary selected compile producer supplies name or Pattern
+material (including under `$`), the
+[invocation rules](../static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers)
+apply. For `runtime let <val, length> val: length range = expr`, extraction
+can bind `length` with runtime Policy under the ordinary hole rules. The
+compile-determined structure may carry admitted runtime dependencies.
+When the Pattern rank is runtime, any present Val1 rank is runtime under
+the Policy rank law. This constrains the Object rank pair independently
+of the callable's P1/P2.
 
-The formed complete Pattern retains both subpatterns, the arm to
-which they belong, and the structural association evidence. It
-does not silently project the right resource into the left State
-Pattern, invent a source resident, register a constructor/extractor
-or issue a resource borrow. `R_Gamma` and `Norm_P` must preserve
-the association, including branch/binder identity and observable
-role structure; erasing `~~` into a generic Product or merely
-remembering equal satisfaction sets is not equivalent.
-
-The following judgments describe ordinary relational formation, not new Object
-coordinates, AST implementation types or a second matching calculus. Here k is
-the actual arm's structural identity under its Pattern root, and beta retains
-the ordinary binder/role incidence of both operands; spans are provenance only.
-
-```text
-FormedPattern_Gamma(P_s) and FormedPattern_Gamma(P_r)
-LegalArmSite(l) and CompatibleAssociationBindings_Gamma(l,P_s,P_r,beta)
-------------------------------------------------------------------
-FormArm_Gamma(l, P_s ~~ P_r) = AssocArm(k,P_s,P_r,beta)
-
-R_Gamma(AssocArm(k,P_s,P_r,beta), c, rho) iff
-  exists w,c_s,c_r,rho_s,rho_r:
-    ArmIncidence_Gamma(w,c,k,c_s,c_r,beta)
-    and R_Gamma(P_s,c_s,rho_s) and R_Gamma(P_r,c_r,rho_r)
-    and rho = CompatibleJoin(k,beta,w,rho_s,rho_r)
-
-Norm_P(AssocArm(k,P_s,P_r,beta))
-  = AssocArm(alpha(k),Norm_P(P_s),Norm_P(P_r),alpha(beta))
-```
-
-ArmIncidence denotes the actual ordinary structural-association evidence, and
-CompatibleJoin uses the existing compatible binding/derivation laws. They do
-not assume Product projections, synthesize Val2 residents, register an extractor
-or borrow resources. The complete `$` formation retains this arm material and
-its incidence template; a successful rho retains the actual matching witness.
-Missing required witness/consumer evidence is unavailable at that consumer,
-not a proved mismatch. A known invalid placement or incompatible binding fails
-its own formation premise.
-
-Legal alpha-renaming preserves k/beta correspondence and the two operand roles.
-Equal satisfaction or layout alone cannot equate associated/unassociated arms,
-swap State and Resource, or change arm/binder incidence. Thus normalization and
-complete Pattern identity preserve the same proof-relevant structure as §5;
-association is not commutative, symmetric or an equality relation.
-
-An `E`-associated ordinary callable may later consume an
-E-relative arm description to **construct** a transform value,
-for instance a selected `->::E` operation with an associated
-target arm `B::E ~~ newSource`. This uses the same structural
-association, but its source/target binding, optional material
-and admissibility are obligations of the **ordinary selected
-E-associated transform consumer** defined by the
-[ordinary callable owner](operator-patterns-and-generative-declarations.md#7-ordinary-e-relative-transforms-and-readable-observation). `~~` by itself is not a
-resource constructor or a CAS execution primitive.
-An Atomic consumer can then apply a proved legal transform
-at one committed point (N34/N39), without reinterpreting
-`~~` as a new Atomic Pattern ontology.
-
-The lexical target recognizes `~~` as one structural association
-token, not two existing postfix `~` repetitions or an arbitrary
-overload chosen because the characters happen to match.
-Source/Raw/Norm/semantic consumers for this extension remain
-pending. The existing `=>` callable declaration/generative
-direction is unaffected; do not replace that syntax.
+Source execution still requires the recursive formation/extraction and
+staged producer consumers. The source carrier preserves these structures
+for that work.
 
 ## 10. Joint extraction across adjacent universe ranks
 

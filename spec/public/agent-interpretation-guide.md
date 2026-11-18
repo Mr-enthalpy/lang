@@ -572,47 +572,25 @@ survive ordinary extraction, and executable Move/Drop does not make forgetting
 invertible. Default-world recovery can reject an instance through ordinary throw;
 missing consumers remain unavailable.
 
-Standard malloc/free start at current top, relocate goes exactly to the parent
-with Pending unexecuted, and all standard non-root locate requires universal
-guaranteed parent submission plus lazy acceptance. Ordinary custom heaps remain
-allowed. Production Pre owns escape rejection; QS is no language premise.
 
-Ordinary `$`-formed sum Pattern branches may associate their
-state Pattern and resource Pattern by the structural
-`~~` spelling: `A ~~ (Sa write) | B ~~ (Sb read) | C`.
-This is a branch-level relational association (singleton
-arm allowed), not `=>` extraction/generation, a Product
-operator, resource movement or CAS. Pattern relational
-identity retains the association; selected ordinary
-`->::E` can subsequently form an E-relative
-callable transform value without executing it.
+Standard malloc/free start at the current top. Allocation establishes actual
+support and release policy under local Pre. Relocate submits to the immediate
+parent, preserves history and reinterprets the covered heap name. Return checks
+compression in the actual continuation. An independent local borrow can still
+block return.
 
-Atomic consumes such an admitted E/transform at one
-real CAS commit. The source associated resource role
-determines its result: `write` ExitSlot gives owned S,
-`read` ExitSlot gives owned S to lawful Forget and valid
-S share to Committed. Keep source write yields no
-old-resource right; Keep read->read delivers share;
-Keep read->write delivers none. Only a real Pattern-changing
-CAS can change the associated resource protocol, and
-the transition requires compatible access/Region/Color,
-including proof that all conflicting prior shares ended.
-Only a same-arm Keep update can mask/partially
-match Status; changing arms requires full matching.
-Targets may legally inherit compatible omitted I/S
-without manufacturing missing roles or source names.
-Failed CAS returns actually formed new Status and
-resource candidates without silent Drop.
+Keep recursive named layers in the ordinary Pattern algebra under extraction
+and `$` construction, including in Products. Compile producers carry admitted
+runtime input dependencies without reading runtime values for outward compile
+results. Preserve real hole identities and avoid deriving name equality from
+a Policy migration.
 
-Ordinary E `?` observation is a coherent readable
-state projection, not a newly owned resource,
-hidden-field access, automatic S share or full
-source match. Ordinary protocols may implement
-counted readers, cloned candidates, waiting,
-forgetting or storage management; no ARC/RCU/
-Mutex/GC/lazy algorithm is built into Atomic.
-N35 origin closure, branch causality and machine
-visibility are independent real obligations.
-F13/F14/F16/F18/F19 and source/backend proof
-are pending; F15 alone is the extra SeqCst
-semantic-order choice.
+`->` uses ordinary operator dispatch outside built-in callable arrows.
+`(->::E)` names an ordinary producer and `.->` an ADL selector. Selected
+constructors interpret `_` at the supplied positions. Atomic consumes a
+formed E and selected transform with actual Box wrappers, the allocation-time
+read lazy duty and finite Status/representation evidence. N47–N48 define
+complete versus same-arm matching, same-arm read replacement and the Keep/Exit
+results. Read Forget performs no retirement-time registration. Preserve
+Region, Color, origin, candidate custody and version causality independently.
+F13/F14/F16/F18/F19 remain pending; F15 retains only the extra ordering decision.

@@ -156,16 +156,17 @@ Actual validation success establishes the delivered Index name's credential;
 serial validation does not itself add concurrent Color. Option's registered
 Some/None operation and ordinary map lookup remain ordinary library contracts.
 Standard non-root locate requires universal guaranteed direct-parent Submit
-and lazy reception before registration; a successful one-state probe is not that
+and allocation-time lazy capability before registration; a successful one-state probe is not that
 proof. This requirement does not constrain arbitrary custom Heap providers.
 
 [Atomic](atomic-pattern-transitions-and-causality.md) consumes ordinary `$`-formed
-`A ~~ (S write/read)` association evidence and an actually selected ordinary
-E-relative callable transform; association and transform formation grant no
+recursive Pattern and actual read/write type wrapper evidence and an actually selected ordinary
+E-relative callable transform. Formation grants no
 old-resource access. Its trusted scope is the one-point conditional state
 transition with joint access/ownership Post. Source write ExitSlot returns old
-owned S; source read ExitSlot transfers sole ownership to lawful Forget and
-returns a valid S share. Keep write grants no old-resource access; Keep read
+owned S. Source read ExitSlot discharges slot custody under the established
+allocation-time lazy duty and returns a valid S share. Same-arm read
+replacement additionally compares real old Box identity. Keep write grants no old-resource access; Keep read
 to read returns valid share, while Keep read to write grants no share.
 Failure returns every already-formed proposed new Status/resource and its
 remaining duty, without silent Drop or unproved rights.
@@ -182,6 +183,6 @@ Pre/Post may supply a proof, or a compatible externally established
 mint permission or repair a failed transition. Counted reader,
 snapshot/reclamation, COW/clone, ARC/Mutex and waiting implementations
 remain optional library examples. N46–N50/F19 define necessary proof
-and consumer obligations, not a mandatory Boxlike, reader guard or
+and consumer obligations, not a mandatory reader guard or
 lazy retirement implementation. F15 remains the sole extra-order
 design decision; F14/F16 still require causal and backend validation.

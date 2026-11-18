@@ -182,30 +182,29 @@ Hoare-logic engine is claimed.
 | NW22 | A pair of share formals with distinct known caller roots enters may-alias default Pre | The interface forgets the distinction through an ordinary lawful relation abstraction without rewriting caller history; no equality or inequality becomes an assumption |
 | NW23 | Path p[i] segment extraction and lifecycle [i]/[0:n] route construction | Keep ordinary Path-relative-segment and lifecycle path-route meanings distinct under their actual selected operation and evidence; neither creates index trust or access permission |
 
-## Sum-arm association and Atomic transform proof targets (definition, not execution)
+## Recursive Pattern, Atomic and Heap acceptance targets
 
-AS01–AS14 consume the ordinary Pattern owner (§9.2), actual E-relative
-transform registration and Atomic N34–N50 with F13/F14/F16/F18/F19.
-The spelling `~~` is target structural syntax; `->::E` and
-`e transform ?` remain pending callable/source consumers.
-All rows are normative positive/negative acceptance, not executed tests.
+AS01–AS14 trace the redesign through grammar preservation, formation,
+admission, execution and remaining proof obligations. The linked parser and
+Norm goldens exercise syntax only. The contract outcomes below are normative
+scenarios even when the frontend boundary is executable.
 
 | ID | Positive required behavior | Negative or non-derivable boundary |
 |---|---|---|
-| AS01 | An E sum arm `A ~~ (S write) \| B ~~ (T read)` preserves real direct arm association within complete `$` Pattern, independent of Atomic | No reinterpreting `~~` as `=>`, extraction, construction, generic Product entry or a CAS instruction |
-| AS02 | A standalone `A ~~ (S read)` needs no artificial `\|` neighbor; `A ~~ R \| B` associates tighter than sum choice; pending syntax carriers retain operand/operator spans and grouping | `(C ~~ (S write),D)`, missing operands or malformed grouping require syntax recovery; parsing cannot consult producer selection to choose grammar |
-| AS03 | Association formation/R_Gamma retain actual arm identity, State/Resource operands, incidence witness and compatible binder join; Norm_P preserves them under lawful alpha-renaming | Equal Sat/layout does not equate associated/unassociated arms, swapped roles or different binder incidence; missing structural evidence is unavailable, not permission |
-| AS04 | Actually registered and ordinarily selected `->::E` forms a callable transform under the ordinary owner; held E/producer/arm/binder correspondence survives formation | Missing or ambiguous producer/callability cannot be supplied by spelling; no old S access, CAS or rights arise from `~~`, `=>` or transform formation |
-| AS05 | `B::E ~~ newSource` supplies the resource side of an E-relative target arm to a selected ordinary transform producer | No inferred resource from association alone, unselected producer or hidden AST magic |
-| AS06 | Omitted required compatible target I/S is instantiated from the actual application state; a target without S treats an existing old S as ExitSlot with real custody | Omitted description is not absent slot; incompatible inheritance rejects formation, and formation cannot freeze a cell or invent missing I/S |
-| AS07 | Omitting target arm B means same-arm Keep and excludes independently supplied replacement; may still update Status | Explicitly repeating A does not prove ChangeArm(A,A); equal resource types do not prove same identity or authorize replacement |
-| AS08 | A same-arm, same-resource Keep CAS can mask/partially match and update Status while preserving other actual components | Do not treat partial mask as full source Status match for a different target arm |
-| AS09 | An A-to-B different-arm transform requires full actual source state/Status match even if B inherits target Status or S | Hidden source values can be matched by licensed evidence, but a public projection or omission cannot skip full matching |
-| AS10 | Any E with the selected readable-observation contract delivers components from one actual state/version; nonpublic components remain real but are omitted | No cross-version splicing, hidden-field leak, full-source-match credential, S share, old ownership or no-change/freshness promise; unrelated `?` contracts remain distinct |
-| AS11 | Atomic admits the already formed E and selected transform as a trusted one-point state/resource/permission transition | No Atomic-specific sum syntax, independent transform language or general type-system inference |
-| AS12 | Source write exits return owned S; source read exits Forget and return valid share; Keep write yields none, Keep read->read share, Keep read->write none | No share from transition read->write Keep, no old owner on Keep, no loss of resource custody |
-| AS13 | Admitted failed attempt returns all actually formed target I_b/S_b with remaining duties and makes no state change itself, preserving real intervening commits | No silent Drop, invented candidates, rollback of other commits or success/old-resource credentials |
-| AS14 | `e transform ?` dispatches admitted ordinary result branches with distinct Post/Past; missing consumer/proof is unavailable and known false admission Pre rejects | Neither unavailable nor failed semantic Pre is fabricated Rejected; no implied retry, ambient scheduling or current parser/consumer implementation |
+| AS01 | Raw/Norm goldens cover bare `uint8`, `uint8::`, `uint8$` and `uint8$$`. Under `R_Gamma`, bare `uint8` binds the classifier rank; the others follow Path and local polarity. | Each flip preserves rank/correspondence and adds no Move, Read or lifecycle action. Formation and extraction remain semantic obligations. |
+| AS02 | Runtime hole syntax is covered in the frontend. A selected compile producer can finish outward compile work and retain a lawful runtime dependency for future concrete name/Pattern formation. | Unavailable runtime Val1 cannot determine a compile interface. Runtime and compile input may produce different names, even if one particular migration gives object equality. Staged name/Pattern consumers pending. |
+| AS03 | Raw/Norm preserve `E name`, `E (E name)name`, deeper layers, Products and separate name/hole occurrences. Formation uses actual nested correspondences. | Never flatten grouped material into a Product or unify names from matching spelling. `R_Gamma` formation/extraction consumers remain pending. |
+| AS04 | Goldens cover built-in callable `->`, ordinary binary `->`, `->::E` and `.->`. An actual selected ordinary producer can form a callable transform. | Grammar uses syntactic context. Missing or ambiguous producer remains unavailable or ambiguous; no CAS, held authority or old resource follows from syntax. |
+| AS05 | Goldens preserve `_` in transform operands. The selected ordinary constructors interpret omission, same-arm partial matching and compatible inheritance. | No global `_` privilege or invented slot. Cross-arm partial status comparison rejects at applicability/Pre. Producer and Atomic execution pending. |
+| AS06 | A resource-free arm can be admitted. An arm with S must supply an actual `T Box` in the registered read/write type wrapper. | Same-spelled fields, ordinals, locally chosen types, or structural similarity grant no admission. Semantic and target consumers pending. |
+| AS07 | Single-word or two-word logical representation satisfies the width gate with trivial Status Move/Drop and legal comparison. A target without native dual CAS may realize an equivalent whole commit. | Wider material violates admission. A target missing a validated way to compare and commit the whole state reports unavailable. Backend proof pending. |
+| AS08 | Same-arm read may partially update Status and replace S by comparing actual old Box identity in the single commit. Commit returns valid old share; failed comparison returns formed new Box. | No split comparison, immediate reclamation of old Box while the share lives, or dropped candidate. Execution and memory evidence pending. |
+| AS09 | A write source can replace Box on a real arm change with full comparison of actual source Status and a legal ownership handoff. | Same-arm write replacement rejects, and partial cross-arm matching cannot omit hidden Status. Execution pending. |
+| AS10 | Read-to-write Keep requires actual end of all conflicting readers and closed issuance. Commit grants no share; a fresh CAS may later deliver owned S. | A counter or the first CAS cannot certify the second. Permission and backend proof pending. |
+| AS11 | A lazy malloc success assigns final release before read registration. Read Forget is runtime NoOp; a commit releases slot custody and delivers valid share under the existing duty. | An eager-only Box cannot enter read. No late registration, duplicate destructor or lost release obligation. Allocation and retirement consumers pending. |
+| AS12 | Local malloc succeeds, later HeapRelocate submits covered support and restores parent interpretation, and actual return compresses permitted external input/capture dependencies. | Skipping relocation or retaining an independent invalid local borrow can reject the return. Allocation, projection and escape consumers pending. |
+| AS13 | Two paths share a successful local malloc and differ by their later actual Posts. Pre, commit and Post of each action use the reached state. | No future return choice feeds back into malloc Pre. Drop follows established duties. Full E/heap wiring pending. |
+| AS14 | Actual version observation imports its own rf/Past. Compare checks ABA/identity as required. CAS branches preserve Region/Color and their distinct Post, returning all formed candidate I/S on admitted failure. | An old observation grants no freshness, hidden match or share from E?. Unknown consumers/false Pre cannot become Rejected. Source/backend proof pending. |
 
 ## Stage, Policy and two-round calls
 

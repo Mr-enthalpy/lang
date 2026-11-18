@@ -522,6 +522,12 @@ Bare names use shared navigation completion. Bare S operators use
 Each reached operand executes once under the common E; projection never repeats
 its effects or establishes another stage copy.
 
+For recursive named Patterns, the flip preserves the same actual structural
+positions across construction and extraction. A compile producer invoked by
+the selected interpretation follows the [ordinary staged-input rules](../static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers).
+A name that depends on runtime input uses that actual input at the lawful
+frontier. Polarity does not manufacture a compile-time NameValue for it.
+
 ### 4.2 No textual macros or implicit binders
 
 Interpretation polarity does not re-lex or parse strings, arbitrarily evaluate source AST,

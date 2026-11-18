@@ -34,7 +34,7 @@ that the corresponding source semantics is implemented.
 | Standard current-top malloc/free, direct-parent submission, universal non-root locate capability, lazy Drop and storage responsibility | [heap protocols](lifetime/heap-stack-and-storage-responsibility.md) |
 | Step/Done/Wait, transparent propagation, handlers, throw and forced PatternMiss | [effect steps](control-flow/effect-steps-and-continuation-handoff.md) |
 | Ordinary lifecycle programs, whole-K projection, rank-0 @, Region/Color, Killable/MoveEffect/Movable, contract formation/defaults, boundary compression, regular access and library protocols | [lifecycle](lifetime/lifetime-policy-and-overload-boundary.md) |
-| Ordinary direct sum-arm `~~` association and selected E-relative transform are Pattern/callable material; Atomic consumes them for single-attempt CAS, source `write/read` custody/Keep, failed input return, causal/proof boundaries and bounded extra-order decision | [atomic transitions](lifetime/atomic-pattern-transitions-and-causality.md) |
+| Borrowed Atomic consumes ordinary recursive Pattern and selected transforms, actual Box wrappers and finite representation; owns commit, custody, causal and proof boundaries | [atomic transitions](lifetime/atomic-pattern-transitions-and-causality.md) |
 | Heterogeneous effect-tree containers, independent dispatch and ordinary escape | [computation containers](control-flow/heterogeneous-computation-containers.md) |
 | SafetyPolicy, external admission and trusted semantic base | [unsafe admission](lifetime/unsafe-semantic-admission.md) |
 | Serial unit/fallthrough, separate return-event/target inference and internal completion | [control flow](control-flow/targeted-return-and-d-reduction.md) |

@@ -117,22 +117,22 @@
 | HEAP02 | N26 N33 | 用户显式注入其他 heap 可有自己的普通协议。 | 不能同时冒用标准 HeapStack 的未证明保证。 | D | — | — | — | — | — |
 | HEAP03 | N27 | free 将凭证与责任交给当前栈顶，由其主动处理/上抛。 | 不能恢复默认 eager 历史 owning-pool 扫描。 | D | — | — | — | — | — |
 | HEAP04 | N28 | 独立 list 与整池/chunk lazy 能力两种实现满足相同语义。 | 不得强制字段/地址标记表示；不能丢可观察析构责任。 | D | — | — | — | — | — |
-| HEAP05 | N29 | relocate 向直接父层提交存储、责任和 Pending，不执行 Pending。 | 跳到任意外层/relocate 顺便 drain 均不符合协议。 | D | — | — | — | — | — |
+| HEAP05 | N29 | relocate 向直接父层提交存储、责任和 Pending，不执行 Pending；成功 Post 同步建立已覆盖 heap 名字的生命周期重解释。 | 不能跳过父层、执行 Pending、改写历史来源或取消独立借用。 | D | — | — | — | — | — |
 | HEAP06 | N29 | 满足 Submit Pre 的提交保证完成并保持存活存储位置。 | 不能隐藏元数据分配失败或假定无限全局堆。 | D | — | — | — | — | — |
 | HEAP07 | N30 | 逻辑 Region 终结后，真实 drop continuation 持有合法材料直到执行。 | 原名字不复活；物理字节尚存不自动可访问。 | D | — | — | — | — | — |
 | HEAP08 | N30 | heap drop 按既定责任和顺序执行所有剩余 Pending 一次。 | 重复 Drop、遗失子资源及无证明重排可观察析构均拒绝。 | D | — | — | — | — | — |
 | HEAP09 | N31 | 挂起/恢复合法保存 heap 和父链关系，责任沿后续 drop/relocate 交接。 | 机器栈地址或 async 语法不能替代结构化来源证明。 | D | — | — | — | — | — |
-| HEAP10 | N32 | 拟分配对象 Region 超过管辖且没有合法延续时，申请 Pre 拒绝。 | 不得把拒绝推到 drop(heap)，再查读者或隐式 join。 | D | — | — | — | — | — |
+| HEAP10 | N32 | 本地 malloc 根据当前 Region 合法；稍后合法 relocate 后，实际 return 使用最新 Post 压缩实际外部来源。 | 不 relocate 或留有独立非法本地借用时，在返回边界拒绝。该失败不回溯改变 malloc Pre。 | D | — | — | — | — | — |
 | HEAP11 | N32 U09 | 保守管辖回收不需要语言可观察 QS。 | 回收上界不自动给发布/订阅内存序；不伪称完整 RCU/GC 进展。 | D | — | — | — | — | — |
 | HEAP12 | N33 F17 | 标准 locate 构造/注册 Pre 证明所有非根 pool 在其全部准入状态可保证向直接父层 relocate，且具备 lazy 接收能力。 | 不能注册只在特定状态偶尔可提交的标准 pool，也不能把这一要求扩散到全语言任意 heap。 | D | — | — | — | — | — |
 | HEAP13 | N29 N33 | 非根标准池先通过普遍迁移能力证明，再依法向唯一父层提交完整 Pending；根节点走终止协议。 | 不能把一次动态 relocate 成功当成标准注册的全称证明，或要求根节点搬到不存在的父层。 | D | — | — | — | — | — |
-| HEAP14 | N28 N47 N50 F19 | 若选择 HeapStack 作为 read 关联源臂离槽的 Forget 接收者，正确承接唯一资源/Drop/借用 Region 义务。 | 不强制 lazy free 为 Atomic 本体；CAS 后不可失败登记而丢失旧资源。 | D | — | — | — | — | — |
+| HEAP14 | N28 N47 N50 F19 | lazy malloc 成功时确认唯一最终释放义务；read CAS 离槽或原位替换交付有效 share，Forget_read 运行时 NoOp。 | 未预先取得 lazy 资格不可进入 read；禁止晚登记、丢失义务或重复析构。 | D | — | — | — | — | — |
 
 ## 原子类型和库组合
 
 | ID | 规范条款 | 正向要求 | 必须拒绝或不得推导 | D | P | S | C | T | B |
 |---|---|---|---|---|---|---|---|---|---|
-| ATOM01 | N34 N46 | $ 形成 E 后，和分支 A ~~ (Sa write) 与 B ~~ (Sb read) 保留真实关联，Atomic 只消费完整材料。 | 不能把 ~~ 当 => 的生成/提取，不能在 Product 内部放关联或由 bare 位置推断旧资源。 | D | — | — | — | — | — |
+| ATOM01 | N34 N46 | 普通递归命名 Pattern 和 $ 形成 E 保留每层和分支、Product 与名字对应。 | 仅有同名字段或序号不能证明 Atomic 资源角色；普通拥有和模式仍可 Move/构造。 | D | — | — | — | — | — |
 | ATOM02 | N34 N37 | 输入可合法嵌套既有 atomic/一般结构，关联 ref/share API 由 OpenHere 注册。 | 不能要求每个高级抽象新增一个内建类。 | D | — | — | — | — | — |
 | ATOM03 | N35 | 所有 RetainedStateNames(A) 对 atomic 边界均无外部 origin 依赖，包含存入状态的普通 I/Index、S 及真实保留依赖；每个初始/转换 Pre 都维持闭合。 | S_b 闭合不能掩盖 I_b 仍依赖外部聚合；状态数角色、同 Index 类型、数值相等或 hidden unknown 都不能洗掉被保留名字的外部来源。 | D | — | — | — | — | — |
 | ATOM04 | N35 N19 | 合法已选普通复制/形成的实际 Post 可建立真正闭合的新 I_b（平凡 Index copy 不携原凭证）；内部合法 origin 关系允许存在。仅临时比较且不保留的输入依其普通访问 Pre 处理。 | 不能把任意 clone 或 I 角色当 origin=None 的定理，不能隐式复制/遗忘原名字依赖，也不得要求所有内部 origin=None 或将持有闭合条件无差别套给未保留的比较输入。 | D | — | — | — | — | — |
@@ -145,23 +145,23 @@
 | ATOM11 | N45 | Mailbox 只允许单次资源转交，Mutex 不由 peek 发 guard。 | 任意 T 不因此被宣称单条机器 CAS 可搬运。 | D | — | — | — | — | — |
 | ATOM12 | N39 N47 | 源 S write 真正离槽成功才向 Committed 交旧 owned S。 | Keep 不交旧所有权；不可在有冲突活 share 时取出。 | D | — | — | — | — | — |
 | ATOM13 | N39 N49 | 失败 Rejected 持有实际拟写入的 Status 与资源，Cell 不变。 | 不能 Drop 候选、发旧资源或成功版本凭证。 | D | — | — | — | — | — |
-| ATOM14 | N34 N46 | I、S 可以分别缺省，Pattern 只使用确实存在的角色。 | 不得为缺省角色制造资源、状态数或位置占位。 | D | — | — | — | — | — |
-| ATOM15 | N39 N47 N49 | 相同状态臂 Keep 可更新部分 Status、保持 S；源 read 到目标 read 成功交付 share。 | 不能用局部 Status 掩码改变状态臂；源 write Keep 不产生 S 所有权。 | D | — | — | — | — | — |
-| ATOM16 | N38 N48 N49 | 同一状态臂且 Keep 同一 S 的 Status 增量计算可作局部匹配/更新。 | 状态数更新不能暗改 read/write 协议、替换 S 或在跨臂时跳过隐藏 Status。 | D | — | — | — | — | — |
+| ATOM14 | N34 N46 | I/S 可缺省；资源存在时必须是真实 T Box 和选定 read/write 类型包装。 | 缺省槽无权可交付；同名字段、偶然相同结构或任意自称箱化不能准入。 | D | — | — | — | — | — |
+| ATOM15 | N39 N47 N49 | 同 arm read 可更新部分 Status 并替换 Box；同一提交检查旧 Box 身份并交付有效旧 share。 | 未比较真实旧身份或新 Box 缺 lazy 义务时不准入；真实比较失败归还新 Box。 | D | — | — | — | — | — |
+| ATOM16 | N38 N48 N49 | 同 arm 可以部分更新 Status；write 替换须真实跨 arm，全面匹配并交接所有权。 | 不能以同类型资源或改 Status 伪装跨 arm，也不能跳过非公开分量。 | D | — | — | — | — | — |
 | ATOM17 | N39 N41 | CAS 结果作为普通 Committed/Rejected 和模式进入不同的实际续体分支，分别形成后续因果材料。 | 不能执行未选分支、给失败分支复制成功凭证或将两分支事件直接合并成同时发生。 | D | — | — | — | — | — |
-| ATOM18 | N46 | 直接和分支使用 ~~ 关联 State/Resource，单分支也可关联，且其结合优先级高于和模式选择。 | 不能写 (C ~~ (Sc write), D) 作为积内部关联，也不自动提取。 | D | — | — | — | — | — |
+| ATOM18 | N46 | 实际 Status 可平凡 Move/Drop 与比较，完整条件提交的逻辑表示可用单字或双字。 | 超预算拒绝；缺原生双字 CAS 时需有效等价实现，否则不可用。 | D | — | — | — | — | — |
 | ATOM19 | N46 | (1u32:) 匹配非零 u32；0u32 或 (2u32:) 的普通 Pattern 排除 1。 | 不得当作无穷整数、溢出或 Atomic 专用切片。 | D | — | — | — | — | — |
-| ATOM20 | N39 N47 | 源 read 真离槽时所有权交合法 Forget 且 Committed 必得有效 S share。 | 不能只 Forget 不发 share，或使结果 share 悬空。 | D | — | — | — | — | — |
+| ATOM20 | N39 N47 | read 离槽解除实际槽位持有资格，既有分配期 lazy 义务保护有效 S share。 | 不能在提交后搜寻接收者、复制 Drop 责任或交付悬空 share。 | D | — | — | — | — | — |
 | ATOM21 | N39 N47 | 源 write 真离槽成功时 Committed 获得唯一 owned S。 | 同一源状态不能让不同 safe CAS 任意切换离槽方式。 | D | — | — | — | — | — |
 | ATOM22 | N39 N47 | Keep 来源 read 且目标仍 read 时成功交付 S share；read→write Keep 不交付 share。 | 不能把任何 Keep 一概当成无 share，或切换到 write 时产生新 share。 | D | — | — | — | — | — |
 | ATOM23 | N48 N49 | read→write 先以全源臂及状态数匹配的 CAS 保持 S 并改变模式，再以另一 CAS 尝试取 S。 | 仅靠改 Status、隐藏值不读或第一次 CAS 成功不足以准入第二次。 | D | — | — | — | — | — |
 | ATOM24 | N48 N50 F19 | read 到 write 的首次 CAS 已证明冲突活 share 结束且读入口关闭；Keep 不发 share，真正取 S 另需第二次 CAS。 | n=0/n=1 或 unsafe/check=true 不能直接证明，首次成功不能充当第二次提交。 | D | — | — | — | — | — |
-| ATOM25 | N48 N50 | write 到 read 在全源匹配及普通来源/借用 Pre 成立时进行真实 arm/协议转换，Keep 成功不取得旧资源访问权。 | 不得凭模式名制造读权或内部可变性，不能把源 write 的 Keep 当源 read 发 share。 | D | — | — | — | — | — |
+| ATOM25 | N48 N50 | write 到 read 在全源匹配、原 Box 具备分配期 lazy 义务且真实借用 Pre 成立时转换；Keep 不取得旧资源访问权。 | 不得从协议拼写推导 lazy 资格或把源 write 的 Keep 当成源 read 发 share。 | D | — | — | — | — | — |
 | ATOM26 | N49 | 不可公开读取的 Status 可以被受控完整匹配；E? 只投影单个实际版本的可读状态。 | 不能从 E? 的局部观察推导全源状态匹配或 S 借用。 | D | — | — | — | — | — |
 | ATOM27 | N39 N49 | 竞争失败返回实际已形成的 I_b/S_b 及完整责任。 | 不能隐式 Drop 或制造未形成的状态数。 | D | — | — | — | — | — |
-| ATOM28 | N34 N35 N39 N49 | 普通 ->::E 先形成 callable transform；对同一 Atomic 实例 e transform ? 才可能真实原子执行。 | 不能把构造变换、~~ 关联和 CAS 运行视为同一动作。 | D | — | — | — | — | — |
+| ATOM28 | N34 N35 N39 N49 | 普通 ->::E 的选定构造器解释 _ 并形成可调用变换；实际独占借用执行一次条件提交。 | 不能把语法、构造、准入和 CAS 结果等同，或借用消费提取整个和模式。 | D | — | — | — | — | — |
 | ATOM29 | N41 N47 N50 F14 | 交付 S share 的成功分支具有真实源、Region/Color 和版本发布可见性。 | Peek、裸指针、数值相等不能凭空产生权限。 | D | — | — | — | — | — |
-| ATOM30 | N40 N45 N50 | 读写协作、计数、版本共存、回收、clone、等待均可由普通安全协议表达。 | 不强制 ARC/RCU/GC/Mutex/Boxlike/COW/lazy 或固定 CAS API。 | D | — | — | — | — | — |
+| ATOM30 | N40 N45 N50 | 计数、版本共存、回收和等待可由普通安全协议证明。 | 具体 ARC/RCU/GC/Mutex/COW 不由规范选定，分配期回收义务仍须成立。 | D | — | — | — | — | — |
 
 ## 内存因果与调度
 

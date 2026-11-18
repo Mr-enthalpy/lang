@@ -561,6 +561,12 @@ structural names to be initialized. Open construction navigation continues to
 obey its ordinary access and authority rules. Anonymous implementation layers remain under /tau.
 Neither physical files nor group aggregation grant target construction authority.
 
+A producer may have admitted runtime inputs under the
+[compile invocation contract](../static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers).
+When name identity depends on such material, stage-qualified inputs and their
+actual correspondence determine the name. A Policy migration supplies equality
+only through an actual selected operation and its result.
+
 ### 7.1 Generated Val2 after registered structure is closed
 
 The generative declaration rule may realize an ordinary member on a closed T:

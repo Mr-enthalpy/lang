@@ -400,6 +400,13 @@ fn policy_prefixed_form_has_binding_delimiter(cursor: &Cursor<'_>) -> bool {
 
     let mut index = let_index + 1;
     let mut depth = 0usize;
+    // Only the angle list immediately after binding `let` is a DeduceList.
+    // Its commas do not terminate the scan for the binding initializer.
+    let (prefix_index, prefix) = cursor.peek_at_skip_trivia(index);
+    let mut deduce = prefix.kind == TokenKind::Symbol(Symbol::Less);
+    if deduce {
+        index = prefix_index + 1;
+    }
     loop {
         let (next_index, token) = cursor.peek_at_skip_trivia(index);
         index = next_index + 1;
@@ -414,7 +421,9 @@ fn policy_prefixed_form_has_binding_delimiter(cursor: &Cursor<'_>) -> bool {
                 }
                 depth -= 1;
             }
-            TokenKind::Symbol(Symbol::Equal | Symbol::TripleEqual) if depth == 0 => {
+            TokenKind::Symbol(Symbol::Greater) if depth == 0 && deduce => deduce = false,
+            TokenKind::Symbol(Symbol::Comma) if depth == 0 && deduce => {}
+            TokenKind::Symbol(Symbol::Equal | Symbol::TripleEqual) if depth == 0 && !deduce => {
                 return true;
             }
             TokenKind::Symbol(Symbol::Semicolon | Symbol::Comma) if depth == 0 => {

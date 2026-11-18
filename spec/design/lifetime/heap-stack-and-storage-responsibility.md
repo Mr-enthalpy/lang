@@ -72,33 +72,22 @@ not historical origin.
 
 本规则约束标准注册 HeapStack 的合法路由，不为用户任意注入的无关 provider 自动证明接受能力。越过该协议的显式使用仍需自己的普通契约。
 
-### N28 — lazy free 是必备能力，不是固定列表字段 [不变量]
+### N28 — 分配时承诺 lazy release [不变量]
 
-标准 heap 必须能够接受合法的 lazy free/drop 责任。语义上可记 `PendingDrop(H)`，但它是普通责任材料的说明，不是新的 Object 坐标或强制数据结构。
+标准 heap 支持在 malloc 请求中选定 lazy release。成功 Post 确定
+实际 storage support、唯一最终释放/Drop 责任及其契约所需的凭证。
+持有者仍可按契约合法使用 Box；回收须等待实际持有资格和合法借用
+全部结束，并满足顺序、可见性与存储条件。分配失败不登记成功责任。
+Heap 可以据此分流管理；PendingDrop(H) 是普通责任观察，具体
+池、列表和描述符均由实现选择。待执行的异构析构仍须保留其完整
+续体、捕获和真实依赖。
 
-通用实现可维护 drop continuation list；特殊 pool 可以让整池/chunk 的管理本身承担这项待回收责任，甚至把 eager free 也转为 lazy free。
-
-每份待处理责任包含合法执行所需的资源、捕获及顺序义务。标记指针、独立 API、描述符等识别方式不由抽象语义固定。不能在对象已消费后才因登记失败而丢失责任；接收动作的成功条件和失败资源归属必须在其正常 Pre/结果契约中闭合。
-
-若队列匿名承载不同具体类型的析构续体，须按 N20–N24 保留其 Drop/Move 实现与全部必要依赖；不能只保存一个裸入口而遗失捕获或名字资格。
-
-**An Atomic read-role ExitSlot may use this ordinary lazy reception protocol,
-but is not defined by it.** A successful CAS that actually removes S from a
-`~~`-associated read source arm must deliver unique owned S custody to some lawful Forget
-receiver while simultaneously returning a valid `S share`. If the selected
-ordinary receiver is a standard heap manager, its accepted pending duty
-must preserve real Drop/Move, storage support and every outstanding legal
-share Region, without a fallible *post-commit* attempt to discover ownership
-or allocate missing registration resources. The same atomic/source law can
-be realized by other ordinary protocols; no particular lazy list, ARC or
-reader-guard representation is required by Atomic.
-
-HeapStack's ability to accept Pending does **not** prove that concurrent
-share acquisition, read-to-write protocol recovery or eventual invalidating
-Drop is safe. Those are independent real Pre/Post, Region/Color and
-protocol-maintenance obligations; the selected library must prove them.
-The [atomic owner](atomic-pattern-transitions-and-causality.md) N47–N50
-defines only the resource handoff and access-right proof boundary.
+Atomic read 必须消费已有的分配期 lazy 资格。read Exit 或原位替换
+的 CAS 解除实际槽位持有资格并交付有效旧 share；运行时
+`Forget_read` 为 NoOp。既有责任覆盖所有允许的读者及释放所需条件，
+无需退休时登记，也无重复析构或责任缺口。其他普通 lazy 接收动作
+仍需自己的正常 Pre 和结果契约。选择 lazy 不自动证明读者兼容、
+协议恢复或合理的同步；这些仍按实际借用与 N47–N50 检查。
 
 ## 3. Historical origin and current duties
 
@@ -128,6 +117,18 @@ relocate(heap H) -> up(H)
 合法 Submit 的保证仍然是：满足其声明 Pre 的每个状态都能完成，不能隐藏临时元数据分配失败，也不能默认全局堆无限。原样提交、元数据重组、逐描述重建是表示/成本差别，不是不同成功语义。
 
 消费当前层后，被遮蔽的父 heap 绑定恢复为当前名字。恢复可见性不复活已毁对象，也不删除历史。跨函数的 `up(H)` 可以是由调用契约代入的外部 unknown，但其“一步父链”关系确定，不是任意偏好选择的未知层。
+
+生命周期投影同步反映这次真实交接：
+
+```text
+LifeProject(HeapRelocate(state))
+  = LifeNameReinterpret(LifeProject(state), relocation)
+```
+
+只重解释本次提交覆盖的局部 heap 名字及其支持关系到直接父层。
+实际分配的历史 origin、Places、generation 及独立外部依赖保持各自
+身份；不改写已选 Path 或无关词法名字。此对应只在成功 Post 建立。
+随后生命周期契约在当前续体使用这个解释。
 
 Object relocate 与 pool relocate 仍不同：前者实际取得目标存储并搬运；后者只交接管理责任。前者不得因后者成功而假设独立借用/移动限制已经解除。
 
@@ -175,11 +176,28 @@ RCU 风格、GC 风格等库可以利用较宽的 Region 管辖窗口承接动�
 
 语言侧不把 QS、epoch 扫描轮次、调度器内部状态提升为可观察生命周期事实。`relocate` 延续责任所在的管辖窗口，`drop` 结束它并履行待处理责任；旧局部名字的 Region 本身不因此被延长或改写。
 
-**逃逸义务位于生产/分配 Pre。** 请求一个将超出已准入管辖范围的对象时，其由固定续体给出的更大 Region 使该申请规约失败。不得改成 drop(heap) 时才检查有没有读者，或最后再隐式 join、延长 heap、寻找回收人。
+前向检查以每个实际动作的当前状态为准：
 
-前述 Pre 可消费已形成的控制/契约描述与真实迁移能力，但不能预支尚未成立的任意未来 Post。后续新操作保持已批准上界，不能扩大既有对象的逃逸能力。涉及独立执行时，访问兼容性及必要内存序仍另有证明。
+```text
+{ current H1 and R(Box) prec R(H1), legal allocation request }
+  malloc
+{ fresh Box, actual H1 support and actual release policy }
 
-这是支持保守回收的库模式，不自动证明完整 RCU、任意 GC 或回收算法的进展性质。有证明的实现可减少无可观察影响的物理存储滞留；这不授权提前执行协议已经固定在 heap drop 的待析构续体或改变其可观察效果。
+{ live H1, actual up(H1), valid SubmitCap and covered duties }
+  HeapRelocate
+{ up(H1) support for submitted material, scoped life-name reinterpretation }
+
+{ actual successful continuation, legal boundary compression and delivery }
+  return Box
+{ delivered Box with supported outward dependencies }
+```
+
+malloc 只检查当前本地 Region 和当下动作义务。未来返回路径不参与
+当前 Pre。后来 relocate 独立检查自己的 Pre。返回边界使用真实到达的
+续体及最新 Post 压缩名字，可以保留由实际入参、捕获或已承认的外部
+unknown 支撑的义务。仍有无法压缩的局部支持或独立局部借用时，在实际
+返回边界拒绝，先前 malloc 的结果保持有效。若分配本身立即请求更长
+Region 或交付，则仍须满足当下动作的普通 Pre。Drop 使用预先建立的责任。
 
 ### N33 — 标准 locate 的普遍保证式迁移与自定义 Heap 边界 [不变量]
 

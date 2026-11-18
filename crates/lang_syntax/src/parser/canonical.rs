@@ -89,6 +89,7 @@ fn parse_canonical_element(
     let bracket_operator = token.kind == TokenKind::Symbol(Symbol::LBracket)
         && parser.cursor.peek_next_non_trivia().kind == TokenKind::Symbol(Symbol::RBracket);
     if grouped_flip
+        || parser.cursor.starts_grouped_named_pattern()
         || name_flip
         || navigation
         || bracket_operator
@@ -100,6 +101,8 @@ fn parse_canonical_element(
                 || p.cursor.at_symbol(Symbol::Comma)
                 || p.cursor.at_symbol(Symbol::RParen)
                 || p.cursor.at_symbol(Symbol::Colon)
+                || super::closure::at_callable_implementation_tail(p)
+                || super::closure::at_head_clause_keyword(p)
                 || p.is_form_boundary()
         });
         return Some(CanonicalSkeletonAst::Expression {

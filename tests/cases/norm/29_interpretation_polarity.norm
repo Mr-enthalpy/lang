@@ -92,13 +92,12 @@ NormProgram origin=Source@1:1[0..273]
             None
           initializer:
             InterpretationFlip V->S origin=Source@6:9[91..107]
-              PatternSequence origin=Generated(PatternNormalize)@6:10[92..105]
-                elements:
-                  PatternSequence origin=Generated(PatternNormalize)@6:11[93..103]
-                    elements:
-                      PatternName "bool" origin=Source@6:11[93..97]
-                      PatternName "inner" origin=Source@6:16[98..103]
-                  PatternName "a" origin=Source@6:22[104..105]
+              PatternNamedLayer origin=Source@6:10[92..105] group=@6:10[92..104]
+                PatternSequence origin=Generated(PatternNormalize)@6:11[93..103]
+                  elements:
+                    PatternName "bool" origin=Source@6:11[93..97]
+                    PatternName "inner" origin=Source@6:16[98..103]
+                PatternName "a" origin=Source@6:22[104..105]
     Form Let
       Decl Let origin=Source@7:1[109..150]
         BindingSlot let=true origin=Generated(PatternNormalize)@7:5[113..150]

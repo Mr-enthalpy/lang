@@ -195,6 +195,15 @@ impl<'tokens> Cursor<'tokens> {
         }
     }
 
+    pub fn starts_grouped_named_pattern(&self) -> bool {
+        let (class, after) = self.classify_paren_at_segment_position();
+        class == ParenClassification::Group
+            && after.is_some_and(|index| {
+                let (_, name) = self.peek_at_skip_trivia(index);
+                name.kind == TokenKind::Name && !matches!(name.text.as_str(), "_" | "with")
+            })
+    }
+
     // This is used only by parenthesis classification. Operator-expression
     // starts are handled by the operator parser.
     pub fn at_angle_left_for_deduce(&mut self) -> bool {

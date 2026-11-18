@@ -41,6 +41,7 @@ MARKDOWN_FILES = [
     "spec/design/patterns-overload/return-value-extraction-and-implicit-decomposition.md",
     "spec/design/patterns-overload/static-pattern-spaces-and-extraction-chains.md",
     "spec/design/semantic-spine.md",
+    "spec/design/static-evaluation/compile-instance-invocation-and-result-delivery.md",
     "spec/design/static-evaluation/evaluation-residual-and-optimization.md",
     "spec/design/static-evaluation/host-capabilities-and-machine-objects.md",
     "spec/design/symbol-world/dependency-observation-and-realization.md",
@@ -189,10 +190,10 @@ def main():
         if re.match(r"^\| (?:" + "|".join(groups) + r")\d\d \|", line):
             require(table_cells(line)[-6:] == ["D", "—", "—", "—", "—", "—"],
                     "unimplemented source target must retain pending P/S/C/T/B: " + line.split("|")[1])
-    association_cases = re.findall(r"^\| (AS\d\d) \|",
+    redesign_cases = re.findall(r"^\| (AS\d\d) \|",
                                    read("spec/planning/canonical-semantic-conformance.md"), re.M)
-    require(association_cases == [f"AS{i:02}" for i in range(1, 15)],
-            "AS01-AS14 association/transform/Atomic case inventory mismatch")
+    require(redesign_cases == [f"AS{i:02}" for i in range(1, 15)],
+            "AS01-AS14 Pattern/transform/Atomic/Heap case inventory mismatch")
 
     evidence = pathlib.Path(__file__).resolve().parent
     for name, expected_hash in MODEL_HASHES.items():
@@ -206,7 +207,7 @@ def main():
     print(json.dumps({"markdown_files": len(MARKDOWN_FILES), "local_links": links,
                       "bad_links": bad_links, "unique_N_owners": len(ids), "U": 12,
                       "M": 31, "F": 19, "paired_cases": len(cases),
-                      "association_cases": len(association_cases),
+                      "redesign_cases": len(redesign_cases),
                       "model_hashes_verified": len(MODEL_HASHES), "model_exit_code": result.returncode,
                       "model_stdout_matches": True}, ensure_ascii=True))
     return bool(bad_links)

@@ -1,0 +1,2 @@
+error InvalidOperatorExpression "expected right-hand side after operator `->`" @ 1:22 [21..23]
+error ChainedNonAssociativeOperator "chained non-associative operator requires explicit grouping" @ 2:22 [47..49]

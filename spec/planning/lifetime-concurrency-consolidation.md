@@ -24,13 +24,13 @@ D=defined; P=proof discharged for a stated domain; S=complete source syntax;
 C=semantic consumer; T=paired execution; B=validated backend. A dash is
 incomplete. Carrier/model evidence is explicitly narrower than the source row.
 
-The Pattern owner forms ordinary `~~` arm structure; the ordinary callable
-owner defines selected E-relative transform formation and readable observation.
-Atomic consumes admitted material at one CAS with N35 closure and the fixed
-source read/write Keep/Exit matrix. F13/F14/F16/F18/F19 remain pending proofs
-and consumers; F15 alone holds the extra SeqCst/fence decision. No general
-proof, complete source chain or backend B is claimed.
-
+Ordinary recursive Pattern and selected E-relative producers supply Atomic
+inputs. Raw/Norm fixture coverage is available for recursive layers, sum
+choice, contextual arrow and runtime holes. It does not complete S for
+N34–N50. Atomic consumes actual wrapped Boxes and target representation
+proofs. Heap evidence requires allocation-time lazy duty and commit-scoped
+support reinterpretation. F13/F14/F16/F18/F19 remain pending; F15 retains
+the extra ordering decision.
 
 ## N clauses to owners and executable slices
 
@@ -63,11 +63,11 @@ proof, complete source chain or backend B is claimed.
 | N25 | [unified-static-name-and-structural-semantics.md](../design/unified-static-name-and-structural-semantics.md) | D | — | — | — | — | — | source/semantic consumer pending |
 | N26 | [heap-stack-and-storage-responsibility.md](../design/lifetime/heap-stack-and-storage-responsibility.md) | D | — | — | — | — | — | source/semantic consumer pending |
 | N27 | [heap-stack-and-storage-responsibility.md](../design/lifetime/heap-stack-and-storage-responsibility.md) | D | — | — | — | — | — | source/semantic consumer pending |
-| N28 | [heap-stack-and-storage-responsibility.md](../design/lifetime/heap-stack-and-storage-responsibility.md) | D | — | — | — | — | — | source/semantic consumer pending |
-| N29 | [heap-stack-and-storage-responsibility.md](../design/lifetime/heap-stack-and-storage-responsibility.md) | D | — | — | — | — | — | source/semantic consumer pending |
+| N28 | [heap-stack-and-storage-responsibility.md](../design/lifetime/heap-stack-and-storage-responsibility.md) | D | — | — | — | — | — | Allocation-time lazy release duty; retirement needs no new receiver |
+| N29 | [heap-stack-and-storage-responsibility.md](../design/lifetime/heap-stack-and-storage-responsibility.md) | D | — | — | — | — | — | Direct-parent support/duty handoff, lifecycle heap-name reinterpretation |
 | N30 | [heap-stack-and-storage-responsibility.md](../design/lifetime/heap-stack-and-storage-responsibility.md) | D | — | — | — | — | — | source/semantic consumer pending |
 | N31 | [heap-stack-and-storage-responsibility.md](../design/lifetime/heap-stack-and-storage-responsibility.md) | D | — | — | — | — | — | source/semantic consumer pending |
-| N32 | [heap-stack-and-storage-responsibility.md](../design/lifetime/heap-stack-and-storage-responsibility.md) | D | — | — | — | — | — | source/semantic consumer pending |
+| N32 | [heap-stack-and-storage-responsibility.md](../design/lifetime/heap-stack-and-storage-responsibility.md) | D | — | — | — | — | — | Current local allocation Pre, later actual boundary compression |
 | N33 | [heap-stack-and-storage-responsibility.md](../design/lifetime/heap-stack-and-storage-responsibility.md) | D | — | — | — | — | — | source/semantic consumer pending |
 | N34 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | source/semantic consumer pending |
 | N35 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | source/semantic consumer pending |
@@ -81,9 +81,9 @@ proof, complete source chain or backend B is claimed.
 | N43 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | source/semantic consumer pending |
 | N44 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | source/semantic consumer pending |
 | N45 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | source/semantic consumer pending |
-| N46 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | Ordinary direct-arm ~~ incidence consumed by Atomic; optional I/S and ordinary numeric Slice |
-| N47 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | Source read/write ExitSlot and fixed Keep delivery; real ownership/Forget/share duties |
-| N48 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | Full actual arm/Status match on arm/protocol change; partial match only same-arm Keep; safe read-to-write |
+| N46 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | Ordinary recursive Pattern, true Box wrappers and total two-word budget |
+| N47 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | Fixed Keep/Exit rights and preexisting read lazy duty |
+| N48 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | Full comparison on arm/protocol change; same-arm read replacement and safe read-to-write |
 | N49 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | Selected ordinary E-relative transform and readable snapshot consumed at actual CAS; rejected formed I/S retained |
 | N50 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | Fixed lifetime/permission/causal proof duties; implementation methods left to libraries |
 
@@ -113,10 +113,10 @@ They introduce no alternate semantics or implementation/proof completion.
 | M17 | [unified-static-name-and-structural-semantics.md](../design/unified-static-name-and-structural-semantics.md) | N24/N25: partial actual-instance recovery, closed reify and ordinary declared failure |
 | M18 | [heap-stack-and-storage-responsibility.md](../design/lifetime/heap-stack-and-storage-responsibility.md) | N26/N29: current-top routing, explicit heap context and exact direct-parent submission |
 | M19 | [heap-stack-and-storage-responsibility.md](../design/lifetime/heap-stack-and-storage-responsibility.md) | N27: free enters current top; the active provider handles or forwards real duty |
-| M20 | [heap-stack-and-storage-responsibility.md](../design/lifetime/heap-stack-and-storage-responsibility.md) | N28: lawful lazy acceptance with Pending custody; no mandatory list representation |
-| M21 | [heap-stack-and-storage-responsibility.md](../design/lifetime/heap-stack-and-storage-responsibility.md) | N29: guaranteed direct-parent transfer includes unexecuted Pending and real storage support |
+| M20 | [heap-stack-and-storage-responsibility.md](../design/lifetime/heap-stack-and-storage-responsibility.md) | N28: establish lazy release at successful malloc; retain executable Pending custody |
+| M21 | [heap-stack-and-storage-responsibility.md](../design/lifetime/heap-stack-and-storage-responsibility.md) | N29: direct-parent transfer preserves live Places and projects scoped heap-name reinterpretation |
 | M22 | [lifetime-policy-and-overload-boundary.md](../design/lifetime/lifetime-policy-and-overload-boundary.md) | N30: logical end, physical destruction and unique deferred cleanup custody are distinct |
-| M23 | [heap-stack-and-storage-responsibility.md](../design/lifetime/heap-stack-and-storage-responsibility.md) | N31/N32: structured source windows and production/allocation escape Pre; no QS authority |
+| M23 | [heap-stack-and-storage-responsibility.md](../design/lifetime/heap-stack-and-storage-responsibility.md) | N31/N32: check actual event windows, local malloc Pre and return compression; no QS authority |
 | M24 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | N34/N35: consume formed associated E; every retained I/Index/S name is externally source-closed |
 | M25 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | N36/N37: controlled Color scope and ordinary associated calls do not certify outer types |
 | M26 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | N37/N40/N45: base safety and narrower library protocol/progress proofs remain separate |
@@ -165,15 +165,15 @@ selected transforms and Atomic access-right handoff without deciding memory-orde
 | F08 | Drop/Move 可执行材料保留、Pattern-local 默认表达式与实例移动证据的适用域；默认不证明全称 Movable | 不强制 Copyable/类型 trait，不隐式 Box |
 | F09 | reify 具体实例默认性判定的真实性、成功身份映射、异常及 ClosedInterface | 偏离实例拒绝；缺消费者不能假作恢复异常 |
 | F10 | 独立容器的 effect 树变换、调用材料、Region/Color 和逃逸 | 无普通来源/同步关系不能并行发射或逃逸 |
-| F11 | Heap 顶层接收、逐层补充/提交、单次责任守恒、Pending 顺序和保证完成资源条件 | 无能力不能登记/提交后丢责任；不偷扫原始 pool |
-| F12 | Region 上界回收在生产 Pre 的逃逸证明，包括异常、挂起与 deferred destructor 的依赖 | 不把证明推迟到 drop；不靠 QS 语言事实 |
-| F13 | Ordinary direct-arm `~~` produces associated E Pattern and selected `->::E` callable constructs transform without executing it. Atomic consumes admitted E and transform: every retained I/S name satisfies N35; single CAS commits actual Pattern/Status/S and result rights. Source write ExitSlot returns owned S; source read ExitSlot gives owned S to lawful Forget and valid S share. Keep write returns no old resource access, Keep read->read returns share, Keep read->write none. Rejected returns formed new I_b/S_b without silent Drop. | Do not infer roles from ordinal fields or virtual members, permit both source exits, commit then do fallible Post, or lose candidate Status/resources on failure. |
+| F11 | Current-top malloc/free, standard direct-parent guaranteed Submit with storage/duty transfer, allocation-time lazy duty and scoped LifeProject correspondence | Preserve history and live Places; no execution of Pending at relocation |
+| F12 | Local allocation Pre, real Region and support at each actual handoff/return, with forward name compression and fixed cleanup | No retroactive malloc constraints or late proof at Drop; no QS premise |
+| F13 | Complete E, actual Box wrappers and finite representation with single CAS, N35 closure, fixed Keep/Exit rights and Rejected material return | No inferred roles, duplicate release duty, dynamic read retirement registration or lost candidate material |
 | F14 | Actual version/rf/mo; branch-specific causal inheritance/publication; visibility of returned owned S or valid S share; no-thin-air and weak/strong failure distinction. | Numeric Status equality, hidden-field comparisons or raw peek do not imply a committed version or any resource authority; backend/OOTA proof pending. |
 | F15 | 是否仍需 SeqCst 级更强保证；若需要，决定是否采用独立 fence 及完整公理，检查双边/单边 SB、IRIW、2+2W、累积性与 lowering | **唯一保留的额外内存序设计问题**；在选定前不得把双边 SB 目标或完整 fence 说成源级已保证 |
 | F16 | Backend correctness of single-point Pattern/Status/resource/right handoff including valid published share visibility; x86-TSO/AArch64/RVWMO/LLVM validated separately. | No finite ARC/RCU model or relaxed CAS instruction proves selected source ownership/synchronization; do not claim unconnected backend support. |
 | F17 | 标准 locate 在构造 Pre 对所有非根 Pool 验证普遍保证式父层提交、lazy 接收和非根/根边界；保证不依赖无限内存 | **规范已定，消费者与证明待接通**；不可注册仅在部分状态偶然可迁移的标准层 |
 | F18 | Safe library composition of all Atomic source-slot operations, ordinary counted-reader/hidden Status/version/clone/retirement/wait implementations under actual Pre/Post. | No mandatory ARC/RCU/GC/Mutex or lazy scheme; no share interior mutation, protocol-subset theorem or automatic progress from individual safe actions. |
-| F19 | Direct-arm `~~` relational evidence/Norm, selected E-relative transform formation, numeric Slice/optional/nonpublic Status, full source matching on arm change versus same-arm Keep mask, `E?` coherent readable-only snapshot, read/write Keep/Exit result permission and safe read->write proof, valid Forget owner, rejected I/S custody and F14/F16 source/backend links. | n=0 or n=1 is not sufficient for unique live reader; Keep rights follow the fixed source/target roles; read ExitSlot must produce a live S share; no post-CAS repair or silent failure Drop; proof method not mandated. |
+| F19 | Recursive Pattern formation, staged producer identity, selected transform, full versus same-arm matching, old Box identity on read replacement, one-version E?, lazy duty and two-word target proof | No purely syntactic or numeric authorization; missing backend proof is unavailable |
 
 The dependency order is event/source material → correlated join/index/forget
 → founded repair → standard heap/lazy responsibility → atomic/causal backend
@@ -183,12 +183,12 @@ unknown root, missing Post or hardware-CAS-then-rollback substitutes for a gate.
 
 ## Atomic source and proof boundary
 
-Complete association/binder incidence, selected ordinary transform construction,
+Recursive layer/binder incidence, selected ordinary transform construction,
 compatible omission, full/masked matching and single-version readable projection
 are the producer inputs to N34–N50. Each consumer must establish its actual
 Pre/commit/Post, branch custody and causal obligations. Neither numeric counts
 nor a protocol name supply rights. Concrete reader/reclamation methods remain
-ordinary library choices; F19 does not choose an ARC/RCU/GC/Mutex/Boxlike scheme.
+ordinary library choices; F19 does not choose an ARC/RCU/GC/Mutex scheme.
 
 ## Actual verification record
 
@@ -226,12 +226,12 @@ their implemented Rust slices, not pending association/transform/CAS semantics.
 | 8 Movable | Pattern-local entry defaults do not imply Movable; actual event and repair proofs still apply |
 | 9 Recovery | Hidden non-default dependencies prevent default recovery; missing consumer is unavailable |
 | 10 Heap | Current-top malloc/free, immediate-parent relocate, unexecuted Pending; universal non-root locate capability |
-| 11 Reclamation | Escape fails at production/allocation Pre; QS is not a language premise |
+| 11 Reclamation | Local malloc Pre, then actual boundary compression; no QS premise |
 | 12 Atomic material | Consume admitted $-formed type; no new Pattern/enum and no arbitrary resource admission |
 | 13 Composition | Atomic fields do not certify outer Atomic; safe actions do not enforce arbitrary narrower protocols |
-| 14 CAS | Ordinary `~~` arm plus selected `->::E` transform; Atomic single commit uses source read/write Exit/Keep, exact source matching and Rejected input return; scheduling is ordinary composition |
+| 14 CAS | Ordinary recursive layers plus selected `->::E` transform; Atomic single commit uses source read/write Exit/Keep, exact source matching and Rejected input return; scheduling is ordinary composition |
 | 15 Memory | Branch causal closure and ownership/share-publication visibility fixed; F15 extra order undecided; OOTA/backend proofs pending |
-| 16 Atomic contract | Ordinary sum-arm `~~` + selected `->::E` transform, Atomic one-point CAS/Color; masked Status only for same-arm Keep; source read/write result and failed candidate return; F19 pending |
+| 16 Atomic contract | Ordinary recursive Pattern + selected `->::E` transform, Atomic one-point CAS/Color; same-arm partial Status and read replacement; source read/write result and failed candidate return; F19 pending |
 
 
 Specific pending domains are full common-K/activation interpretation and

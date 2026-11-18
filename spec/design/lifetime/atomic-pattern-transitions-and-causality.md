@@ -1,56 +1,27 @@
 # Atomic Pattern transitions and causal memory
 
-Status: canonical owner of Atomic admission of **ordinary**
-`$`-formed associated sum Patterns, one-attempt CAS and resource/rights
-handoff, and causal memory. The direct sum-arm `~~` structural association
-belongs to the [Pattern owner](../patterns-overload/pattern-relations-observation-and-extraction.md#92-direct-sum-arm-structural-association-);
-Atomic is its stronger trusted execution **consumer**, not its creator.
-N34–N42/N44–N50 define the target semantics, F13–F19/source/backends
-remain pending, and N43/F15 remains the bounded extra SeqCst decision.
-`write/read` here are illustrative ordinary resource member names;
-`~~` is the selected association spelling, not an Atomic-only operator.
-The selected `->::E` ordinary transform interface is target syntax,
-not a connected implementation or a frozen CAS API family.
-All equations and conventional call notation below are metanotation; source
-sketches are target syntax with unconnected consumers.
+Status: canonical owner for admitted Atomic transactions, resource custody
+and causal memory. Source and backend consumers remain pending. E evaluates
+ordinary Pattern formation, transform selection and lifecycle contracts.
 
 ### N34 — atomic 消费 `$` 已形成的模式类型 [不变量]
 
-`atomic` 与 `struct` 处于相同的类型材料消费者层次：输入是已经通过 `$` 及既有结构形成规则生成的完整类型，输出注册所需原子操作的完整类型。**其基本语义是受信任的和模式变换**：在合法原子状态实例上，对既有和 Pattern 的某个当前分支执行不可分割的条件状态转换，相关的状态数、受控资源与结果交付一并提交。它不是新的 enum 声明语法、Pattern 类别、和模式构造器或 Object 坐标。
-
-源码位置：
-
-```text
-formed_type |> atomic::
-```
-
-和模式的结构材料可以直接采用普通 `~~` 关联语法：
+Atomic 消费通过[普通递归命名 Pattern](../patterns-overload/pattern-relations-observation-and-extraction.md#92-recursive-named-pattern-material)形成的完整 E：
 
 ```lang
+let read = read::atomic::;
+let write = write::atomic::;
 let E = ((
-    (Ia1 n1, Ia2 n2) A ~~ (Sa write) |
-    (Ib1 m1) B         ~~ (Sb read)  |
-    C                  ~~ (Sc write) |
+    ((Source read) (I1 state1, I2 state2) A) |
+    ((Source write) (I3 state3) B) |
+    ((I4 state4) C) |
     D
 ) E)$;
-
-// 目标使用：已形成完整 E 材料再交给 Atomic 消费者
-E |> atomic::
 ```
 
-每个 `~~` 在和模式**直接分支**（含单分支）上将状态
-Pattern 与资源 Pattern 结构关联；并未执行提取、移动、
-构造或转换。这里的 `write/read` 是各自资源 Pattern 的
-普通命名成员，作为独占交付/共享交付的候选协议角色，
-仍可再调整命名。没有资源关联的 `D` 是合法分支；
-状态数材料也可以在该分支真实缺省。对 `A~~R|B` 的解释
-是 `(A~~R)|B`，不允许将 `~~` 下沉到积模式内部，
-例如 `(C~~(Sc write),D)` 不合法。两侧是普通 Pattern，
-关联证据由 `$` 形成并由 `R_Gamma` 及 Norm 保留；
-Atomic 根据所选结构证据判定角色，绝不能根据 bare
-Product 第几位、同名 Val2 或一个新 enum 本体猜测。
-
-输入模式可以结构化复用既有 atomic 类型和普通语言材料，形成合法递归组合。一次一般模式构造/提取的“原子完整提交”不自动等于跨执行主体的机器 CAS。
+每层保留实际结构和名字对应。Atomic 由真实形成的类型包装和结构
+证据识别状态、Status 和资源。分支 I/S 均可缺省；实际保留名字遵守
+N35。完整 Object 的构造/提取提交与跨执行主体的 CAS 是不同契约。
 
 ### N35 — Atomic 所有保留状态名字均须对外来源闭合 [不变量]
 
@@ -71,12 +42,8 @@ for every n in RetainedStateNames(A):
 
 该限制使 atomic 的全部保留状态材料不需要依靠外部挂起点的自动 repair 来恢复借用关系；atomic 事务不引入“重演旧 CAS 以修复内部资源”的特殊机制。闭合检查在真实硬件提交前完成，失败不能先安装 `I_b`/`S_b` 再修复来源。外部持有的 Cell ref/share 及凭证仍是普通依赖名字，遵守自己的交接规则。
 
-无论真实 `~~` 关联的源资源协议为 `write` 还是 `read`，其实际保留的 I/S
-名字都须满足这条闭合条件。成功 CAS 返回的 `S share` 是有真实
-origin/Region/Color 的**输出借用**，不是额外的资源所有者，也
-不能凭槽位名称抹除任何外部依赖。旧资源的 Forget 接收者
-只承接确实移交的唯一责任，不能因“名字被遗忘”取消仍有效
-的借用、storage support 或 Drop。
+源资源不论包装协议都受 N35 约束。成功交付的 S share 具有真实
+origin/Region/Color；它保持现有回收责任，不构成第二份所有权。
 
 ### N36 — 受信任的重叠独占染色只覆盖注册协议 [不变量]
 
@@ -114,8 +81,7 @@ OpenHere 提供注册能力，不提供伪造生命周期/原子权限的能力�
 P : current ordinary sum-Pattern alternative
 I : optional state-number material inside the selected state arm
     (may have nonpublic components)
-S : optional resource from that arm's ordinary ~~ association
-    (e.g. named write/read), with real custody
+S : optional actual T Box under an admitted read/write type wrapper
 v : identity of a committed atomic event
 n/g : ordinary lifetime name and generation
 ```
@@ -142,7 +108,7 @@ successful single commit:
   publish B and its actual State/Resource/permission Post atomically
   if old S_a exits its source slot:
     source resource role write => Committed receives owned S_a
-    source resource role read  => sole owned S_a enters lawful Forget;
+    source resource role read  => discharge slot custody under existing lazy duty;
                                   Committed receives valid S_a share
   if old S_a remains (Keep):
     source write => Committed has no old-resource access
@@ -164,36 +130,17 @@ omits resource while it actually requires a compatible one, omission
 means **identity-preserving Keep** of old S, not a fresh resource or
 return of old ownership; incompatible omission is illegal.
 
-For any committed transition e that **actually exits** old S:
+ExitSlot commits exactly one disposition. A write source delivers owned S
+under ordinary exclusion/transfer. A read source discharges the slot's
+custody under its allocation-time lazy duty and delivers a valid S share.
+Keep preserves actual resource identity and uses the source/target rights
+matrix above. A resource-free source supplies no old-resource right.
 
-```text
-ExitSlot(e,S) => ReturnOwned(e,S) XOR ForgetOwned(e,S)
-Keep(e,S)     => not ExitSlot(e,S)
-ForgetOwned(e,S) => Committed receives a lawful S share
-```
-
-The XOR has an ExitSlot premise. `not ReturnOwned` does **not**
-imply Forget: a transition may Keep the original S. The
-resource delivery role is fixed by its **source arm** and
-cannot be selected per API invocation. No two safe
-transform implementations on the same source arm may
-offer contradictory exit custody. A resource change must
-be bound to a true state-Pattern-changing CAS, not only
-a Status update or a post-commit ordinary action.
-
-All source/target Pattern, retained-name N35 closure,
-Region, Color, origin, generation, ownership and access
-Pre are checked at the actual request/commit boundary.
-Full source arm+state-number matching is required for
-a transition to a **different state arm**, even when
-target material is inherited. Only an in-place
-same-arm Keep update may use a masked/partial
-state-number match (`N48–N49`).
-Failed comparisons never consume new target materials
-or silently Drop them. Successful/failed result arms
-remain ordinary sum values carrying different Post
-and N41 causal histories. A value-equal Status does
-not establish a committed version or eliminate ABA.
+Check source/target correspondence, N35, Region, Color, origin, generation,
+access and ownership at the real commit boundary. Use N48 for full or
+permitted partial matching. Rejected retains formed candidate material
+and remaining duties. Committed and Rejected publish only their actual
+causal histories. Equal Status does not rule out ABA.
 
 ### N40 — 一般安全组合与外部事实的信任边界 [不变量]
 
@@ -291,122 +238,59 @@ async 与异构执行正交，异构执行与自动逃逸正交。基础内存�
 已有有限模型不构成对所有 Region、Color、来源、版本、
 机器后端、复杂回收或一般库协议的证明。
 
-### N46 — 普通和模式分支关联与 Atomic 的消费边界 [定义]
+### N46 — 普通结构、真实类型包装与表示预算 [定义]
 
-普通和模式的分支先以 `~~` 关联 State/Resource 结构，
-一般 `$` 形成完整 E 并保留该关联证据；Atomic 消费此完整材料：
+资源入口只接受实际 `T Box` 上的 `read::atomic::` 或
+`write::atomic::` 类型包装，由所选形成及注册证据识别。别名可解析
+到真实包装；同拼写字段、位置序号、偶然结构相等及用户自称箱化均
+不提供该证据。无资源状态合法。read 入口另外要求 [HeapStack N28](heap-stack-and-storage-responsibility.md) 的分配期
+lazy release 义务。该限制服务于 Atomic，普通递归 Pattern 仍可使用
+其他资源和状态结构。
 
-```lang
-let E = ((
-    (Ia1 n1, Ia2 n2) A ~~ (Sa write) |
-    (Ib1 m1) B         ~~ (Sb read)  |
-    C                  ~~ (Sc write) |
-    D
-) E)$;
-```
-
-`~~` 是**分支级关联**，不是 `=>` 的生成/提取箭头、
-不是一般 Product 运算、不是 CAS 转换或资源移动。
-单一关联分支不必为合法性额外构造另一个 `|` 分支；
-`(C ~~ (Sc write),D)` 之类嵌入 Product 的式子非法。
-即使相同 `Sat`，关联材料也属于完整 Pattern 的
-关系/规范化身份，不得被 `Norm_P` 或类型缓存抹除。
-完整注册还须具有真正的关联/角色结构证据，
-而不是通过普通同名 Val2 字段提升权限。
-
-资源侧 `(S write)`、`(S read)` 的名字
-可按语言一般命名语义形成；这里用 `write` 表示
-源资源离槽时合法交付 owned S，用 `read` 表示
-源资源离槽时合法 Forget 其 owned custody 并
-向成功结果交付 S share。两者均**只是暂用命名
-约定**，不产生额外 Object 类型、自动回收、
-读写锁或 Atomic 私有 Pattern。S 可缺省；
-State 分支的 I 也可缺省。数值 Status 可以复用
-普通 `Product |> slice` 和 `R_Gamma`：
-
-```lang
-let NotZero = ((1u32:) NotZero)$;
-let NotOne  = ((0u32 | (2u32:)) NotOne)$;
-```
-
-`1u32:` 在 u32 域匹配 1 至最大合法值，
-`NotOne` 通过 `0u32 | (2u32:)` 排除 1。
-这属于普通 Pattern owner 的数值切片，
-不是 Atomic 专用计数器原语、私有 AST、
-新类型轴或额外求解器。
-
-普通 `E` 的合法形成与关联不蕴含任何原子执行。
-Atomic 仅约束其准入并对实际选中
-`Transform(E)` 赋予一次 CAS 提交、受控
-不相斥独占 Color、资源与结果 Post 的可信
-交接。所有保留 I/S 名字仍须遵守 N35。
+I 可以用普通数值 Slice，含非公开分量。Atomic 要求实际 Status 能
+平凡移动、析构及合法原子比较。一次条件提交的逻辑表示至多两个
+目标机器字，预算覆盖实际判别位、模式、比较状态和 Box 链接。
+可压缩时使用单字；双字是准入上限，不保证目标具有双字 CAS。
+没有原生操作时，需要经验证的等价整体提交表示，保持比较、结果
+权限及 N41 因果；缺少该证明或平台消费者时不可用。超预算材料不
+满足当前 Atomic 准入。规范不规定具体布局、后备算法或进度保证。
 
 ### N47 — 源资源角色、离槽与 Keep 的成功权利 [不变量]
 
-每个已关联资源的源 arm 通过自己的
-`write/read` 角色确定离槽交付；同一
-arm 不允许同时注册两种互斥离槽去向。
-所有成功分支依**实际资源行为**判定：
+| 实际动作 | Committed 的旧资源结果 | 源槽位与清理责任 |
+| --- | --- | --- |
+| write Exit | owned S | 在真实独占交接中转移所有权与相应义务 |
+| read Exit 或同 arm read 替换 | valid S share | 原子解除旧槽位持有资格，分配期 lazy 责任继续有效 |
+| write Keep | 无 | 槽位保留 S |
+| read Keep → read | valid S share | 槽位保留 S，继续读协议 |
+| read Keep → write | 无 | 保留 S，按 N48 关闭旧读资格 |
+| 无源资源 | 无 | 无旧资源责任可交付 |
 
-```text
-ExitSlot(source write) => Committed receives owned S
-ExitSlot(source read)  => Forget receives owned S
-                          AND Committed receives S share
-Keep(source write)     => Committed does not obtain old S
-Keep(source read -> target read)
-                       => Committed receives S share
-Keep(source read -> target write)
-                       => Committed does not obtain S share
-```
+`Forget_read(oldBox)` 的运行时回收动作是 NoOp。解除槽位持有资格
+与交付 share 属同一成功 CAS。已建立的最终释放责任继续承担唯一
+清理，并覆盖新交付的 share 及其他有效读者的实际 Region、origin、
+Color 和存储有效性。这里没有提交后接收人搜索、动态登记或重复
+析构；普通 share 仍只授予证明过的读权限。
 
-`Forget` 保持唯一清理责任；它不是立即
-删除或某个强制 lazy/ARC 算法。成功返回的
-`S share` 必须由真实 Region、Color、origin
-及存储有效性支撑；普通 share 不允许隐藏
-一般内部可变性。即使新旧两个状态的
-资源身份不变，状态分支模式、资源角色
-仍须作为真实 CAS 条件/结果解释。
+### N48 — 完整比较、原位替换与共享权恢复 [不变量]
 
-结果权利由**源角色加实际 Exit/Keep 和
-目标角色**共同确定，不是 `~~` 自行生成的
-提取器。没有 S 的 arm 不虚构资源结果。
-从 `not ReturnOwned` 不可推出 `Forget`：
-`Keep` 是其余合法情况。
+真实 arm 或协议变化需要匹配完整源 arm 与全部实际 Status，包括
+非公开部分。源值只能通过受控比较观察时仍须完成该比较。继承
+目标材料不减少这个义务。
 
-### N48 — 模式变化的完整匹配与共享权恢复 [不变量]
+同 arm 可以部分匹配和更新 Status，并保留未指定的实际分量。
+同 arm read 可更换 Box，条件是同一提交比较确认实际旧 Box 身份，
+实际旧 share 仍有效，且新 Box 具备真实 read 包装与分配期 lazy
+义务。成功交付旧 share 并解除旧槽位资格；合法比较失败归还新 Box。
+同 arm write 不得更换 Box。即使新旧 Box 的业务类型相同，write
+更换也要求真实跨 arm、完整源比较及相应独占交接。
 
-改变和模式 arm（包括 `read/write` 资源
-角色变化）必须由一次状态-Pattern-changing
-CAS 完成；单纯更改状态数不能改变资源
-交付模式。若 Keep 同一 S 但从 read 切到
-write，该成功分支**不**产生新 S share。
-之后真正取出旧 S 必须另行执行一次 CAS，
-不能把第一次成功当成第二次成功。
-
-从 read 状态恢复到 write 时必须在真实
-Pre/交接中证明先前全部冲突共享权已经
-合法结束且不会继续发放；`n=0`/`n=1`、
-数值切片或隐藏状态位本身均不证明这个
-性质。具体许可、计数、Region 或外部
-受信任设施如何履行该义务属于普通协议。
-
-这里有一个重要的源状态匹配边界：
-
-```text
-ChangingArm(A,B) => FullMatch(A, all actual I_a material)
-PartialStatusMatch(I_a) => SameArm(A,B) AND Keep(S_a)
-```
-
-在原位保持 arm 和资源的 Status 更新中，
-可使用局部/蒙版式匹配及增量修改，
-未指定的分量由同一实际状态原样保留。
-但不能把此操作提升为从 A 到不同 B
-状态的部分匹配转换；即使新资源/状态数
-目标侧可以合法继承，也必须拥有真实
-**完整源 arm+Status 匹配证据**。
-不可公开读取的 Status 分量不等于不存在；
-受控比较可在未对外泄漏其值的情况下
-满足完整匹配，但不能跳过它。
+read → write 的 Keep 必须证明此前全部冲突读权结束并已关闭旧读权
+发放。计数值和切片本身不能证明这些条件。该提交不交付 share；
+真正取出 owned Box 另需一次符合 Pre 的 CAS。若该 Box 在分配期
+建立了最终释放义务，后来交付 owned Box 仍须保留该义务和实际
+释放所需的对应，不能重复取得析构责任。write → read 同样需要
+该实际 Box 已具备分配期 lazy 资格。
 
 ### N49 — E 关联变换值、结构省略与 Atomic 执行 [定义]
 
@@ -416,12 +300,10 @@ PartialStatusMatch(I_a) => SameArm(A,B) AND Keep(S_a)
 可调用 t 及其实际 E/arm/binder 对应；拼写 `->::E` 本身不证明
 注册、选择或可调用性，构造 t 也不取得旧资源权限。
 
-目标 arm 省略意味着同一 arm、Keep 同一资源（若存在），不允许
-独立替换资源；显式重复相同 A 也不产生真实 arm 变化。
-兼容目标槽位的省略继承在实际应用状态上实例化；不存在的
-目标资源槽位不构成 Keep，而须按 N39/N47 处理真实离槽。
-SameArm/Keep 的 Status 蒙版及任意 ChangeArm 的全源匹配，
-分别消费普通变换携带的对应证据，并保持 N48 的实际准入。
+目标省略按实际选定构造器和兼容槽位解释。实际 arm 保持时使用
+N48 的同 arm 规则；没有兼容目标资源槽位时不能虚构 Keep。普通
+变换须提供所需的匹配、保留与交付对应。独占借用上的 Atomic 变更
+只通过一次合法条件提交；以值取得的材料仍可走普通拥有值和模式代数。
 
 对实例的一次尝试可写为目标形状：
 
@@ -440,7 +322,7 @@ Rejected 及已形成候选。缺少消费者/证明为 Unavailable，
 选中的普通 E `?` 观察始终遵守其单个实际版本/状态的可读
 投影契约，Atomic 不增加隐藏字段可读性、完整匹配凭证或 share。
 Committed/Rejected 的资源交付由 N39/N47 决定，版本因果由 N41
-决定；当前 parser、普通生产者和 Atomic 源码/后端消费者均待接线。
+决定。普通生产者与 Atomic 源码/后端消费者待接线。
 
 ### N50 — 固定安全证明义务，开放具体方法 [不变量及证明义务]
 
@@ -449,17 +331,15 @@ origin、Region、Color、版本可见性和支撑
 其整个合法读窗口的资源有效性；share 不得
 包含一般内部可变性。`read -> write` 源协议切换要证明
 此前发放且冲突的读权均已终止，不能只
-凭原子计数的某个数值。资源离槽/Forget
-须在提交点完成唯一所有权与合法 Drop
-责任的交接，结果 share 不得立即悬空；
+凭原子计数的某个数值。槽位交接与权限结果在提交点完成，
+read 的唯一回收责任已在分配 Post 确定，且覆盖提交后的真实 share。
 同一次 CAS 失败须保持所有拟写入状态数/
 资源材料及对应责任。全部保留状态名字
 仍满足 N35 来源闭合，现有权限/Region/
 Color/因果与 N41 同步要求照常成立。
 
 这些是**固定的证明义务**，不是强制的
-RCU/ARC/GC/Mutex/reader guard、特定
-Boxlike、Clone/写时复制或 HeapStack
+RCU/ARC/GC/Mutex/reader guard、Clone/写时复制或 HeapStack
 回收算法。允许旧读者跨新版本存活的协议
 必须保证其读取/Drop 的延迟合法性；
 要求写前撤销旧读权的协议则必须真实
@@ -485,8 +365,8 @@ The single committed result uses the source associated `write/read`
 resource role if S exits. A kept S remains held: Keep from write
 delivers no old-resource access, Keep read->read delivers valid S share,
 and Keep read->write delivers no S share. A source read ExitSlot
-also gives a valid borrow to Committed while transferring old S's
-sole ownership to lawful Forget custody.
+delivers a valid borrow and releases slot custody under the existing
+allocation-time lazy duty. A same-arm read replacement follows N48.
 A Rejected result returns the proposed newly formed Status/resources
 and their unconsumed duties, never silently Drops them or fabricates a
 successful old-resource claim. Checks and complete ownership handoffs

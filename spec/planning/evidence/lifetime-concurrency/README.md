@@ -27,3 +27,9 @@ SHA-256 checks are recorded in [the ledger](../../lifetime-concurrency-consolida
 The model covers at most three ARC tickets/two actors and simplified MP/SB.
 It does not prove full CAS resource semantics, Region/Color, repair, HeapStack,
 no-thin-air, overflow/Weak/reclamation, fence/ISA or compiler preservation.
+
+The recursive Pattern, arrow, Atomic custody and Heap handoff acceptance
+targets in AS01–AS14 remain normative. Rust frontend golden tests
+exercise syntax. The preserved finite model and the inventory audit do
+not discharge the revised transaction, staged identity, release or
+backend proofs.

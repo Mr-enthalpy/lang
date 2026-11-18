@@ -182,17 +182,14 @@ Persistent dependency/source encoding remains open, not the propagation law.
 - Which ordinary API names (including depends_on/live_with), argument packaging,
   namespaces, regular-material encodings, caches and boundary-transform
   algorithms implement the closed lifecycle relations?
-- How do the pending source consumers register ordinary E-relative
-  `->::E` callable transforms and an E `?` readable observation for the
-  newly defined direct sum-arm `~~` association? `~~` preserves real
-  State/Resource arm structure without extraction, generation or CAS.
-  `write/read` are illustrative normal resource member names and the final
-  role spelling remains a minor surface choice. Target omission, same-arm
-  masked Status matching, full source matching on arm change, optional
-  resources and failed I_b/S_b return are fixed in N46–N50; precise
-  callable and operator registration/implementation remain pending. F19 checks permission/proof/source/backend connectivity rather than
-  choosing a reader-count, Boxlike, RCU, GC, Mutex or lazy-heap algorithm.
-  F15 remains the sole extra SeqCst/fence semantic-order decision.
+- How will source consumers form, register and select E-relative transforms
+  and readable observations from recursive named Patterns and staged compile
+  producers? Which target layouts preserve the N46 two-word representation
+  budget, compare the actual old Box and realize a whole conditional commit?
+  The allocation-time lazy duty, actual read/write type wrappers and role
+  matrix are fixed. The allocation/compare/reclamation implementations remain
+  open. F15 retains the extra SeqCst/fence decision.
+
 - Which representations/algorithms realize the fixed name-item SCC collapse
   to original paired regular forms at Ordinary boundaries and participating
   InPlace exits, including preserved contribution/incidence mappings after an

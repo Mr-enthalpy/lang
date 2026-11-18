@@ -441,32 +441,29 @@ Move/Drop, and extraction does not subtract the remaining aggregate's obligation
 Default-world reify recovery is partial; hidden non-default instances throw their
 declared exception, and missing consumers remain unavailable.
 
-Standard malloc/free enter current top. Every standard non-root locate requires
-universal guaranteed direct-parent Submit and lazy acceptance across all admitted
-reachable management states. Relocate targets up(H), transfers Pending without
-executing it, and Drop performs its unique ordered duty. Escape is rejected at
-production Pre. Ordinary custom heaps are permitted under their own contracts.
+Standard malloc/free enter current top. Non-root locate requires guaranteed
+direct-parent submission. Malloc checks its current local Region and establishes
+the selected release policy. Relocate transfers covered support and Pending duty
+unexecuted, restores the parent binding and reinterprets the covered heap name in
+the lifecycle projection. Return checks compression in the actual continuation.
 
-Ordinary Pattern `~~` associates a direct state/resource arm (singleton allowed);
-`$` forms its complete E while retaining branch/operand/binder incidence. An
-actually registered and selected ordinary `->::E` producer may form a callable
-transform; association and formation execute no CAS and grant no old-resource
-access. Compatible omitted target I/S inherits actual material; omitted arm
-means same-arm Keep. Partial Status matching is only same-arm Keep; any arm or
-read/write protocol change requires full actual source matching, and resource
-replacement requires a real arm change. Ordinary E `?` is a single-version
-readable projection only, not a generic rule for every `?` consumer.
+Ordinary recursive Pattern layers retain their names under extraction and
+`$` construction. Compile producers accept admitted runtime inputs without
+reading runtime Val1 to complete outward compile work. `->` is ordinary
+binary operator sugar outside built-in return syntax. A selected `->::E`
+can form a callable transform using ordinary RHS `_` under its own contract.
 
 [Atomic](spec/design/lifetime/atomic-pattern-transitions-and-causality.md)
-consumes admitted E/transform material. Every retained state name, including
-I/Index and S, is closed against external origin dependencies; only an actual
-ordinary producer Post proves a fresh closed name. Its one CAS jointly commits
-state/resource/rights and causal Post. Source write ExitSlot returns owned S;
-read ExitSlot transfers ownership to lawful Forget and delivers valid S share.
-Keep write grants no old-resource access; Keep read->read grants share;
-Keep read->write grants none and must prove prior conflicting readers ended.
-A later take needs a second CAS. Rejected returns all actually formed incoming
-I_b/S_b and remaining duties; unavailable evidence is not competition failure.
+consumes actual read/write wrappers over `T Box` with the N35 closure and
+two-word representation budget. Arm/protocol changes require full comparison.
+Same-arm read replacement may compare the old Box and return a valid share;
+same-arm write replacement is disallowed. Read exit or replacement discharges
+the slot under the allocation-time lazy duty; runtime Forget is NoOp. Write
+exit returns owned S. N47–N48 fix Keep and read-to-write rights, including
+closure of prior conflicting read rights and a separate CAS to take owned S.
+Rejected returns all actually formed incoming material. E `?` grants only
+coherent readable observations. Causal and machine evidence remain independent.
+
 Atomic fields do not make an atomic outer type, and safe primitives do not
 prove arbitrary protocol subsets. No implicit retry or per-operation memory
 order operands follow. F13/F14/F16/F18/F19 remain proof/source/backend gates;

@@ -844,7 +844,11 @@ Pattern 节点内的 `lifetime default` 是普通表达式材料，按子到父�
 
 Heap 接收 Pending、Region 上界拒绝逃逸及单次责任交接解决存活/回收合法性；它们不自动建立发布/订阅的 rf、对象修改序或 fence 保证。
 
-反之，成功 CAS、fence 或观察到某版本不能证明目标 heap 足够长寿、没有读者逃逸或可以跳过 deferred Drop。Atomic 中普通 `~~` 关联的 `read` 源资源实际离槽时，可以将唯一旧资源所有权交给合法 Forget 接收者并向成功结果发放有效 S share；如果选择 HeapStack lazy free，必须另证接收和读者整个合法 Region。资源保持、读取授权、旧资源回收、内存可见性和访问模式变化分别有真实契约，不能相互充当证明。
+malloc 的 Pre 只检查当下分配；HeapRelocate 的成功 Post 将已交接支持
+所用的局部 heap 名字重解释到直接父层，保留历史 origin 和 Places。
+实际返回独立检查最新 Post 下的名字压缩。分配期建立的 lazy 责任
+覆盖 Atomic read 槽位退出及合法旧 share；Forget_read 为运行时 NoOp。
+回收寿命、实际读权和 rf/Past 发布事实各有证据。
 
 ## U10 — Atomic 的复用边界是输入结构和关联 API
 
@@ -857,13 +861,22 @@ general $-formed Pattern/type material
     -> ordinary safe operations / Pattern branches / effects
 ```
 
-Atomic 消费普通 `$` 形成的和 Pattern：分支的 `A ~~ (S write)` / `B ~~ (T read)` 是来自 Pattern owner 的结构关联，不是提取或生成箭头。普通选定 `->::E` 先形成可调用变换值，Atomic 才在调用时保证单次原子提交。状态臂改变要求完整匹配源状态/状态数；仅同一状态臂的 Keep 可局部蒙版匹配 Status。旧 S 离槽时，源 `write` 将 S 所有权交给 Committed，源 `read` 将唯一 owned S 交给合法 Forget 并同时交付有效 share。Keep 源 `write` 不返旧资源权，Keep 源 `read` 且目标仍 `read` 返回 share，Keep 从 `read` 切换至 `write` 则不返回 share。切换协议必须通过实际模式变换 CAS，并证明冲突旧读权已终结。失败分支交还真实已形成的新 Status/S 而不隐式 Drop；普通 `E?` 仅得一致且可读的状态投影，不凭空产生资源共享或隐藏数值权限。所有分支仅发布自身实际因果（N39、N41、N46–N50）。
+普通递归命名 Pattern 保留实际层次和对应；选定 `->::E` 形成可调用值。
+Atomic 消费完整 E、真实 `T Box` 类型包装（资源存在时）与有限表示。
+全源匹配约束真实 arm/协议变化；同 arm read 可在同一提交确认旧 Box
+后原位替换，同 arm write 不可替换。N39/N47–N50 定义提交、Keep/Exit
+权利、失败候选交还及 read→write 的读权结束；N41 仍拥有版本因果。
 
 没有 `atomic enum` 新本体；没有自动 `struct-of-atomic -> atomic-struct` 规则；没有“用户声明安全即可”的任意世界写入口。
 
 更高层算法的可证明行为必须位于既有内部安全不变量的组合范围内。想强制一个更小的协议转换集合，必须让它成为真实的接口/材料/Pre 限制，不能只给一个包装名字。
 
 ## U11 — reify 保留阶段代数与失败效果
+
+[Compile producer 的 runtime 入参](static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers)
+允许形成带真实 runtime 依赖的名字和 Pattern。对外 compile 计算不能依赖
+尚不可用的 runtime Val1；具体名字身份在输入可用时依实际材料形成。
+`$` 在各层执行普通极性翻转，选定的生产调用仍遵守同一阶段规则。
 
 默认世界恢复只是现有选定迁移中关于具体实例的准入条件。它不另立 Stage，不给 runtime 值写回过去 compile 世界，也不根据值的运行结果扩展 compile 已闭合接口。
 

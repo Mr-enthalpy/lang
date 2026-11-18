@@ -1,5 +1,10 @@
 use std::fs;
 #[test]
+fn recursive_named_patterns_and_arrow() {
+    assert_norm_case("recursive_named_patterns_and_arrow", false);
+}
+
+#[test]
 fn capture_weak_let_shorthand() {
     assert_norm_case("capture_weak_let_shorthand", false);
 }
