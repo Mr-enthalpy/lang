@@ -366,7 +366,11 @@ and preserves, up to alpha-renaming / canonical binder renaming:
 
 - successful derivation structure;
 - the observable and extractable interface;
-- direct structural incidence.
+- direct structural incidence;
+- attached node-local `lifetime default` expression material, scope/binder
+  identity and its complete recursively composed relation observation;
+- recursive named Pattern layers, their name correspondences and admitted
+  material at each layer
 
 Therefore:
 
@@ -375,7 +379,12 @@ P ~=R Q => P ~=sat Q
 ```
 
 but not conversely. Two Patterns may accept the same content while exposing
-different structural or extraction evidence.
+different structural, extraction or lifecycle-default evidence. Even if
+`Sat_Gamma(P,c)` agrees with `Sat_Gamma(Q,c)` for all c, differing
+node-local lifetime defaults are observable Pattern materials and cannot
+be erased by Pattern equivalence or by `Norm_P`. The equivalent description
+must preserve the entire default relation template under legal alpha-renaming,
+not just the ordinary content classifier.
 
 Pattern normalization is sound in one direction:
 
@@ -385,7 +394,10 @@ Norm_P(P) = Norm_P(Q)
 ```
 
 The converse is not required. Canonical normal form may refine relational
-equivalence rather than solve equivalence completely.
+equivalence rather than solve equivalence completely. Pattern canonicalization,
+`*` composition and type identity/equality consumers must retain each formed
+node's lifecycle-default observation; neither identical field layouts nor
+equal resident values prove equality of the whole formed Pattern.
 
 Object normalization composes the three coordinates without copying either
 content axis into `P`:
@@ -714,6 +726,208 @@ true|false is the structural sum; the four names are ordinary value bindings.
 Both anonymous positions are structural. The complete (name)$ operand is
 interpreted in V, supplying the existing value Pattern to ordinary extraction.
 Raw and normalized heads agree with the explicit form and retain InPlace.
+
+### 9.1 Ordinary typed numeric slices in Pattern relations
+
+RHS `:` is already the ordinary `Product |> slice` formation material,
+not a dedicated AST or a special Atomic form. When its actually selected
+ordinary Slice/Pattern consumer defines an interval over a finite
+numeric domain (e.g. `u32`), that completed interval may participate in
+`R_Gamma` exactly as other ordinary Pattern material:
+
+```lang
+let NotZero = ((1u32:) NotZero)$;
+let NotOne  = ((0u32 | (2u32:)) NotOne)$;
+```
+
+For a formed `u32` interval `(a:)`, the lower endpoint `a` is inclusive
+and the omitted right endpoint means the greatest legal value of the
+`u32` domain. Thus:
+
+```text
+R_Gamma(NotZero, n, rho) iff 1 <= n <= u32::MAX
+R_Gamma(NotOne,  n, rho) iff n = 0 or 2 <= n <= u32::MAX
+```
+
+The interval does not admit values outside the stated number domain,
+silently wrap at the maximum, or prove a numeric value's provenance,
+version/generation or resource ownership. This is an ordinary selected
+`slice` relation combined by ordinary choice `|`, not a new numeric
+Pattern ontology, implicit CAS counter operation, or privilege to inspect
+a hidden value. Missing actual Slice/Pattern producer evidence is
+Unavailable; a known value outside the admitted interval mismatches.
+
+Such ordinary interval relations may constrain state-number material within a
+formed state arm. An Atomic consumer uses that relation without adding range
+matching rules or inferring provenance/permission from the numeric predicate.
+Atomic separately checks the actual resource wrapper and the represented
+Status in the complete ordinary structure.
+
+### 9.2 Recursive named Pattern material
+
+The name position of ordinary `E name` can itself contain a grouped named
+Pattern followed by its own name. In that position, the production
+`name → (E name)name` recurs, including in Products and sum alternatives.
+For example, `E (E name)name` and `E (E (E name)name)name` preserve each
+group, each name occurrence and the material associated at that layer.
+A Product layer keeps its own ordering and correspondence under §7.
+Ordinary sum choice `|` keeps its existing meaning.
+
+#### Formation and relational derivation
+
+Let `p` be the admitted structural position of a grouped layer `(Q)n`.
+Write `NamedLayer(p,n*,P_Q,beta)` for its ordinary formed Pattern
+material. The fields abbreviate evidence already used by the relation.
+`n*` is the formed occurrence of the written name under ordinary scope
+and interpretation, including its actual HoleBinderId, external
+constraint, or structural name role as applicable. `beta` records the
+admitted structural correspondence to the inner material. It is part of
+the formed Pattern. Actual subject evidence is checked at extraction.
+The formation rule is inductive:
+
+```text
+the enclosing structural formation admits position p in its Product or sum context
+the ordinary name rules form n at p as n* in the established PatternRoot
+the same structural formation forms Q at p's inner position as P_Q
+the admitted outer-to-inner structural incidence at p is beta
+-------------------------------------------------------------------------
+S formation of (Q)n at p yields NamedLayer(p,n*,P_Q,beta)
+```
+
+The induction terminates at the ordinary leaf/name cases. Products use
+the ordinary layer order and incidence rules. A sum admits the same
+formation in each alternative and keeps the ordinary alternative
+correspondence. Forming the child does not introduce a second root or
+binder scope except where the existing scope rules introduce one.
+`Norm_P` preserves the layer position in the canonical structural
+incidence, the name role/reference, the correspondence and the recursively
+normalized child. Alpha-renaming preserves these observations and renames
+only identities that are bound under the existing rules. Source spelling,
+source spans and a flat list of names cannot establish relational identity.
+
+For `L = NamedLayer(p,n*,P_Q,beta)`, specialize the intermediate-layer
+rule of §8.2 using the formed occurrence and correspondence. Here `u` is
+the actual observable inner material reached inside the complete content
+`c`. It need not already be a detached Object.
+
+```text
+OuterExtract_Gamma((p,n*,beta), c, rho0, u)     -- actual outer observation and inner material
+R_(Gamma,rho0)(P_Q, u, rho1)
+CompatibleValuations_Gamma(rho0, rho1)
+----------------------------------------------------------------------
+R_Gamma(L, c, rho0 join rho1)
+```
+
+For this layer, a derivation exists exactly when the premises have a
+joint witness. The joined derivation retains the outer and inner
+evidence, including the actual name observation and the reached
+material as distinct observations. Recursing calls the same
+`R_Gamma` on that actual material. It does not retry lookup by spelling.
+The compatibility premise is the existing valuation join: take the
+union on disjoint binder identities and require ordinary observation
+equality at each shared binder identity. A demonstrated inequality
+eliminates that derivation. Apply the ordinary Match/Mismatch/Unavailable
+boundary to the complete query, including other legal derivations and
+missing equality or route evidence. Repeated occurrences of the same
+HoleBinderId test the same binding. Distinct binder identities and
+distinct structural positions stay distinct even when spelled alike.
+This does not admit duplicate declarations of one binder.
+
+The selected RHS constructor uses the same admitted positions and
+correspondence to assemble its input material. If its declared
+formation succeeds, the committed complete Object supplies the
+observations promised by the constructor at those positions, so the
+same layer rule applies when an admitted extraction later reaches them.
+Correspondence alone supplies neither a callable constructor nor
+permission to transfer ownership. Actual construction and consuming
+extraction separately satisfy their selected Pre and complete Object
+commit rules (§3.2). Applicability and field observations do not issue
+those commits.
+
+`Interpret(e$, C)=Interpret(e, Flip(C))` applies at every occurrence.
+When the effective context is S, grouped layers use the formation
+rule above. A flipped leaf within S may obtain ordinary typed material
+from V under the external-typed-leaf rule. The same actual outer route,
+inner judgment and joined valuation govern extraction. Polarity
+does not allocate a binder or perform a lifecycle action.
+
+#### Construction and extraction examples
+
+With `ReadStorage` and `WriteStorage` the complete classifiers formed
+by the ordinary type producers in Atomic N34, the following `$`
+expression forms an ordinary complete structural type:
+
+```lang
+let E = ((
+    ((ReadStorage$ resource) (I1 state1, I2 state2) A) |
+    ((WriteStorage$ resource) (I3 state3) B) |
+    D
+) E)$;
+```
+
+The V-to-S flip forms the registered sum structure. Each inner S-to-V
+flip supplies its actual external classifier and the named layer retains
+it at `resource`. The two occurrences of `resource` have distinct
+alternative positions. An ordinary constructor for this formed type,
+when actually selected and supplied compatible input, commits one
+complete selected alternative with its own typed child evidence.
+This formation and construction use no Atomic consumer.
+
+```lang
+let <inner, outer> value: E (E inner)outer = expr;
+let <idx> item: E (E (E idx)idx)idx = expr;
+let <idx> conflict: E (E (E idx)idx)idx = differentNames;
+```
+
+For the first extraction, if `expr` supplies both admitted layer routes,
+the outer observation binds `outer` and the recursive judgment over
+that layer's actual inner material binds `inner`. The distinct
+bindings need not agree. In the second, when the three reached
+observations agree as required by their common `idx`, the join makes
+one binding for all three occurrences. If `differentNames` has the
+same routes but gives decided unequal observations for two occurrences,
+the joined derivation fails. With no other legal derivation, extraction
+rejects at its ordinary applicability or Pre boundary. When a required route
+or equality observation is missing, the query follows the ordinary
+Unavailable boundary. These
+examples are relation and consumer requirements.
+
+The construction/extraction correspondence is structural. A call consumes
+its selected input by extraction, and its return constructs under its own
+Pattern and delivery contract. Neither direction infers the other's
+operational actions. The ordinary local flip
+`Interpret(e$, C) = Interpret(e, Flip(C))` composes at every nesting depth.
+For example, `let a: uint8 = expr` extracts at adjacent ranks and binds
+the bare classifier name, whereas `uint8::` and `uint8$` supply external
+material. In `|> (self, val: t option::std::)`, `t` extracts the inner
+material. In `|> (self, val: uint8$ option::std::)`, the corresponding
+inner position requests the external material.
+
+An ordinary owned sum can consume M and construct O in S − M + O. The
+input M can have its own nested structure. The ordinary forms
+`|> (self, val: A$ M)` and `|> (self, val: A M)` respectively use external
+material at that position and extract its inner material. Both follow
+ordinary passing and lifecycle actions. An exclusive borrow can instead use an
+[ordinary borrowed sum transform](operator-patterns-and-generative-declarations.md#ordinary-borrowed-sum-transforms)
+on the actual resident. The selected operation matches the source and
+commits a complete destination with the specified resource disposition.
+Borrowed structural projection by itself continues to yield only a view.
+
+Where an ordinary selected compile producer supplies name or Pattern
+material (including under `$`), the
+[invocation rules](../static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers)
+apply. For `runtime let <val, length> val: length range = expr`, extraction
+can bind `length` with runtime Policy under the ordinary hole rules.
+The internal Pattern is formed from compile observations. Runtime material
+supplies extraction operands and concrete name observations at their actual
+frontiers; it does not participate in internal Pattern identity.
+When the Pattern rank is runtime, any present Val1 rank is runtime under
+the Policy rank law. This constrains the Object rank pair independently
+of the callable's P1/P2.
+
+Source execution still requires the recursive formation/extraction and
+staged producer consumers. The source carrier preserves these structures
+for that work.
 
 ## 10. Joint extraction across adjacent universe ranks
 
@@ -1139,6 +1353,92 @@ records its inputs and atomic boundary. This obligation belongs to the actual
 formation action. General `$` is still an interpretation-polarity flip, not an
 extra lifecycle action at every written occurrence. Neither a field signature
 nor a generated name substitutes for registered structural evidence.
+
+### External typed leaves
+
+A complete type expression `e` may supply an external leaf in structural
+context. For `(e$ n)`, apply `Interpret(e$,S)=Interpret(e,V)`. Evaluate the
+value expression normally and use its actual complete classifier as the
+leaf source in the selected structural formation. A lexical value binding
+may supply that classifier. A Path may also supply it through its ordinary
+completed name/resident read, including through an alias. The enclosing
+formation must establish the actual `DirectPatternChild` and `LeafSource`
+correspondence for `n`. A bare structural name at the same position follows
+ordinary S navigation and extraction. Equal spelling cannot supply the value
+read, complete classifier or child witness.
+
+For a constructed value at such a node, ordinary selected construction
+establishes the complete child, its source correspondence and its actual
+material. `R_Gamma` consumes that evidence when extracting or observing
+the child. This is how a formed Pattern retains a concrete type-wrapper
+route. Neither syntax, a bare field label, nor layout equality forms a
+wrapper. [Atomic N46](../lifetime/atomic-pattern-transitions-and-causality.md#n46--普通结构真实类型包装与表示预算-定义)
+specializes the ordinary witnesses for its two resource wrappers.
+
+### 12.1 Pattern-local lifetime defaults
+
+The `lifetime default E` annotation is attached to a *particular
+named node* inside RHS structural Pattern material `(...)$`:
+
+```lang
+let srt = (
+  ((uint8 val, uint8 ref ref)srt
+    lifetime default (srt@.ref .. depends_on(srt@.val)))
+)$;
+```
+
+This is ordinary compile lifecycle-expression material parameterized by
+Pattern names, not a type-wide Movable certificate, newly named type field,
+second evaluator, or an action at every `$`. Formation retains it with the
+complete Pattern and its real registered child/companion roles; neither
+matching relation `R_Gamma` nor Val2 residency is altered or granted authority.
+
+The local annotation can refer to its own Pattern name and registered
+structural descendants, never ancestor or sibling Pattern names. When the
+same `srt` node is nested under a `wrapper` with another child `others`,
+its expression still cannot reference `wrapper` or `others`; an annotation
+on the wrapper may address its own subtree. Binder identities, not text
+spelling, determine references. For the same scoped seed:
+
+```lang
+let wrapper = (
+  (
+    (uint8 val, uint8 ref ref)srt
+      lifetime default (srt@.ref .. depends_on(srt@.val)),
+    (uint8 others)
+  )wrapper
+)$;
+```
+
+The inner `srt@` is mapped to the actual `object@.srt` at a wrapper
+formal's new-entry Pre, not to `object@` or a compile-time resident in
+the wrapper formation. A wrapper-local default can refer to both `.srt`
+and `.others`, but its changes must obey whole-relation-item ancestor
+override rather than extracting hidden authority from sibling placement.
+
+Local defaults are **complete relation declarations** for their node:
+redeclaring a node discards its old local relation description rather than
+merging its fields. Recursively first compose child defaults, then apply the
+shallower node's complete relation items, replacing whole overlapping items
+from descendants; unmentioned independent child items remain. Sibling
+conflicts cannot be resolved by traversal order.
+
+```text
+PatternDefault(n) =
+    OverrideWholeRelationItems(
+       Compose(PatternDefault(child_1), ..., PatternDefault(child_k)),
+       LocalDefault(n))
+```
+
+At a genuinely new formal Pre, selected structural/Pattern evidence maps
+these symbolic names to actual lifecycle name expressions: root `srt@` maps
+to `object@` and a nested `srt@` maps to `object@.srt`; qualified
+children use registered structural companions. Multiple relational
+derivations require uniquely determined mapped observations or proof that
+all derivations agree; missing required evidence is Unavailable. Function
+`lifetime pre` modifies this instantiated default **incrementally by ordinary
+serial expression evaluation**, not through a second generic constraint solver.
+No previously held capture or saved continuation name is redefaulted.
 
 For:
 

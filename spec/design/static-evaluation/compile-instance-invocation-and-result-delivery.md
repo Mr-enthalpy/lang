@@ -25,7 +25,7 @@ material are provenance or storage; they do not participate in instance identity
 Conflicting body material for the same complete key is a conflict, not another
 instance. Parent-neutral material caches cannot determine semantic roots.
 
-Canonical input observations retain ordinary values, complete snapshots where
+Compile-side canonical input observations retain ordinary values, complete snapshots where
 required, observed Name/subject identities, reference targets and admitted
 dependency closure. Equal Core never merges subjects or borrowed generations.
 An input carrying a complete type snapshot contributes that exact tau to the
@@ -256,3 +256,57 @@ Remaining-continuation facts alone authorize Residual. Unsupported source or
 missing facts report the actual unavailable boundary, without reopening the
 selected family or fabricating success. Persistent key/storage representation
 and checked access summaries remain implementation work.
+
+### Runtime inputs to compile producers
+
+For the sealed call frame `F`, let `C_i` be the complete compile-side
+canonical observations required at input position `i`. These include an
+exact compile-side classifier snapshot wherever required. For a runtime
+part, `D_i` is the admitted dependency description in that frame: the
+formal position and eligible source edge, projection and requirements
+already available to compile evaluation. It can identify an admitted
+runtime formal position without a current resident. It carries evidence
+for the source correspondence, not the realized runtime value, subject
+or concrete NameValue. The ordinary dependency owner decides whether
+that description is admissible.
+
+```text
+CompileInputReady(F)
+    iff every required C_i is available
+    and every runtime input has its admitted D_i in F
+    and compile evaluation and internal Pattern formation need only compile observations
+
+CanonicalizeInvocationInputs(F) =
+    ordered [(i, C_i, D_i?)] in F, including ordinary implicit/captured inputs
+
+Selected(Parent, Partner, F) and CompileInputReady(F)
+    => enter the body in CompileInstance(Parent, Partner, CanonicalizeInvocationInputs(F))
+```
+
+The compile instance forms before entry even when concrete runtime
+material is pending. A missing compile observation or admitted dependency
+description makes admission unavailable. An incidentally known runtime
+value does not extend the key. A compile-side operation whose result
+requires runtime observations remains unavailable under ordinary P2.
+Actual reverse-dependent work uses the established reify boundary with
+ClosedReturn and a compile-determined outward interface.
+
+For a NameExpr or flipped Pattern producer, the selected compile
+observations determine the internal Pattern `P`. For two lawful runtime
+realizations of the same admitted frame description, the CompileInstance
+and `Norm_P(P)` stay equal. Runtime values supply operands for extraction
+through that Pattern and for concrete name formation and equality. The
+actual admitted input and the sealed producer determine the concrete
+NameValue at the reached runtime frontier. Those observations neither
+alter the internal Pattern nor revise the key or self-name. A change to
+a required compile observation or the admitted source description is a
+change to the key's input, independent of runtime realization.
+
+A generated type value with runtime NameExpr material has runtime
+Policy. When an Object's Pattern observation includes runtime material,
+any present Val1 is runtime by the adjacent-rank law. These observations
+coexist with compile-formed internal Pattern identity. Equality of
+compile instances or internal Patterns does not prove equality of
+runtime names. Equality after a selected Policy migration follows from
+its actual contract and result. Mixed-stage source and the runtime
+extraction/name consumers remain pending.

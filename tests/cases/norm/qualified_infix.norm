@@ -1,0 +1,334 @@
+NormProgram origin=Source@1:1[0..383]
+  forms:
+    Form Let
+      Decl Let origin=Source@1:1[0..32]
+        BindingSlot let=true origin=Generated(PatternNormalize)@1:5[4..32]
+          deduce:
+            None
+          value_pattern:
+            Binder "direct" origin=Source@1:5[4..10]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Generated(OperatorLowering)@1:14[13..32]
+              source:
+                Product origin=Generated(OperatorLowering)@1:14[13..32]
+                  elements:
+                    ExprElem
+                      Name "source" origin=Source@1:14[13..19]
+                    ExprElem
+                      Name "target" origin=Source@1:27[26..32]
+              target:
+                Nav origin=Source@1:21[20..25]
+                  components:
+                    Operator "->" origin=Source@1:21[20..22]
+                    Name "E" origin=Source@1:25[24..25]
+    Form Let
+      Decl Let origin=Source@2:1[34..76]
+        BindingSlot let=true origin=Generated(PatternNormalize)@2:5[38..76]
+          deduce:
+            None
+          value_pattern:
+            Binder "explicit" origin=Source@2:5[38..46]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Derived(PipeFallback; no following source product)@2:36[69..76]
+              source:
+                Product origin=Source@2:16[49..65]
+                  elements:
+                    ExprElem
+                      Name "source" origin=Source@2:17[50..56]
+                    ExprElem
+                      Name "target" origin=Source@2:25[58..64]
+              target:
+                Nav origin=Source@2:37[70..75]
+                  components:
+                    Operator "->" origin=Source@2:37[70..72]
+                    Name "E" origin=Source@2:41[74..75]
+    Form Let
+      Decl Let origin=Source@3:1[78..100]
+        BindingSlot let=true origin=Generated(PatternNormalize)@3:5[82..100]
+          deduce:
+            None
+          value_pattern:
+            Binder "standalone" origin=Source@3:5[82..92]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Nav origin=Source@3:18[95..100]
+              components:
+                Operator "->" origin=Source@3:18[95..97]
+                Name "E" origin=Source@3:22[99..100]
+    Form Let
+      Decl Let origin=Source@4:1[102..137]
+        BindingSlot let=true origin=Generated(PatternNormalize)@4:5[106..137]
+          deduce:
+            None
+          value_pattern:
+            Binder "grouped" origin=Source@4:5[106..113]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Derived(SecondLegalityRepair; repaired product target in expression chain)@4:15[116..137]
+              source:
+                Product origin=Generated(ProductLift)@4:15[116..122]
+                  elements:
+                    ExprElem
+                      Name "source" origin=Source@4:15[116..122]
+              target:
+                Call origin=Derived(SecondLegalityRepair; repaired product-before-target)@4:15[116..137]
+                  source:
+                    Product origin=Generated(ProductLift)@4:22[123..130]
+                      elements:
+                        ExprElem
+                          Nav origin=Source@4:23[124..129]
+                            components:
+                              Operator "->" origin=Source@4:23[124..126]
+                              Name "E" origin=Source@4:27[128..129]
+                  target:
+                    Name "target" origin=Source@4:30[131..137]
+    Form Let
+      Decl Let origin=Source@5:1[139..173]
+        BindingSlot let=true origin=Generated(PatternNormalize)@5:5[143..173]
+          deduce:
+            None
+          value_pattern:
+            Binder "products" origin=Source@5:5[143..151]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Generated(OperatorLowering)@5:16[154..173]
+              source:
+                Product origin=Generated(OperatorLowering)@5:16[154..173]
+                  elements:
+                    ExprElem
+                      Product origin=Source@5:16[154..160]
+                        elements:
+                          ExprElem
+                            Name "a" origin=Source@5:17[155..156]
+                          ExprElem
+                            Name "b" origin=Source@5:20[158..159]
+                    ExprElem
+                      Product origin=Source@5:29[167..173]
+                        elements:
+                          ExprElem
+                            Name "c" origin=Source@5:30[168..169]
+                          ExprElem
+                            Name "d" origin=Source@5:33[171..172]
+              target:
+                Nav origin=Source@5:23[161..166]
+                  components:
+                    Operator "->" origin=Source@5:23[161..163]
+                    Name "E" origin=Source@5:27[165..166]
+    Form Let
+      Decl Let origin=Source@6:1[175..219]
+        BindingSlot let=true origin=Generated(PatternNormalize)@6:5[179..219]
+          deduce:
+            None
+          value_pattern:
+            Binder "precedence" origin=Source@6:5[179..189]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Generated(OperatorLowering)@6:18[192..219]
+              source:
+                Product origin=Generated(OperatorLowering)@6:18[192..219]
+                  elements:
+                    ExprElem
+                      Call origin=Generated(OperatorLowering)@6:18[192..207]
+                        source:
+                          Product origin=Generated(OperatorLowering)@6:18[192..207]
+                            elements:
+                              ExprElem
+                                Name "a" origin=Source@6:18[192..193]
+                              ExprElem
+                                Call origin=Generated(OperatorLowering)@6:28[202..207]
+                                  source:
+                                    Product origin=Generated(OperatorLowering)@6:28[202..207]
+                                      elements:
+                                        ExprElem
+                                          Name "b" origin=Source@6:28[202..203]
+                                        ExprElem
+                                          Name "c" origin=Source@6:32[206..207]
+                                  target:
+                                    OperatorTarget spelling="*" fixity=Binary arity=2 origin=Source@6:30[204..205]
+                        target:
+                          Nav origin=Source@6:20[194..201]
+                            components:
+                              Operator "+" origin=Source@6:20[194..195]
+                              Name "math" origin=Source@6:23[197..201]
+                    ExprElem
+                      Call origin=Generated(OperatorLowering)@6:40[214..219]
+                        source:
+                          Product origin=Generated(OperatorLowering)@6:40[214..219]
+                            elements:
+                              ExprElem
+                                Name "d" origin=Source@6:40[214..215]
+                              ExprElem
+                                Name "e" origin=Source@6:44[218..219]
+                        target:
+                          OperatorTarget spelling="|" fixity=Binary arity=2 origin=Source@6:42[216..217]
+              target:
+                Nav origin=Source@6:34[208..213]
+                  components:
+                    Operator "->" origin=Source@6:34[208..210]
+                    Name "E" origin=Source@6:38[212..213]
+    Form Let
+      Decl Let origin=Source@7:1[221..256]
+        BindingSlot let=true origin=Generated(PatternNormalize)@7:5[225..256]
+          deduce:
+            None
+          value_pattern:
+            Binder "scope" origin=Source@7:5[225..230]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Generated(OperatorLowering)@7:13[233..256]
+              source:
+                Product origin=Generated(OperatorLowering)@7:13[233..256]
+                  elements:
+                    ExprElem
+                      Name "a" origin=Source@7:13[233..234]
+                    ExprElem
+                      Call origin=Generated(OperatorLowering)@7:34[254..256]
+                        source:
+                          Product origin=Generated(ProductLift)@7:34[254..255]
+                            elements:
+                              ExprElem
+                                Name "b" origin=Source@7:34[254..255]
+                        target:
+                          OperatorTarget spelling="?" fixity=Postfix arity=1 origin=Source@7:35[255..256]
+              target:
+                Nav origin=Source@7:15[235..253]
+                  components:
+                    Operator "->" origin=Source@7:15[235..237]
+                    Group origin=Source@7:20[240..249]
+                      Name "qualifier" origin=Source@7:20[240..249]
+                    Name "E" origin=Source@7:32[252..253]
+    Form Let
+      Decl Let origin=Source@8:1[258..287]
+        BindingSlot let=true origin=Generated(PatternNormalize)@8:5[262..287]
+          deduce:
+            None
+          value_pattern:
+            Binder "subtractionPath" origin=Source@8:5[262..277]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Nav origin=Source@8:23[280..287]
+              components:
+                Operator "-" origin=Source@8:23[280..281]
+                Name "math" origin=Source@8:26[283..287]
+    Form Let
+      Decl Let origin=Source@9:1[289..328]
+        BindingSlot let=true origin=Generated(PatternNormalize)@9:5[293..328]
+          deduce:
+            None
+          value_pattern:
+            Binder "closure" origin=Source@9:5[293..300]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Closure placement=Ordinary origin=Source@9:15[303..328]
+              head:
+                ClosureHead origin=Generated(ClosureNormalize)@9:15[303..322]
+                  deduce:
+                    None
+                  params:
+                    BindingSlotElem
+                      BindingSlot let=false origin=Generated(PatternNormalize)@9:16[304..305]
+                        deduce:
+                          None
+                        value_pattern:
+                          Binder "x" origin=Source@9:16[304..305]
+                        annotation:
+                          None
+                        with_clause:
+                          None
+                        initializer:
+                          None
+                    BindingSlotElem
+                      BindingSlot let=false origin=Generated(PatternNormalize)@9:19[307..308]
+                        deduce:
+                          None
+                        value_pattern:
+                          Binder "y" origin=Source@9:19[307..308]
+                        annotation:
+                          None
+                        with_clause:
+                          None
+                        initializer:
+                          None
+                  returns:
+                    BindingSlot let=false origin=Generated(PatternNormalize)@9:25[313..319]
+                      deduce:
+                        None
+                      value_pattern:
+                        Binder "result" origin=Source@9:25[313..319]
+                      annotation:
+                        None
+                      with_clause:
+                        None
+                      initializer:
+                        None
+              body:
+                NormBody origin=Source@9:35[323..328]
+                  forms:
+                    Form Expr
+                      Name "x" origin=Source@9:37[325..326]
+    Form Let
+      Decl Let origin=Source@10:1[330..381]
+        BindingSlot let=true origin=Generated(PatternNormalize)@10:5[334..381]
+          deduce:
+            None
+          value_pattern:
+            Binder "groupedInfix" origin=Source@10:5[334..346]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Generated(OperatorLowering)@10:20[349..381]
+              source:
+                Product origin=Generated(OperatorLowering)@10:20[349..381]
+                  elements:
+                    ExprElem
+                      Call origin=Generated(OperatorLowering)@10:21[350..369]
+                        source:
+                          Product origin=Generated(OperatorLowering)@10:21[350..369]
+                            elements:
+                              ExprElem
+                                Name "source" origin=Source@10:21[350..356]
+                              ExprElem
+                                Name "target" origin=Source@10:34[363..369]
+                        target:
+                          Nav origin=Source@10:28[357..362]
+                            components:
+                              Operator "->" origin=Source@10:28[357..359]
+                              Name "E" origin=Source@10:32[361..362]
+                    ExprElem
+                      Name "next" origin=Source@10:48[377..381]
+              target:
+                Nav origin=Source@10:42[371..376]
+                  components:
+                    Operator "->" origin=Source@10:42[371..373]
+                    Name "F" origin=Source@10:46[375..376]

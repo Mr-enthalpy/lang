@@ -30,7 +30,33 @@ The canonical proposed surfaces are:
 ```
 
 These two wait-specific surfaces have the same Step/MoveRepair contract. The
-resume Pattern introduces actual resumed parameter names. The postfix repair
+actual effect request's stage comes from the selected **enclosing callable
+activation's P2**, not from the yielded Object's Policy, the handler's
+implementation stage or a guessed runtime fallback:
+
+```text
+WaitRequestStage_K(k) = OutwardHorizonStage(P2(EnclosingCallable_K(k)))
+P2 = compile  => WaitRequestStage = compile
+P2 = runtime  => WaitRequestStage = runtime
+P2 = reify    => WaitRequestStage = runtime (the existing outward reify horizon)
+```
+
+The request is a same-stage requirement against the callable's declared regular
+effect interface. A compile function may request/propagate only compile effects,
+and a runtime function only runtime effects. A reify callable has an outward
+runtime effect interface; selected reverse-dependent compile work retains its
+existing closed-boundary/continuation requirements, not an invented extra
+Stage. At every real transparent propagation boundary, the effect request must
+fit the receiving callable's stage and established interface; a mismatch must
+be handled by a legal ordinary handler/wrapper or is unavailable/rejected at
+its existing boundary. It is not silently recolored, migrated by a generic
+Policy cast, delayed to choose a runner-up, or executed speculatively.
+Stage matching does not assert `Stage(y)=WaitRequestStage`, forbid legal
+cross-Stage payload observations, or split E/K and the lifetime projection.
+A pending request is still subject to ordinary readiness, InputAdmissible,
+Pre/Post, ownership and cleanup.
+
+The resume Pattern introduces actual resumed parameter names. The postfix repair
 attachment covers the complete preceding expression and binds more weakly than
 ordinary full E; grouping delimits its extent. Omission requests source-derived automatic repair, reducing to id only when no replay is required. Raw/Norm
 must preserve these roles/spans without evaluating them. Grammar and semantic
@@ -203,8 +229,10 @@ claims the effects whose argument Patterns it actually covers.
 
 ## 6. Stage and proof obligations
 
-Effects carry no implicit runtime Stage. Heap/IO acquisition and calls are ordinary
-capability operations; libraries may optionally express control inversion via wait.
+Effects carry no **implicit universal runtime** Stage: an actual wait/throw
+request uses the enclosing callable's P2-stage rule in §1. Heap/IO acquisition
+and calls are ordinary capability operations; libraries may optionally express
+control inversion via wait.
 Compile/runtime readiness and InputAdmissible remain independent. The
 [unified owner](../unified-static-name-and-structural-semantics.md#20-reify-callable-p2-and-scoped-reverse-migration)
 owns yield-versus-return self-root checks and compile-determined public reify

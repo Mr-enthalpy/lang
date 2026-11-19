@@ -502,7 +502,7 @@ Norm(Q_x) != Norm(Q_y) or Norm_V(V_x) != Norm_V(V_y)
 The first line holds even when the closures are stored in different places; the
 second holds even when two snapshots share a first-order root. These equations
 state when two snapshots are the same snapshot; they do not by themselves decide
-which observation a particular old rule must use (see the classification in
+which observation a individual rule must use (see the classification in
 §2.2). A list of
 allocated value ids under each name is not a normal form:
 allocation order is not semantic content. For a live place observation, first
@@ -2122,7 +2122,7 @@ instance.
 
 The operator choice is decided by what the surface means, never by type-rank:
 
-| what the expression reads | `E ref` | `E |> (type ref)` needed |
+| what the expression reads | `E ref` | `E \|> (type ref)` needed |
 | --- | --- | --- |
 | ordinary value with `Val1` | borrow of the complete value-bearing object | no |
 | type-rank value with `Val1` | borrow of the complete object, named by its host Pattern | no |

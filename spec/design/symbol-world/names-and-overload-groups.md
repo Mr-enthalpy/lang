@@ -222,6 +222,19 @@ named resident nor its independent Pattern registration.
     P let name::path      == P let name::path : type
     NameExpr != ValueExpr
 
+The callable-name surface `P let (self,args) name::path:P2 -> result:R => B`
+extends the same structured destination `name::path` to a full general
+Ordinary callable declaration head. Its `:P2` is the callable evaluation
+horizon, **not** the `:t` declared child Place type used by initializer-free
+`P let name::path:t`. Deduce/capture, self/argument Pattern, return, lifetime
+head clauses and implementation tail obey the general callable owner without
+a qualified-path exception. Where the form creates the qualified name, the
+existing `Realize(NameCoord(r,n),P,t)` formation, subsequent initialization
+and publication checks apply; `=>` grants no bypass. The registered terminal
+selector `()` and V_tau TypeAdd remain separate callability axes, neither
+inferred merely from a structured name or a callable-looking RHS. See the
+[requested-name owner](../patterns-overload/operator-patterns-and-generative-declarations.md#1-one-declaration-two-surface-projections).
+
 The terminal name is a selector s in Selector, including the special leaf
 selector (). Thus P let ()::path:t uses these same name/Place formation,
 borrow, initialization and replacement rules. It does not turn () into an
@@ -547,6 +560,12 @@ Publishing a closed construction result requires its externally resolvable
 structural names to be initialized. Open construction navigation continues to
 obey its ordinary access and authority rules. Anonymous implementation layers remain under /tau.
 Neither physical files nor group aggregation grant target construction authority.
+
+A producer may have admitted runtime inputs under the
+[compile invocation contract](../static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers).
+When name identity depends on such material, stage-qualified inputs and their
+actual correspondence determine the name. A Policy migration supplies equality
+only through an actual selected operation and its result.
 
 ### 7.1 Generated Val2 after registered structure is closed
 

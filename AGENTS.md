@@ -63,6 +63,11 @@ alternate relation or identity.
 - Parse left to right without semantic backtracking.
 - Traditional `f(args)` call syntax does not exist.
 - Calls preserve P |> E == P E, never E P; ()f, x f and (x,y) f keep pipeline direction.
+- A binary operator in infix position can carry an explicit Path target and
+  retains the corresponding bare operator's precedence and associativity.
+  `a ->::E b` supplies a two-entry Product to the written Path. Prefix and
+  parenthesized Paths keep ordinary expression interpretation. Built-in
+  callable arrows retain syntactic priority.
 - Products participate in the documented expression/call-binding skeleton.
 - `{ ... }` in atom position is an in-place closure with no head.
 - A headed closure without `=>` is in-place; `=>` forms an ordinary closure.
@@ -441,23 +446,39 @@ Move/Drop, and extraction does not subtract the remaining aggregate's obligation
 Default-world reify recovery is partial; hidden non-default instances throw their
 declared exception, and missing consumers remain unavailable.
 
-Standard malloc/free enter current top. Every standard non-root locate requires
-universal guaranteed direct-parent Submit and lazy acceptance across all admitted
-reachable management states. Relocate targets up(H), transfers Pending without
-executing it, and Drop performs its unique ordered duty. Escape is rejected at
-production Pre. Ordinary custom heaps are permitted under their own contracts.
+Standard malloc/free enter current top. Non-root locate requires guaranteed
+direct-parent submission. Malloc checks its current local Region and establishes
+the selected release policy and registers the actual lazy Drop continuation
+when requested. Relocate transfers covered support and Pending duty
+unexecuted, restores the parent binding and reinterprets the covered heap name in
+the lifecycle projection only for submitted support uses under the removed
+binding. Return checks compression in the actual continuation.
+
+Ordinary recursive Pattern layers retain their names under extraction and
+`$` construction. Compile producers accept admitted runtime inputs without
+using concrete runtime values to form the instance key or internal Pattern.
+Later runtime values participate in extraction and name comparison. `->` is ordinary
+binary operator sugar outside built-in return syntax. A selected `->::E`
+can form a callable transform using ordinary RHS `_` under its own contract.
 
 [Atomic](spec/design/lifetime/atomic-pattern-transitions-and-causality.md)
-consumes $-formed ordinary type material whose every retained state name has no
-external-origin dependency, including retained state/count/Index I as well as S.
-Only a real ordinary producer Post can establish a fresh closed name; neither
-an I role nor equal numeric content erases a retained dependency.
-Its single successful CAS jointly changes branch/state and S_a/S_b custody;
-Rejected keeps incoming S_b. Actual branch versions publish/import causal closure,
-and backend realization must honor ownership-transfer visibility. Atomic fields
-do not make an atomic outer type; safe primitives do not prove arbitrary protocol
-subsets. No implicit retries or per-operation relaxed/acquire/release operands.
-Only extra SeqCst/fence remains undecided at F15; F17 standard locate is fixed.
+consumes actual read/write wrappers over `T Box` derived from selected ordinary
+formation and explicit typed leaves. It checks N35 closure and
+two-word representation budget. Arm/protocol changes require full comparison.
+Same-arm read replacement may compare the old Box and return a valid share;
+same-arm write replacement is disallowed. Read exit or replacement discharges
+the slot under the allocation-time lazy duty; runtime Forget is NoOp. Write
+exit returns owned S. N47–N48 fix Keep and read-to-write rights, including
+closure of prior conflicting read rights and a separate CAS to take owned S.
+Rejected returns all actually formed incoming material. Atomic registers its
+resource-free `?` snapshot on the associated `E share` for admitted `E`.
+That member reads one committed version in a single atomic action. Other
+`?` operations follow their own contracts.
+
+Atomic fields do not make an atomic outer type, and safe primitives do not
+prove arbitrary protocol subsets. No implicit retry or per-operation memory
+order operands follow. F13/F14/F16/F18/F19 remain proof/source/backend gates;
+only extra SeqCst/fence remains undecided at F15; F17 standard locate is fixed.
 
 Read the [owner map](spec/design/README.md) and
 [status/proof ledger](spec/planning/lifetime-concurrency-consolidation.md).

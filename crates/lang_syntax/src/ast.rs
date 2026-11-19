@@ -273,6 +273,11 @@ pub enum OperatorExprKind {
         args: Vec<OperatorExprAst>,
         span: Span,
     },
+    QualifiedBinarySugar {
+        lhs: Box<OperatorExprAst>,
+        target: Box<OperatorExprAst>,
+        rhs: Box<OperatorExprAst>,
+    },
     NavPath {
         components: Vec<NavComponentAst>,
         span: Span,
@@ -375,7 +380,7 @@ pub enum AtomKind {
         object: Box<AtomAst>,
         visibility: MemberVisibilityAst,
     },
-    Closure(ClosureAst),
+    Closure(Box<ClosureAst>),
     Error(ErrorAst),
 }
 

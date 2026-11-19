@@ -912,6 +912,12 @@ fn raw_capture_and_return_hole_roles_normalize_to_the_exact_head_binder() {
             NormPattern::Sequence { elements, .. } => elements
                 .iter()
                 .any(|element| norm_pattern_targets(element, expected)),
+            NormPattern::NamedLayer { material, name, .. } => {
+                norm_pattern_targets(material, expected) || norm_pattern_targets(name, expected)
+            }
+            NormPattern::Sum { alternatives, .. } => alternatives
+                .iter()
+                .any(|alternative| norm_pattern_targets(alternative, expected)),
             NormPattern::Pack { inner, .. } => norm_pattern_targets(inner, expected),
             NormPattern::Product { elements, .. } => elements.iter().any(|element| match element {
                 NormPatternElem::Pattern(pattern) => norm_pattern_targets(pattern, expected),

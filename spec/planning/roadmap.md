@@ -65,6 +65,9 @@ owns static/name/structural interpretation and instance formation.
 
 1. Independent PolicyMode={const,mut}, OpenPolicy={open,close} and
    Stage={compile,runtime}; total output demand before maxima.
+   The extended named callable/general head/qualified destination and
+   enclosing-P2 wait-stage requirements are canonical but await their actual
+   source/effect consumers; syntax equivalence alone proves no execution.
 2. Resolve once; ordinary associated Val2[()] entrance and exact immutable V_tau
    expansion; R_vis evidence and ordinary C_sigma preparation.
 3. Stable CompilePartner receiver/call-entry pair and canonical inputs;
@@ -326,6 +329,17 @@ frontiers are reported separately from canonical laws.
 
 ## 9. Lifetime value-program wiring
 
+New-formal Pre uses ordinary lifecycle expression material: scoped exterior
+ref/share defaults; recursively composed Pattern-node `lifetime default`;
+then serial `lifetime pre` changes. The last modifies only its explicitly
+addressed relations, while each node's default declaration is complete.
+Compile-known/runtime/omega index paths, conservative aggregate origin-line
+summaries, ordinary `in` contracts and HeapStack borrowed outer-context
+relations require source consumers, proof and matching tests. Actual
+Pre/commit/Post and boundary compression, not a global solver, decide
+success. Movable, Move/Drop executability, Color and identity remain
+independent. The NW/REG/H acceptance targets are not executable coverage.
+
 The [lifetime owner](../design/lifetime/lifetime-policy-and-overload-boundary.md)
 now specifies ordinary lifecycle computation, bootstrap responsibilities and
 library protocols. Its [four walkthroughs](../design/lifetime/lifetime-algebra-walkthroughs.md)
@@ -455,10 +469,14 @@ substrate tests do not establish HA execution.
 
 ## 11. Lifecycle/concurrency consolidation
 
-[Current evidence and F01–F18](lifetime-concurrency-consolidation.md) own this
-migration's status; [105 paired targets](lifetime-concurrency-acceptance.md)
-are not executed source coverage. N01–N45 and U01–U12 are distributed across
-actual topic owners, with F15 explicitly unselected.
+[Current evidence and F01–F19](lifetime-concurrency-consolidation.md) own the
+normative/proof status; [the 131 paired source targets](lifetime-concurrency-acceptance.md)
+are not executed source coverage. The active N clauses and U01–U12 live across
+actual topic owners. F19 tracks source wiring for the defined typed wrapper, mixed-stage identity,
+E-relative transforms, matching, registered Atomic share snapshots and resource/permission
+proofs. Raw/Norm goldens cover recursive named layers, sum choice, runtime
+hole syntax and bare/qualified infix targets. The recursive layer derivation
+is defined in the Pattern owner and its semantic consumer remains pending. F15 retains the extra-order decision.
 
 The implemented D1 slice replaces the continuous Region carrier with discrete
 event sets and actual continuation/generation identity. Event membership is
@@ -472,7 +490,16 @@ Next dependency gates remain in order: founded producer/partner and common-K
 material; F02–F04 source-driven repair and explicit responsibility; F05–F09
 correlated joins, index, anonymous Move/Drop and recovery; F10 independent
 containers; F11/F12/F17 standard heap/lazy/universal locate; F13/F14/F16/F18
-atomic resource/causal/backend/protocol consumers. Connect new facts to actual
-host dependencies at each step. Missing domains remain unavailable; no id,
+atomic resource/causal/backend/protocol consumers; F19 additionally
+covers ordinary Pattern/transform consumers, including safe borrowed take,
+replace and retaining share under ordinary Region and origin obligations.
+Atomic additionally requires full versus same-arm comparison,
+same-arm read replacement, allocation-time lazy release, atomic snapshots through
+the Atomic-registered `?` on `E share`,
+and complete Rejected I/S return. Heap handoff transfers the actual Drop registration and maps only covered
+support uses. Actual return compresses the latest committed projection.
+The [status ledger](lifetime-concurrency-consolidation.md#definition-and-consumer-status)
+separates defined rules awaiting consumers from the open F15 choice.
+Connect new facts to actual host dependencies at each step. Missing domains remain unavailable; no id,
 None/default origin, empty Post, cloned owner, hidden Box or backend substitute
 may fill them. F15 alone needs an additional semantic-order decision.

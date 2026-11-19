@@ -47,6 +47,10 @@ CompileInstanceKey
   x CanonicalizeInvocationInputs(In)
 ```
 
+[Compile invocation](../static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers)
+defines complete compile-side canonical inputs and admitted runtime source
+descriptions at the sealed frame. Runtime realization does not update a key.
+
 Every CompileInstance is a stable semantic owner, formed before selected body
 entry and independent of result kind or P2. Its ordinary self-name is readable
 without reentry when initialized. A single direct instance-open self-root type

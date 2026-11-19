@@ -72,6 +72,7 @@ pub enum OperatorSpelling {
     LessLessEqual,
     GreaterGreaterEqual,
     TripleEqual,
+    Arrow,
     // Paired bracket operator `[]`. Recognized contextually in operator-name
     // positions (binder, alias binder, Path inner component) and used as
     // the operator identity of bracket-call sugar. Never produced by the lexer
@@ -115,6 +116,7 @@ impl OperatorSpelling {
             OperatorSpelling::LessLessEqual => "LessLessEqual",
             OperatorSpelling::GreaterGreaterEqual => "GreaterGreaterEqual",
             OperatorSpelling::TripleEqual => "TripleEqual",
+            OperatorSpelling::Arrow => "Arrow",
             OperatorSpelling::BracketCall => "BracketCall",
         }
     }
@@ -154,6 +156,7 @@ impl OperatorSpelling {
             OperatorSpelling::LessLessEqual => "<<=",
             OperatorSpelling::GreaterGreaterEqual => ">>=",
             OperatorSpelling::TripleEqual => "===",
+            OperatorSpelling::Arrow => "->",
             OperatorSpelling::BracketCall => "[]",
         }
     }
@@ -166,6 +169,7 @@ impl TokenKind {
             TokenKind::Operator(_)
                 | TokenKind::Symbol(Symbol::Less)
                 | TokenKind::Symbol(Symbol::Greater)
+                | TokenKind::Symbol(Symbol::ThinArrow)
         )
     }
 }
@@ -180,6 +184,7 @@ pub fn operator_spelling_in_expr_context(kind: &TokenKind) -> Option<OperatorSpe
         TokenKind::Symbol(Symbol::Less) => Some(OperatorSpelling::Less),
         TokenKind::Symbol(Symbol::Greater) => Some(OperatorSpelling::Greater),
         TokenKind::Symbol(Symbol::TripleEqual) => Some(OperatorSpelling::TripleEqual),
+        TokenKind::Symbol(Symbol::ThinArrow) => Some(OperatorSpelling::Arrow),
         _ => None,
     }
 }

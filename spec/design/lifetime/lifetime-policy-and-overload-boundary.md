@@ -459,58 +459,121 @@ provide the applicable name companion or lifecycle post. The general default
 therefore does not classify an ordinary non-borrow value as origin-free merely
 because no borrow-root rule applies to it.
 
-Genuinely new function-entry parameter names begin from a default universe and
-apply the written lifetime precondition as a finitely described correction.
-Existing names at an empty slice, including InPlace automatic captures, inherit
-the established state under §2.1.8; they are not default-generated again:
+Genuinely new function-entry parameter names start with the established
+base origin/borrow world, then the recursively composed Pattern-local lifetime
+default material, then the function's ordinary explicit lifetime pre program.
+Previously held names (including InPlace captures and already suspended
+continuation material) inherit actual preceding Post and are not regenerated.
 
 ```text
-U_entry_newnames = U_default ⊕ Delta_pre
-|Delta_pre| < infinity
-
-DefaultOriginUniverse:
-  exclusive-write borrow roots e_i, e_j
-    -> DefaultRoot(e_i) and DefaultRoot(e_j) are anonymous
-    -> i != j => DefaultRoot(e_i) != DefaultRoot(e_j)
-
-  shared-read borrow roots s_i, s_j
-    -> G_shared is one anonymous LifeName
-    -> DefaultRoot(s_i) = G_shared
-    -> DefaultRoot(s_j) = G_shared
-
-  therefore exclusive-write defaults are pairwise distinct while all
-  shared-read defaults have the same root; a finite Delta_pre may override
-  only the relations it states
-
-  borrow name tree
-    -> mirrors exactly the subname edges already admitted by
-       the established access relation
-
-  structural membership alone
-    =/=> lifetime-name reachability
-    =/=> access capability
-
-  no alias-write/internal-mutability edge is synthesized here;
-  when the independent access relation admits no such edge,
-  the mirrored alias-write subtree is empty
-
-  unmentioned origin ancestry
-    -> continue the applicable semantic default generator
-       unless an explicit origin = None terminates it
-
-  function-entry borrow roots
-    -> additionally receive the exclusive/shared default-root rules above
-
-PreDoesNotConstructUniverseFromZero:
-  Delta_pre is a finite patch over U_default,
-  not the complete origin universe
+EntryDefault(F,theta) = U_default_base(theta)
+                     ; Instantiate(PatternDefault(P_formal),theta)
+EntryPre(F,theta)    = EntryDefault(F,theta); E_pre(F,theta)
+omitted pre         => E_pre = identity expression material
 ```
 
-Here `⊕` applies the finite declared corrections while retaining every
-unmentioned default rule. Thus a missing Pre fact cannot silently truncate an
-origin chain to `None`.
+The semicolon above has the same serial lifecycle-expression meaning as
+`lifetime expression1; lifetime expression2` in ordinary lang programs. It
+does not abbreviate an unordered bag of constraints, a universal Hoare-logic
+solver, or a second world interpreter. Pattern-local `lifetime default E` is
+stored as a name-parametric ordinary compile expression description inside
+RHS structural Pattern material `(...)$`, then instantiated into actual
+name expressions at a genuinely new formal's Pre. Merely forming the type
+does not execute an action on an absent instance. Selected Pattern/structural
+evidence must identify the mapping; equally spelled or equal-valued residents
+cannot replace it.
 
-`|Delta_pre|` measures the finite **description material** delivered by one
+**Two distinct override granularities.** A `lifetime default` annotation is
+a **complete local declaration** of the default relation items it covers at
+that Pattern node. A later declaration on that node replaces its earlier
+local relation material as a whole; an ancestor declaration, applied after
+descendants, replaces each overlapping *whole relation item* rather than
+incrementally editing its fields. Independent child relation items not
+addressed by the ancestor are still composed. In contrast, `lifetime pre`
+consumes the already formed default **expression material** and serially
+executes only the modifications expressed by its ordinary lifecycle program.
+Unmentioned default relations remain in effect. These are one ordinary
+expression/continuation semantics, not distinct core patch solvers. This
+reuses the same serial material interpretation required for formed-body
+action descriptions and automatic Post (section 10).
+
+For a Pattern tree node n with children n_i:
+
+```text
+D(n) = OverrideWholeRelationItems(
+         Compose(D(n_1), ..., D(n_k)),
+         LocalDefault(n))
+PatternDefault(P) = D(root(P))
+PreMaterial_K(F,actual) = E_life(
+   U_default_base; Instantiate(PatternDefault(P), theta_K(actual)); E_pre)
+```
+
+The name scope of LocalDefault(n) is the named n and its registered structural
+descendants only, not sibling/ancestor names. Root `srt@` instantiated for
+object is `object@`; nested `srt@` inside `wrapper` becomes
+`object@.srt`. The same map applies to `.ref` and `.val`. Structural
+registration/field companion evidence is necessary. If several successful
+Pattern derivations give different required mappings, the consumer needs
+proof of invariant observation; otherwise the required default is Unavailable.
+
+**Base ref/share origin assumptions without an extra declaration.** For a
+fresh formal name's traceable owned access tree A (such as `object@.path`),
+every ref/share terminal has a parent origin at a *specific exterior
+frontier* `ExternalUnknown(A)`: outside the owning object's tree, not an
+arbitrary fixed-depth unknown nor an invented `None`. The actual origin
+chain may be substituted from the caller and retains its proof frontier:
+
+```text
+DefaultOrigin(object@.path.ref)   -> ExternalUnknown(Outside(object@))
+DefaultOrigin(object@.path.share) -> ExternalUnknown(Outside(object@))
+Region(handle) strictly-within Region(origin(handle))
+```
+
+Here strictly-within means the established strict min/max endpoint relation,
+not event-set inclusion. Different independently introduced `ref` defaults
+have distinct origin roots by default, subject to explicit lawful local
+Pattern defaults or explicit Pre. `share` defaults are *may-alias*: the entry Pre deliberately **forgets**
+any distinction/equality that would not be needed by that interface, by
+ordinary lawful lifecycle relation abstraction. This forget step neither
+asserts that two share origins are identical nor destroys established
+caller provenance; it simply requires neither equality nor inequality for
+a fresh formal share pair. The real caller-to-formal map must still justify
+the weaker relation, and the body cannot regain a forgotten distinction
+without actual additional producer evidence. A share source cannot obtain
+exclusive access from this loss of alias precision.
+Known source/caller name/region evidence substitutes for an exterior unknown
+where available; otherwise the already formed, boundary-scoped unknown and
+its region/access/check obligations are forwarded outward, never silently
+discharged. When a ref/share reaches the current function boundary, a
+successfully admitted strict region requirement establishes that its source
+outlives that boundary. An unresolved unknown does not itself prove the
+inequality, access rights, or infinite lifetime.
+
+```text
+DefaultOriginUniverse:
+  independent ref roots -> distinct unless a lawful relation overrides
+  share roots           -> may-alias; no default equality or inequality
+  every source          -> exterior unknown at its traceable owner boundary
+  known external name   -> instantiate actual origin and region
+  external unknown      -> preserve the scoped boundary and pass obligation
+  explicit origin=None  -> terminates only when actually established
+
+  access tree -> only already registered and permitted borrow/field routes
+  structural membership alone !=> access authority
+  missing relation !=> origin=None
+```
+
+Actual caller Pre.check and body Pre.admit consume the final serial expression
+material with the original mapped source, generation, Region, Color and
+access/ownership observations. A false required relation rejects before
+commit; needed unavailable evidence is Unavailable. No default or Pre
+expression can create a name, replace historical origin, extend a region, or
+manufacture access/Move/Drop authority.
+
+The serial explicit Pre expression has finite completed description material
+when its actual computation terminates; any notation `Delta_pre` below is
+shorthand for the resulting change material, not a primitive unordered
+constraint patch. `|Delta_pre|` measures the finite **description material** delivered by one
 completed formation/observation: its ordinary bound names, relation rows and
 finite regular descriptor graph. It is not the cardinality of the descriptor's
 path denotation. A finite descriptor using repetition may describe infinitely
@@ -593,7 +656,7 @@ Rust 载体的 `contains_event` 只查询完整 `(cut, action ordinal)`，`conta
 
 ### N04 — 默认入口世界与已有名字的继承 [不变量]
 
-一般函数的新入参在省略 Pre 时按既有默认世界生成；默认世界不凭空建立两个独占入参之间的父子关系。共享根的既有默认规则继续有效，不能改写成“所有入参的所有来源均两两不同”。
+一般函数的新入参由基础外部来源默认与完整结构 Pattern 的递归 lifetime default 表达式材料生成，随后串行执行实际显式 lifetime pre；显式 Pre 只修改它执行时明确涉及的关系，未提及的默认关系保留。ref 默认来源互异，share 默认 may-alias；二者都以各自真实访问树之外的 unknown 为外向根而保留待外层履行的 Region/来源义务。默认来源不自动建立任意内层父子关系，也不证明 Movable。
 
 已有名字不重新默认生成。InPlace 自动捕获继承上一刻的 Post；空动作切片满足同一观察词汇下的 `Pre(id)=Post(id)`。实际交接之后，后续续体持有材料的 AutoPre 由成功交接 Post 经合法名字对应形成。
 
@@ -755,8 +818,9 @@ For a Function Pattern LHS interface F and actual callable contract A,
 omission and compatibility have these meanings:
 
 ```text
-Entry_new_parameters(F) = U_default op_plus Delta_pre
-omitted pre  => Delta_pre = empty  // defaults for genuinely new input names
+Entry_new_parameters(F) =
+  E_life(U_default_base; Instantiate(PatternDefault(P_formal),theta); E_pre)
+omitted pre  => E_pre = identity  // new formal names only
 omitted post => Post_F = NoDelta(S_before,S_after)
 NoDelta = unchanged state on every lifecycle observation of the contract
 
@@ -1117,6 +1181,39 @@ window has closed (`WindowLive_Σ(v) = false`) even
 though the reference remains lifetime-valid. Weakening to `share` surrenders
 write capability, but does not alter the value's anchor or window state and never extends the
 target lifetime.
+
+### Borrowed sum transform lifecycle
+
+An [ordinary borrowed sum transform](../patterns-overload/operator-patterns-and-generative-declarations.md#ordinary-borrowed-sum-transforms)
+uses the actual exclusive access route and complete resident/delivery
+correspondence. For Take, the selected transfer must satisfy ordinary
+Move, alias, storage and cleanup Pre for the actual owned payload. Its
+Post delivers ownership and the pending duties once, preserving deeper
+origin dependencies. Any ended generation follows the selected
+MoveEffect and ordinary cleanup rules. No destructor is duplicated
+for the payload transferred to the result.
+
+For Keep, let `b` be the proposed share result, `u` the actual
+exclusive view and `q_S` the actual supported resource location. The
+ordinary share realization derives its parent and governing storage
+names through the selected retaining correspondence. Its Pre checks
+both the borrow window through `u` and continued storage validity of
+`q_S` for that window. For example, where separate source and storage
+names govern those windows, the strict endpoint obligations are
+`R(b) ≺ R(u)` and `R(b) ≺ R(q_S)` in the actual event interpretation.
+`R(q_S)` here refers to the governing lifecycle name's Region.
+Actual source, target generation, access and Color are independent
+requirements. All required evidence precedes commit.
+
+Successful Post identifies the new share and its actual origin
+dependencies through the admitted projection, including the view,
+resource source and storage support it relies on. Delivery maps
+those dependencies through the ordinary boundary correspondence.
+While the share is live, conflicting mutation through the original
+exclusive route is disallowed under ordinary access and Color.
+A retained payload grants no continued access through an invalidated
+generation. If a fresh projection is needed, the Pre must justify
+its formation at the commit and Post records its actual target.
 
 ## 4. `@` and lifetime rules never reselect an ordinary call
 
@@ -1943,6 +2040,45 @@ ADL and registered ordinary forwarding/Pattern extraction remain the only
 field routes; Val2 presence alone grants no access edge or structural role.
 
 Access/source structure retains regular form from formation.
+Ordinary lifecycle path expressions additionally admit `[]` as an index/element
+step alongside registered field advance `.`, choice `||` and repetition `~`.
+This is a registered ordinary Pattern/operation expression, **not** a new
+business-object axis or a read of an array resident by the compile lifecycle
+world. For a compile-known index i, the precise path is `[i]`. For an index
+unknown until runtime in an admitted actual array of length n, the conservative
+access-path description is `[0:n]`. For an unbounded repetition family `T * ω`,
+the description is `[0:ω]`, not an attempt to enumerate infinitely many
+objects or to manufacture any given bound. Policy overloads may select the
+known-index and unknown-index ordinary operations without special syntax
+dispatch or a second execution model.
+
+The lifecycle element path step `[i]` is distinct from the existing ordinary
+Path-value operation `p[i]`, whose [Path owner](../symbol-world/structured-path-algebra-and-interpretation-polarity.md#26-segment-observation-and-indexing)
+returns a rootless relative one-segment `path_pattern`. The common `[]`
+spelling is contextual/selected ordinary operation material, not a coercion
+between those two representations. It never recovers resident values,
+authorizes an element borrow, or equates unlike name identities.
+
+`[0:n]` and `[0:ω]` denote sets of *possible element paths*, not
+permissions to operate on all of them or equal identities for their members.
+Actual indexing needs a separately admitted index name/value, protected
+resource/length/generation, valid access route, and its own Region/Color Pre.
+The precise `[i]` route can be retained when the selected input/Policy
+provides the needed compile observation. Source/path unknown does not
+erase value-dependent bounds checks.
+
+Anonymous insertion compresses external origin-line dependencies into the
+aggregate's own lifecycle summary, schematically `array@.origin ||= out_lines`,
+and preserves the corresponding strict Region comparisons for each live
+dependent source. This is an ordinary lifecycle relation-expression
+composition at the actual boundary, not unrestricted world mutation: only
+real source-derived lineage and legal conservative unknowns qualify.
+An extracted name inherits the aggregate's conservative origin summary,
+while its actual selected extraction/Moves retain their own specific producer,
+generation and responsibility. The remaining aggregate does not subtract
+that summary when an element is extracted. Path-index material and origin
+summary therefore cooperate without identifying different element names.
+
 Each actual name item retains its formed original paired regular descriptor
 as the target of boundary-local SCC collapse; the type value alone cannot
 supply this lifecycle value, and earlier cropping is not undone. Ordinary
@@ -1984,7 +2120,7 @@ of §13. Distinct paths or anonymous origins alone never prove actual disjointne
 
 ### N17 — 可信索引是名字事实，不是新业务类型 [不变量]
 
-`try_trust` 是示例 API 名称，不是关键词、内建识别入口或不可更改命名。库可以使用 `validate_index`、`validate_range` 等明确表达具体验证行为的名称。
+`try_trust` 是示例 API 名称，不是关键词、内建识别入口或不可更改命名。库可以使用 `validate_index`、`validate_range` 等名称。真正成功验证的可信外部事实可以在实际成功分支的兼容 `unsafe post` 中以 `index@ .. in(array@)` 这一**普通 compile 生命周期表达式材料**声明（具体 `in` API 的普通注册与前提仍由库决定）。访问函数的普通 Pre 可以消费同样的 `in` 表达式；语言核心不内建一套通用 Hoare 逻辑、全局偏序推理器或名为 `in` 的特权规则。成立性必须来自同一资源、索引名字/generation、实际区间及所有可使事实失效的操作得到的协议保证。
 
 验证对象的业务值和类型可以保持为原 Index 类型；实际成功必须把凭证绑定到交付名字、真实聚合资源及其有效条件。数值相等、同类型、复制描述数据或返回 `true` 均不构成该绑定。
 
@@ -2246,12 +2382,20 @@ These rules share the ordinary language and one lifecycle world:
 U_default for new input names, omitted interface Pre, interface NoDelta, Pre_F => Pre_A and
 Post_A => Post_F, atomic complete identities, Pass/MoveEffect, self/Param,
 cleanup and same-cut order, return barriers and E-selected delivery remain.
-This revision supplies no independent lifecycle checker, SMT engine, source
+The defined relations supply no independent lifecycle checker, SMT engine, source
 runner, container implementation or physical ABI. Existing carrier tests are
 evidence only for their implemented transaction/value slices.
 
 
 ## 16. Anonymous names, executable operations and partial recovery
+
+This section uses the recursively composed Pattern-local `lifetime default`
+and the ordinary serial `lifetime pre` expression from section 2.1.2. Name
+forgetting is a reduction of actual retained lifecycle description material,
+not an independent solver that collects constraints for later satisfaction.
+An exterior unknown remains tagged with the precise traceable access-tree
+frontier and carries its still-open source/Region/permission obligation outward.
+It is not a fabricated `origin=None` or a fixed-depth universal root.
 
 ### N20 — 名字遗忘的保守准入 [不变量]
 
@@ -2261,7 +2405,7 @@ evidence only for their implemented transaction/value slices.
 - 非默认部分只有在能够保守化为更深 origin 链中的真实 unknown 边界时才允许隐藏；
 - 无法这样表达而又不扩大权限的，拒绝该遗忘。
 
-合法 unknown 化是一个有实际来源、由遗忘操作建立的观察边界；不是把缺失证据、失效借用、任意环或已死亡目标伪装成 unknown。不能借默认的独占根独立性掩盖实际共享/父子依赖。
+合法 unknown 化是一个有实际来源、由遗忘操作建立的观察边界；不是把缺失证据、失效借用、任意环或已死亡目标伪装成 unknown。不能借默认的独占根独立性掩盖实际共享/父子依赖。尤其是 Atomic read 源臂依法交付过的真实共享借用，不能因状态变换、名字压缩或源资源离槽而擅自失效；其 Drop、来源与 Region 责任不能被普通 Type 摘要抹除。
 
 遗忘丢失观察精度，不消除已有历史，不增加 Region，不删除既有 Color，不恢复被裁剪的访问权限。
 
@@ -2269,19 +2413,30 @@ evidence only for their implemented transaction/value slices.
 
 ### N21 — 匿名聚合按整体粒度承接依赖 [不变量]
 
-对于以匿名元素聚合为语义的数组/重复结构，投放前必须能把元素相对默认世界的全部特殊名字依赖，合法表达为聚合整体的约束；否则拒绝投放。
+对于以匿名元素聚合为语义的数组/重复结构，投放前必须能把元素相对完整 Pattern-local 默认表达式的全部特殊名字依赖，沿 `[i]`、`[0:n]` 或 `[0:ω]` 的实际有根据的路径汇总到聚合整体，示意为 `array@.origin ||= out_lines`，并同时保留对外 origin 的 Region 严格偏序；否则拒绝投放。这是生命周期表达式/实际边界规约，不是事后收集全局约束求解。
 
 这些约束是义务的保守合并，不是权限的并集。一个数组可能需要同时受 A/B 资源有效性限制，但取出一个索引凭证不因此同时拥有针对 A 和 B 的具体授权。
 
-普通取出生成的新名字继承聚合的全部保守依赖；剩余聚合不能仅凭“取出了一个元素”撤去整体依赖。取出实际所有权仍按选定动作交接，不重复复制资源。没有精确来源证据，就不能按数值、位置或相同类型恢复原 LifeName。
+普通取出生成的新名字沿其合法 `[]` 来源继承聚合 origin/Region 的全部保守依赖；剩余聚合不能仅凭“取出了一个元素”撤去整体依赖。取出实际所有权仍按选定动作交接，不重复复制资源。没有精确来源证据，就不能按数值、位置或相同类型恢复原 LifeName。
 
 整体销毁或有独立充分证明的专门操作可以结束当前责任；“历史不可擦除”不等于一个已经合法结束的对象永远仍有活跃义务。
 
 无外部名字依赖的普通值不因匿名化凭空取得外部约束。值身份、实际资源所有权与析构责任仍保留；不可 Copy 不自动等于不可进入数组。
 
+Atomic read 槽位退出或替换在成功 CAS 中解除槽位持有资格并交付实际
+有效的 share。分配 Post 已登记实际 Drop 续体及其唯一最终释放责任；运行时
+Forget_read 为 NoOp。活借用仍保留真实来源、Region 和存储支持，
+其责任守恒遵循 N22 与 [Atomic N47–N50](atomic-pattern-transitions-and-causality.md)。
+
+HeapRelocate 的成功 Post 只对实际已交接且由撤除的绑定管辖的支持使用建立
+[局部 heap 名字的生命周期重解释](heap-stack-and-storage-responsibility.md#n29--relocate-精确向直接父层提交且不执行-pending-不变量)。
+名字位置、Region 规则、历史来源和独立借用各自保留。返回边界按
+实际到达状态及已提交对应压缩名字；独立局部借用保留自己的义务，
+无法压缩时在该边界拒绝。局部分配 Pre 只消费实际分配上下文。
+
 ### N22 — 遗忘必须保留可执行的 Drop 和 Move [不变量]
 
-名字/类型观察精度下降时，不仅要保留保守依赖，还须保留后续操作的实现与合法性材料。典型端点为：
+名字/类型观察精度下降时，不仅要保留保守依赖，还须保留后续操作的实现与合法性材料。`runtime:compile -> runtime:runtime` 的抽象可按 Pattern 默认结构保留可恢复的关系，并把剩余来源逐步规约到有根的外部 unknown；失败于本地外逃依赖的边界压缩不能伪造 unknown。`runtime:runtime -> runtime:compile` 的合法反向迁移只有在闭合 reify 及具体默认性验证成立时恢复相应模板关系，不恢复已遗忘的原名/generation。典型端点为：
 
 ```text
 runtime:compile -> runtime:runtime
@@ -2293,23 +2448,33 @@ runtime:compile -> runtime:runtime
 
 Move/Drop 的可执行性不等于已遗忘的精确名字关系可以恢复；保存了析构函数也不等于可消除它对外部名字的真实依赖。
 
-### N23 — 可移动性的三种充分证据 [定义]
+### N23 — Pattern 默认关系、统一 repair 与实例 Move 证明 [定义]
 
-基础仍是具体事件判断 `Movable_K(n,m)`。以下三条是不同来源的充分证据，不是三个新内建 trait：
+基础始终是具体事件判断 `Movable_K(n,m)`。递归 Pattern 默认关系、
+普通统一 repair 和事件级证明承担不同职责，不能当成三种可互换
+的类型级 Movable 公理：
 
-| 证据 | 含义 |
+| 材料 | 含义 |
 |---|---|
-| 类型级平凡移动全称命题 | 类型的全部准入实例，在所声明普通移动条件下无需 repair 即合法 |
-| 类型级统一 repair | 类型提供对全部准入实例适用的移动修复方式；具体续体类型可具有自己的统一 repair |
-| 当前名字的实例证明 | 无上述全称性质，但此名字对该遗忘后协议实际要求的移动已有合法证明及可执行材料 |
+| `PatternDefault(P_tau)` | 结构 Pattern 节点的局部 lifetime default 完整声明，递归先子后父完整关系项覆盖；新形式名字按模板映射并在显式 Pre 串行表达式后检验，不证明 Movable |
+| 普通统一 repair | 类型或具体续体可以提供适用于其已证明输入域的统一修复程序，但每次仍要检验实际源、伙伴、Pre、Region、Color、目的地与资源责任 |
+| 当前名字的实例证明 | `Movable_K(n,m)` 对当前真实名字/动作的合法证明，以及该承载协议所需的实际 Move/Drop 可执行材料 |
 
-实例性与全称命题不矛盾。不得以“Movable 是名字事件”禁止任何类型级全称结论，也不得以一个实例成功推出同类型的所有实例都成功。
+即使某个受约束实例族可以**另外证明**其默认世界及普通
+移动前提蕴涵某类无 repair 移动，这也只是带有明确假设与
+动作域的定理；不能由 Pattern 默认声明本身推出。
+不符合默认关系的实例并非类型错误：合法显式 Pre 可描述其
+额外关系，只要实际调用映射和动作均满足该 Pre。缺少证据
+不能当作独立性，不能凭声明覆盖真实 origin、历史或权限。
 
-实例证明只覆盖其已证明的操作域；不能用一次 m 的证明承诺任意其他目的地、Region 或将来移动。对目标承载协议允许的所有必需 Move/Drop 都有材料才可遗忘；缺少证据则拒绝，不隐式装箱、改 ABI 或要求 Copyable。
+一次具体 m 的证明不承诺其他目的地、Region 或未来动作。
+对目标承载协议的所有必需 Move/Drop 均须保留可执行操作与
+充分准入证据；否则拒绝，不隐式 Box、clone、改 ABI 或要求
+Copyable。
 
 ### N24 — 默认世界反向恢复是部分操作 [不变量]
 
-在 reify 内，已依法选择的 `runtime:runtime -> runtime:compile` 恢复，只接受能够按默认世界重建实例名字依赖的对象。已经遗忘并隐藏了非默认依赖的实例，不因持有正确 Type、移动子或析构子而取得该恢复能力。
+在 reify 内，已依法选择的 `runtime:runtime -> runtime:compile` 恢复，只接受能够按其完整结构 Pattern 的递归 lifetime default 加基础外部来源默认，真实重建实例依赖的对象。已经遗忘并隐藏了非默认依赖的实例，不因持有正确 Type、移动子或析构子而取得该恢复能力。
 
 ```text
 RecoverDefault(x):

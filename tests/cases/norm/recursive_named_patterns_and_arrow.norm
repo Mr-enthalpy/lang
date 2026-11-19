@@ -1,0 +1,885 @@
+NormProgram origin=Source@1:1[0..1148]
+  forms:
+    Form Let
+      Decl Let origin=Source@1:1[0..38]
+        BindingSlot let=true origin=Generated(PatternNormalize)@1:5[4..38]
+          deduce:
+            None
+          value_pattern:
+            Binder "ReadStorage" origin=Source@1:5[4..15]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Derived(PipeFallback; ordinary expression-chain growth)@1:19[18..38]
+              source:
+                Product origin=Generated(ProductLift)@1:19[18..25]
+                  elements:
+                    ExprElem
+                      Name "ReadBox" origin=Source@1:19[18..25]
+              target:
+                Nav terminated origin=Source@1:27[26..38]
+                  components:
+                    Name "read" origin=Source@1:27[26..30]
+                    Name "atomic" origin=Source@1:33[32..38]
+    Form Let
+      Decl Let origin=Source@2:1[42..83]
+        BindingSlot let=true origin=Generated(PatternNormalize)@2:5[46..83]
+          deduce:
+            None
+          value_pattern:
+            Binder "WriteStorage" origin=Source@2:5[46..58]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Derived(PipeFallback; ordinary expression-chain growth)@2:20[61..83]
+              source:
+                Product origin=Generated(ProductLift)@2:20[61..69]
+                  elements:
+                    ExprElem
+                      Name "WriteBox" origin=Source@2:20[61..69]
+              target:
+                Nav terminated origin=Source@2:29[70..83]
+                  components:
+                    Name "write" origin=Source@2:29[70..75]
+                    Name "atomic" origin=Source@2:36[77..83]
+    Form Let
+      Decl Let origin=Source@3:1[87..235]
+        BindingSlot let=true origin=Generated(PatternNormalize)@3:5[91..235]
+          deduce:
+            None
+          value_pattern:
+            Binder "E" origin=Source@3:5[91..92]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            InterpretationFlip V->S origin=Source@3:9[95..235]
+              PatternNamedLayer origin=Source@3:10[96..233] group=@3:10[96..231]
+                PatternSum origin=Source@4:5[102..229] operator=@6:21[222..223]
+                  PatternSum origin=Source@4:5[102..221] operator=@5:46[200..201]
+                    PatternSum origin=Source@4:5[102..199] operator=@4:56[153..154]
+                      PatternSequence origin=Generated(PatternNormalize)@4:6[103..151]
+                        elements:
+                          PatternSequence origin=Generated(PatternNormalize)@4:7[104..125]
+                            elements:
+                              InterpretationFlip S->V origin=Source@4:7[104..116]
+                                Name "ReadStorage" origin=Source@4:7[104..115]
+                              PatternName "resource" origin=Source@4:20[117..125]
+                          PatternProduct origin=Generated(PatternNormalize)@4:30[127..149]
+                            elements:
+                              PatternSequence origin=Generated(PatternNormalize)@4:31[128..137]
+                                elements:
+                                  PatternName "I1" origin=Source@4:31[128..130]
+                                  PatternName "state1" origin=Source@4:34[131..137]
+                              PatternSequence origin=Generated(PatternNormalize)@4:42[139..148]
+                                elements:
+                                  PatternName "I2" origin=Source@4:42[139..141]
+                                  PatternName "state2" origin=Source@4:45[142..148]
+                          PatternName "A" origin=Source@4:53[150..151]
+                      PatternSequence origin=Generated(PatternNormalize)@5:6[160..198]
+                        elements:
+                          PatternSequence origin=Generated(PatternNormalize)@5:7[161..183]
+                            elements:
+                              InterpretationFlip S->V origin=Source@5:7[161..174]
+                                Name "WriteStorage" origin=Source@5:7[161..173]
+                              PatternName "resource" origin=Source@5:21[175..183]
+                          PatternNamedLayer origin=Source@5:31[185..198] group=@5:31[185..196]
+                            PatternSequence origin=Generated(PatternNormalize)@5:32[186..195]
+                              elements:
+                                PatternName "I3" origin=Source@5:32[186..188]
+                                PatternName "state3" origin=Source@5:35[189..195]
+                            PatternName "B" origin=Source@5:43[197..198]
+                    PatternNamedLayer origin=Source@6:6[207..220] group=@6:6[207..218]
+                      PatternSequence origin=Generated(PatternNormalize)@6:7[208..217]
+                        elements:
+                          PatternName "I4" origin=Source@6:7[208..210]
+                          PatternName "state4" origin=Source@6:10[211..217]
+                      PatternName "C" origin=Source@6:18[219..220]
+                  PatternName "D" origin=Source@7:5[228..229]
+                PatternName "E" origin=Source@8:3[232..233]
+    Form Let
+      Decl Let origin=Source@9:1[237..257]
+        BindingSlot let=true origin=Generated(PatternNormalize)@9:5[241..257]
+          deduce:
+            None
+          value_pattern:
+            Binder "leaf" origin=Source@9:5[241..245]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            InterpretationFlip V->S origin=Source@9:12[248..257]
+              PatternSequence origin=Generated(PatternNormalize)@9:13[249..255]
+                elements:
+                  PatternName "E" origin=Source@9:13[249..250]
+                  PatternName "name" origin=Source@9:15[251..255]
+    Form Let
+      Decl Let origin=Source@10:1[259..301]
+        BindingSlot let=true origin=Generated(PatternNormalize)@10:5[263..301]
+          deduce:
+            HoleDecl "idx" origin=Generated(PatternNormalize)@10:6[264..267]
+              annotation:
+                None
+          value_pattern:
+            Binder "item" origin=Source@10:11[269..273]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@10:17[275..294]
+              PatternSequence origin=Generated(PatternNormalize)@10:17[275..294]
+                elements:
+                  PatternName "E" origin=Source@10:17[275..276]
+                  PatternNamedLayer origin=Source@10:19[277..294] group=@10:19[277..291]
+                    PatternSequence origin=Generated(PatternNormalize)@10:20[278..290]
+                      elements:
+                        PatternName "E" origin=Source@10:20[278..279]
+                        PatternNamedLayer origin=Source@10:22[280..290] group=@10:22[280..287]
+                          PatternSequence origin=Generated(PatternNormalize)@10:23[281..286]
+                            elements:
+                              PatternName "E" origin=Source@10:23[281..282]
+                              HoleRef "idx" origin=Source@10:25[283..286]
+                          HoleRef "idx" origin=Source@10:29[287..290]
+                    HoleRef "idx" origin=Source@10:33[291..294]
+          with_clause:
+            None
+          initializer:
+            Name "expr" origin=Source@10:39[297..301]
+    Form Let
+      Decl Let origin=Source@11:1[303..346]
+        BindingSlot let=true origin=Generated(PatternNormalize)@11:5[307..346]
+          deduce:
+            None
+          value_pattern:
+            Binder "item" origin=Source@11:5[307..311]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@11:11[313..339]
+              PatternProduct origin=Generated(PatternNormalize)@11:12[314..338]
+                elements:
+                  PatternSequence origin=Generated(PatternNormalize)@11:13[315..329]
+                    elements:
+                      PatternName "E" origin=Source@11:13[315..316]
+                      PatternNamedLayer origin=Source@11:15[317..329] group=@11:15[317..325]
+                        PatternSequence origin=Generated(PatternNormalize)@11:16[318..324]
+                          elements:
+                            PatternName "E" origin=Source@11:16[318..319]
+                            PatternName "name" origin=Source@11:18[320..324]
+                        PatternName "name" origin=Source@11:23[325..329]
+                  PatternSequence origin=Generated(PatternNormalize)@11:29[331..337]
+                    elements:
+                      PatternName "E" origin=Source@11:29[331..332]
+                      PatternName "name" origin=Source@11:31[333..337]
+          with_clause:
+            None
+          initializer:
+            Name "expr" origin=Source@11:40[342..346]
+    Form Let
+      Decl Let origin=Source@12:1[348..373]
+        BindingSlot let=true origin=Generated(PatternNormalize)@12:5[352..373]
+          deduce:
+            None
+          value_pattern:
+            PatternSequence origin=Generated(PatternNormalize)@12:5[352..368]
+              elements:
+                PatternSkeleton origin=Generated(PatternNormalize)@12:5[352..353]
+                  SkeletonName "E" role=NodeName origin=Source@12:5[352..353]
+                PatternNamedLayer origin=Source@12:7[354..366] group=@12:7[354..362]
+                  PatternSequence origin=Generated(PatternNormalize)@12:8[355..361]
+                    elements:
+                      PatternName "E" origin=Source@12:8[355..356]
+                      PatternName "name" origin=Source@12:10[357..361]
+                  PatternName "name" origin=Source@12:15[362..366]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Name "expr" origin=Source@12:22[369..373]
+    Form Let
+      Decl Let origin=Source@13:1[375..398]
+        BindingSlot let=true origin=Generated(PatternNormalize)@13:5[379..398]
+          deduce:
+            None
+          value_pattern:
+            PatternNamedLayer origin=Source@13:5[379..391] group=@13:5[379..387]
+              PatternSequence origin=Generated(PatternNormalize)@13:6[380..386]
+                elements:
+                  PatternName "E" origin=Source@13:6[380..381]
+                  PatternName "name" origin=Source@13:8[382..386]
+              PatternName "name" origin=Source@13:13[387..391]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Name "expr" origin=Source@13:20[394..398]
+    Form Let
+      Decl Let origin=Source@14:1[400..450]
+        BindingSlot let=true origin=Generated(PatternNormalize)@14:13[412..450]
+          policy:
+            PolicySpec
+              PolicyConjunction
+                  PolicyAtom Name "runtime"
+          deduce:
+            HoleDecl "val" origin=Generated(PatternNormalize)@14:14[413..416]
+              annotation:
+                None
+            HoleDecl "length" origin=Generated(PatternNormalize)@14:19[418..424]
+              annotation:
+                None
+          value_pattern:
+            HoleRef "val" origin=Source@14:27[426..429]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@14:32[431..443]
+              PatternSequence origin=Generated(PatternNormalize)@14:32[431..443]
+                elements:
+                  HoleRef "length" origin=Source@14:32[431..437]
+                  PatternName "range" origin=Source@14:39[438..443]
+          with_clause:
+            None
+          initializer:
+            Name "expr" origin=Source@14:47[446..450]
+    Form Let
+      Decl Let origin=Source@15:1[452..471]
+        BindingSlot let=true origin=Generated(PatternNormalize)@15:5[456..471]
+          deduce:
+            None
+          value_pattern:
+            Binder "a" origin=Source@15:5[456..457]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@15:8[459..464]
+              PatternName "uint8" origin=Source@15:8[459..464]
+          with_clause:
+            None
+          initializer:
+            Name "expr" origin=Source@15:16[467..471]
+    Form Let
+      Decl Let origin=Source@16:1[473..494]
+        BindingSlot let=true origin=Generated(PatternNormalize)@16:5[477..494]
+          deduce:
+            None
+          value_pattern:
+            Binder "a" origin=Source@16:5[477..478]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@16:8[480..485]
+              PatternNav terminated=true origin=Source@16:8[480..485]
+                components:
+                  Name "uint8" origin=Source@16:8[480..485]
+          with_clause:
+            None
+          initializer:
+            Name "expr" origin=Source@16:18[490..494]
+    Form Let
+      Decl Let origin=Source@17:1[496..516]
+        BindingSlot let=true origin=Generated(PatternNormalize)@17:5[500..516]
+          deduce:
+            None
+          value_pattern:
+            Binder "a" origin=Source@17:5[500..501]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@17:8[503..509]
+              InterpretationFlip S->V origin=Source@17:8[503..509]
+                Name "uint8" origin=Source@17:8[503..508]
+          with_clause:
+            None
+          initializer:
+            Name "expr" origin=Source@17:17[512..516]
+    Form Let
+      Decl Let origin=Source@18:1[518..539]
+        BindingSlot let=true origin=Generated(PatternNormalize)@18:5[522..539]
+          deduce:
+            None
+          value_pattern:
+            Binder "a" origin=Source@18:5[522..523]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@18:8[525..532]
+              InterpretationFlip S->V origin=Source@18:8[525..532]
+                InterpretationFlip V->S origin=Source@18:8[525..531]
+                  PatternName "uint8" origin=Source@18:8[525..530]
+          with_clause:
+            None
+          initializer:
+            Name "expr" origin=Source@18:18[535..539]
+    Form Let
+      Decl Let origin=Source@19:1[541..570]
+        BindingSlot let=true origin=Generated(PatternNormalize)@19:5[545..570]
+          deduce:
+            None
+          value_pattern:
+            Binder "fn" origin=Source@19:5[545..547]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Closure placement=Ordinary origin=Source@19:10[550..570]
+              head:
+                ClosureHead origin=Generated(ClosureNormalize)@19:10[550..564]
+                  deduce:
+                    None
+                  params:
+                    BindingSlotElem
+                      BindingSlot let=false origin=Generated(PatternNormalize)@19:11[551..552]
+                        deduce:
+                          None
+                        value_pattern:
+                          Binder "x" origin=Source@19:11[551..552]
+                        annotation:
+                          None
+                        with_clause:
+                          None
+                        initializer:
+                          None
+                    BindingSlotElem
+                      BindingSlot let=false origin=Generated(PatternNormalize)@19:14[554..555]
+                        deduce:
+                          None
+                        value_pattern:
+                          Binder "y" origin=Source@19:14[554..555]
+                        annotation:
+                          None
+                        with_clause:
+                          None
+                        initializer:
+                          None
+                  returns:
+                    BindingSlot let=false origin=Generated(PatternNormalize)@19:20[560..561]
+                      deduce:
+                        None
+                      value_pattern:
+                        Binder "r" origin=Source@19:20[560..561]
+                      annotation:
+                        None
+                      with_clause:
+                        None
+                      initializer:
+                        None
+              body:
+                NormBody origin=Source@19:25[565..570]
+                  forms:
+                    Form Expr
+                      Name "x" origin=Source@19:27[567..568]
+    Form Let
+      Decl Let origin=Source@20:1[572..599]
+        BindingSlot let=true origin=Generated(PatternNormalize)@20:5[576..599]
+          deduce:
+            None
+          value_pattern:
+            Binder "inline" origin=Source@20:5[576..582]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Closure placement=InPlace origin=Source@20:14[585..599]
+              head:
+                ClosureHead origin=Generated(ClosureNormalize)@20:14[585..595]
+                  deduce:
+                    None
+                  params:
+                    BindingSlotElem
+                      BindingSlot let=false origin=Generated(PatternNormalize)@20:15[586..587]
+                        deduce:
+                          None
+                        value_pattern:
+                          Binder "x" origin=Source@20:15[586..587]
+                        annotation:
+                          None
+                        with_clause:
+                          None
+                        initializer:
+                          None
+                  returns:
+                    BindingSlot let=false origin=Generated(PatternNormalize)@20:21[592..593]
+                      deduce:
+                        None
+                      value_pattern:
+                        Binder "r" origin=Source@20:21[592..593]
+                      annotation:
+                        None
+                      with_clause:
+                        None
+                      initializer:
+                        None
+              body:
+                NormBody origin=Source@20:23[594..599]
+                  forms:
+                    Form Expr
+                      Name "x" origin=Source@20:25[596..597]
+    Form Let
+      Decl Let origin=Source@21:1[601..629]
+        BindingSlot let=true origin=Generated(PatternNormalize)@21:5[605..629]
+          deduce:
+            None
+          value_pattern:
+            Binder "arrow" origin=Source@21:5[605..610]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Generated(OperatorLowering)@21:13[613..629]
+              source:
+                Product origin=Generated(OperatorLowering)@21:13[613..629]
+                  elements:
+                    ExprElem
+                      Product origin=Source@21:13[613..619]
+                        elements:
+                          ExprElem
+                            Name "a" origin=Source@21:14[614..615]
+                          ExprElem
+                            Name "b" origin=Source@21:17[617..618]
+                    ExprElem
+                      Product origin=Source@21:23[623..629]
+                        elements:
+                          ExprElem
+                            Name "c" origin=Source@21:24[624..625]
+                          ExprElem
+                            Name "d" origin=Source@21:27[627..628]
+              target:
+                OperatorTarget spelling="->" fixity=Binary arity=2 origin=Source@21:20[620..622]
+    Form Let
+      Decl Let origin=Source@22:1[631..662]
+        BindingSlot let=true origin=Generated(PatternNormalize)@22:5[635..662]
+          deduce:
+            None
+          value_pattern:
+            Binder "precedence" origin=Source@22:5[635..645]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Generated(OperatorLowering)@22:18[648..662]
+              source:
+                Product origin=Generated(OperatorLowering)@22:18[648..662]
+                  elements:
+                    ExprElem
+                      Call origin=Generated(OperatorLowering)@22:18[648..653]
+                        source:
+                          Product origin=Generated(OperatorLowering)@22:18[648..653]
+                            elements:
+                              ExprElem
+                                Name "a" origin=Source@22:18[648..649]
+                              ExprElem
+                                Name "b" origin=Source@22:22[652..653]
+                        target:
+                          OperatorTarget spelling="+" fixity=Binary arity=2 origin=Source@22:20[650..651]
+                    ExprElem
+                      Call origin=Generated(OperatorLowering)@22:27[657..662]
+                        source:
+                          Product origin=Generated(OperatorLowering)@22:27[657..662]
+                            elements:
+                              ExprElem
+                                Name "c" origin=Source@22:27[657..658]
+                              ExprElem
+                                Name "d" origin=Source@22:31[661..662]
+                        target:
+                          OperatorTarget spelling="|" fixity=Binary arity=2 origin=Source@22:29[659..660]
+              target:
+                OperatorTarget spelling="->" fixity=Binary arity=2 origin=Source@22:24[654..656]
+    Form Let
+      Decl Let origin=Source@23:1[664..701]
+        BindingSlot let=true origin=Generated(PatternNormalize)@23:5[668..701]
+          deduce:
+            None
+          value_pattern:
+            Binder "byPath" origin=Source@23:5[668..674]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Derived(SecondLegalityRepair; repaired product-before-target)@23:14[677..701]
+              source:
+                Product origin=Source@23:14[677..693]
+                  elements:
+                    ExprElem
+                      Product origin=Source@23:15[678..684]
+                        elements:
+                          ExprElem
+                            Name "a" origin=Source@23:16[679..680]
+                          ExprElem
+                            Name "b" origin=Source@23:19[682..683]
+                    ExprElem
+                      Product origin=Source@23:23[686..692]
+                        elements:
+                          ExprElem
+                            Name "c" origin=Source@23:24[687..688]
+                          ExprElem
+                            Name "d" origin=Source@23:27[690..691]
+              target:
+                Nav origin=Source@23:32[695..700]
+                  components:
+                    Operator "->" origin=Source@23:32[695..697]
+                    Name "E" origin=Source@23:36[699..700]
+    Form Let
+      Decl Let origin=Source@24:1[703..721]
+        BindingSlot let=true origin=Generated(PatternNormalize)@24:5[707..721]
+          deduce:
+            None
+          value_pattern:
+            Binder "compact" origin=Source@24:5[707..714]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Generated(MemberLowering)@24:15[717..721]
+              source:
+                Product origin=Generated(ProductLift)@24:15[717..718]
+                  elements:
+                    ExprElem
+                      Name "x" origin=Source@24:15[717..718]
+              target:
+                Nav origin=Generated(DotNameLowering)@24:15[717..721]
+                  components:
+                    Name "->" origin=Generated(DotNameLowering)@24:15[717..721]
+                    Name "adl" origin=Generated(DotNameLowering)@24:15[717..721]
+    Form Let
+      Decl Let origin=Source@25:1[723..741]
+        BindingSlot let=true origin=Generated(PatternNormalize)@25:5[727..741]
+          deduce:
+            None
+          value_pattern:
+            Binder "dot" origin=Source@25:5[727..730]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Derived(PipeFallback; no following source product)@25:16[738..741]
+              source:
+                Product origin=Generated(ProductLift)@25:11[733..734]
+                  elements:
+                    ExprElem
+                      Name "x" origin=Source@25:11[733..734]
+              target:
+                Nav origin=Generated(DotNameLowering)@25:16[738..741]
+                  components:
+                    Name "->" origin=Generated(DotNameLowering)@25:16[738..741]
+                    Name "adl" origin=Generated(DotNameLowering)@25:16[738..741]
+    Form Let
+      Decl Let origin=Source@26:1[743..815]
+        BindingSlot let=true origin=Generated(PatternNormalize)@26:5[747..815]
+          deduce:
+            None
+          value_pattern:
+            Binder "transform" origin=Source@26:5[747..756]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Generated(OperatorLowering)@26:17[759..815]
+              source:
+                Product origin=Generated(OperatorLowering)@26:17[759..815]
+                  elements:
+                    ExprElem
+                      Call origin=Derived(SecondLegalityRepair; repaired product-before-target)@26:18[760..783]
+                        source:
+                          Product origin=Source@26:18[760..778]
+                            elements:
+                              ExprElem
+                                Call origin=Derived(PipeFallback; ordinary expression-chain growth)@26:19[761..774]
+                                  source:
+                                    Product origin=Generated(ProductLift)@26:19[761..765]
+                                      elements:
+                                        ExprElem
+                                          Name "val1" origin=Source@26:19[761..765]
+                                  target:
+                                    Nav origin=Source@26:24[766..774]
+                                      components:
+                                        Name "n1" origin=Source@26:24[766..768]
+                                        Name "A" origin=Source@26:28[770..771]
+                                        Name "E" origin=Source@26:31[773..774]
+                              ExprElem
+                                UniverseRank origin=Source@26:34[776..777]
+                        target:
+                          Nav origin=Source@26:37[779..783]
+                            components:
+                              Name "A" origin=Source@26:37[779..780]
+                              Name "E" origin=Source@26:40[782..783]
+                    ExprElem
+                      Call origin=Derived(PipeFallback; ordinary expression-chain growth)@26:50[792..814]
+                        source:
+                          Product origin=Generated(ProductLift)@26:51[793..802]
+                            elements:
+                              ExprElem
+                                Name "newSource" origin=Source@26:51[793..802]
+                        target:
+                          Call origin=Derived(PipeFallback; ordinary expression-chain growth)@26:62[804..813]
+                            source:
+                              Product origin=Generated(ProductLift)@26:62[804..808]
+                                elements:
+                                  ExprElem
+                                    Name "val3" origin=Source@26:62[804..808]
+                            target:
+                              Nav origin=Source@26:67[809..813]
+                                components:
+                                  Name "B" origin=Source@26:67[809..810]
+                                  Name "E" origin=Source@26:70[812..813]
+              target:
+                Nav origin=Source@26:43[785..790]
+                  components:
+                    Operator "->" origin=Source@26:43[785..787]
+                    Name "E" origin=Source@26:47[789..790]
+    Form Let
+      Decl Let origin=Source@27:1[817..894]
+        BindingSlot let=true origin=Generated(PatternNormalize)@27:5[821..894]
+          deduce:
+            None
+          value_pattern:
+            Binder "keepSource" origin=Source@27:5[821..831]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Generated(OperatorLowering)@27:18[834..894]
+              source:
+                Product origin=Generated(OperatorLowering)@27:18[834..894]
+                  elements:
+                    ExprElem
+                      Call origin=Derived(SecondLegalityRepair; repaired product-before-target)@27:19[835..870]
+                        source:
+                          Product origin=Source@27:19[835..865]
+                            elements:
+                              ExprElem
+                                Call origin=Derived(PipeFallback; ordinary expression-chain growth)@27:20[836..849]
+                                  source:
+                                    Product origin=Generated(ProductLift)@27:20[836..840]
+                                      elements:
+                                        ExprElem
+                                          Name "val1" origin=Source@27:20[836..840]
+                                  target:
+                                    Nav origin=Source@27:25[841..849]
+                                      components:
+                                        Name "n1" origin=Source@27:25[841..843]
+                                        Name "A" origin=Source@27:29[845..846]
+                                        Name "E" origin=Source@27:32[848..849]
+                              ExprElem
+                                Call origin=Derived(PipeFallback; ordinary expression-chain growth)@27:35[851..864]
+                                  source:
+                                    Product origin=Generated(ProductLift)@27:35[851..855]
+                                      elements:
+                                        ExprElem
+                                          Name "val2" origin=Source@27:35[851..855]
+                                  target:
+                                    Nav origin=Source@27:40[856..864]
+                                      components:
+                                        Name "n2" origin=Source@27:40[856..858]
+                                        Name "A" origin=Source@27:44[860..861]
+                                        Name "E" origin=Source@27:47[863..864]
+                        target:
+                          Nav origin=Source@27:50[866..870]
+                            components:
+                              Name "A" origin=Source@27:50[866..867]
+                              Name "E" origin=Source@27:53[869..870]
+                    ExprElem
+                      Call origin=Derived(PipeFallback; ordinary expression-chain growth)@27:63[879..893]
+                        source:
+                          Product origin=Generated(ProductLift)@27:64[880..881]
+                            elements:
+                              ExprElem
+                                UniverseRank origin=Source@27:64[880..881]
+                        target:
+                          Call origin=Derived(PipeFallback; ordinary expression-chain growth)@27:67[883..892]
+                            source:
+                              Product origin=Generated(ProductLift)@27:67[883..887]
+                                elements:
+                                  ExprElem
+                                    Name "val3" origin=Source@27:67[883..887]
+                            target:
+                              Nav origin=Source@27:72[888..892]
+                                components:
+                                  Name "B" origin=Source@27:72[888..889]
+                                  Name "E" origin=Source@27:75[891..892]
+              target:
+                Nav origin=Source@27:56[872..877]
+                  components:
+                    Operator "->" origin=Source@27:56[872..874]
+                    Name "E" origin=Source@27:60[876..877]
+    Form Let
+      Decl Let origin=Source@28:1[896..926]
+        BindingSlot let=true origin=Generated(PatternNormalize)@28:5[900..926]
+          deduce:
+            None
+          value_pattern:
+            Binder "compare" origin=Source@28:5[900..907]
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Call origin=Generated(OperatorLowering)@28:15[910..926]
+              source:
+                Product origin=Generated(OperatorLowering)@28:15[910..926]
+                  elements:
+                    ExprElem
+                      Call origin=Generated(OperatorLowering)@28:15[910..916]
+                        source:
+                          Product origin=Generated(OperatorLowering)@28:15[910..916]
+                            elements:
+                              ExprElem
+                                Name "a" origin=Source@28:15[910..911]
+                              ExprElem
+                                Name "b" origin=Source@28:20[915..916]
+                        target:
+                          OperatorTarget spelling="==" fixity=Binary arity=2 origin=Source@28:17[912..914]
+                    ExprElem
+                      Call origin=Generated(OperatorLowering)@28:25[920..926]
+                        source:
+                          Product origin=Generated(OperatorLowering)@28:25[920..926]
+                            elements:
+                              ExprElem
+                                Name "c" origin=Source@28:25[920..921]
+                              ExprElem
+                                Name "d" origin=Source@28:30[925..926]
+                        target:
+                          OperatorTarget spelling="==" fixity=Binary arity=2 origin=Source@28:27[922..924]
+              target:
+                OperatorTarget spelling="->" fixity=Binary arity=2 origin=Source@28:22[917..919]
+    Form Let
+      Decl Let origin=Source@29:1[928..999]
+        BindingSlot let=true origin=Generated(PatternNormalize)@29:5[932..999]
+          deduce:
+            None
+          value_pattern:
+            PatternProduct origin=Generated(PatternNormalize)@29:5[932..992]
+              elements:
+                BindingSlotElem
+                  BindingSlot let=true origin=Generated(PatternNormalize)@29:6[933..958]
+                    deduce:
+                      HoleDecl "idx" origin=Generated(PatternNormalize)@29:11[938..941]
+                        annotation:
+                          None
+                    value_pattern:
+                      Binder "a" origin=Source@29:16[943..944]
+                    annotation:
+                      AnnotationPattern origin=Generated(PatternNormalize)@29:19[946..958]
+                        PatternSequence origin=Generated(PatternNormalize)@29:19[946..958]
+                          elements:
+                            PatternName "E" origin=Source@29:19[946..947]
+                            PatternNamedLayer origin=Source@29:21[948..958] group=@29:21[948..955]
+                              PatternSequence origin=Generated(PatternNormalize)@29:22[949..954]
+                                elements:
+                                  PatternName "E" origin=Source@29:22[949..950]
+                                  HoleRef "idx" origin=Source@29:24[951..954]
+                              HoleRef "idx" origin=Source@29:28[955..958]
+                    with_clause:
+                      None
+                    initializer:
+                      None
+                BindingSlotElem
+                  BindingSlot let=true origin=Generated(PatternNormalize)@29:33[960..991]
+                    deduce:
+                      HoleDecl "other" origin=Generated(PatternNormalize)@29:38[965..970]
+                        annotation:
+                          None
+                    value_pattern:
+                      Binder "b" origin=Source@29:45[972..973]
+                    annotation:
+                      AnnotationPattern origin=Generated(PatternNormalize)@29:48[975..991]
+                        PatternSequence origin=Generated(PatternNormalize)@29:48[975..991]
+                          elements:
+                            PatternName "E" origin=Source@29:48[975..976]
+                            PatternNamedLayer origin=Source@29:50[977..991] group=@29:50[977..986]
+                              PatternSequence origin=Generated(PatternNormalize)@29:51[978..985]
+                                elements:
+                                  PatternName "E" origin=Source@29:51[978..979]
+                                  HoleRef "other" origin=Source@29:53[980..985]
+                              HoleRef "other" origin=Source@29:59[986..991]
+                    with_clause:
+                      None
+                    initializer:
+                      None
+          annotation:
+            None
+          with_clause:
+            None
+          initializer:
+            Name "expr" origin=Source@29:68[995..999]
+    Form Let
+      Decl Let origin=Source@30:1[1001..1037]
+        BindingSlot let=true origin=Generated(PatternNormalize)@30:5[1005..1037]
+          deduce:
+            HoleDecl "idx" origin=Generated(PatternNormalize)@30:6[1006..1009]
+              annotation:
+                None
+          value_pattern:
+            Binder "fresh" origin=Source@30:11[1011..1016]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@30:18[1018..1030]
+              PatternSequence origin=Generated(PatternNormalize)@30:18[1018..1030]
+                elements:
+                  PatternName "E" origin=Source@30:18[1018..1019]
+                  PatternNamedLayer origin=Source@30:20[1020..1030] group=@30:20[1020..1027]
+                    PatternSequence origin=Generated(PatternNormalize)@30:21[1021..1026]
+                      elements:
+                        PatternName "E" origin=Source@30:21[1021..1022]
+                        HoleRef "idx" origin=Source@30:23[1023..1026]
+                    HoleRef "idx" origin=Source@30:27[1027..1030]
+          with_clause:
+            None
+          initializer:
+            Name "expr" origin=Source@30:33[1033..1037]
+    Form Let
+      Decl Let origin=Source@31:1[1039..1088]
+        BindingSlot let=true origin=Generated(PatternNormalize)@31:5[1043..1088]
+          deduce:
+            HoleDecl "inner" origin=Generated(PatternNormalize)@31:6[1044..1049]
+              annotation:
+                None
+            HoleDecl "outer" origin=Generated(PatternNormalize)@31:13[1051..1056]
+              annotation:
+                None
+          value_pattern:
+            Binder "value" origin=Source@31:20[1058..1063]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@31:27[1065..1081]
+              PatternSequence origin=Generated(PatternNormalize)@31:27[1065..1081]
+                elements:
+                  PatternName "E" origin=Source@31:27[1065..1066]
+                  PatternNamedLayer origin=Source@31:29[1067..1081] group=@31:29[1067..1076]
+                    PatternSequence origin=Generated(PatternNormalize)@31:30[1068..1075]
+                      elements:
+                        PatternName "E" origin=Source@31:30[1068..1069]
+                        HoleRef "inner" origin=Source@31:32[1070..1075]
+                    HoleRef "outer" origin=Source@31:38[1076..1081]
+          with_clause:
+            None
+          initializer:
+            Name "expr" origin=Source@31:46[1084..1088]
+    Form Let
+      Decl Let origin=Source@32:1[1090..1146]
+        BindingSlot let=true origin=Generated(PatternNormalize)@32:5[1094..1146]
+          deduce:
+            HoleDecl "idx" origin=Generated(PatternNormalize)@32:6[1095..1098]
+              annotation:
+                None
+          value_pattern:
+            Binder "conflict" origin=Source@32:11[1100..1108]
+          annotation:
+            AnnotationPattern origin=Generated(PatternNormalize)@32:21[1110..1129]
+              PatternSequence origin=Generated(PatternNormalize)@32:21[1110..1129]
+                elements:
+                  PatternName "E" origin=Source@32:21[1110..1111]
+                  PatternNamedLayer origin=Source@32:23[1112..1129] group=@32:23[1112..1126]
+                    PatternSequence origin=Generated(PatternNormalize)@32:24[1113..1125]
+                      elements:
+                        PatternName "E" origin=Source@32:24[1113..1114]
+                        PatternNamedLayer origin=Source@32:26[1115..1125] group=@32:26[1115..1122]
+                          PatternSequence origin=Generated(PatternNormalize)@32:27[1116..1121]
+                            elements:
+                              PatternName "E" origin=Source@32:27[1116..1117]
+                              HoleRef "idx" origin=Source@32:29[1118..1121]
+                          HoleRef "idx" origin=Source@32:33[1122..1125]
+                    HoleRef "idx" origin=Source@32:37[1126..1129]
+          with_clause:
+            None
+          initializer:
+            Name "differentNames" origin=Source@32:43[1132..1146]

@@ -416,7 +416,11 @@ and optimizer structures cannot introduce program facts.
   a residual continuation. Only an actual remaining-continuation fact can do so;
   never infer hidden work from a generic no-candidate failure or absent diagnostic.
 - Killable is instance-local; MoveEffect is fixed before observation; Movable
-  is frontier legality. Equal types and ZST layout prove no blanket exemption.
+  is frontier legality. Pattern-node `lifetime default` is a complete local
+  declaration composed recursively; `lifetime pre` runs ordinary serial
+  modifications on that material. Ref defaults have distinct exterior origins,
+  shares may alias; scoped unknowns carry obligations outward. Equal types and
+  ZST layout prove no blanket exemption.
   with placement precedes @; killing move adds no old-generation destructor.
 - Split/D is restricted residualization, internal Done_chi/Done_Return is boundary completion,
   effect Done(v) is an ordinary matchable normal-result branch,
@@ -568,18 +572,36 @@ survive ordinary extraction, and executable Move/Drop does not make forgetting
 invertible. Default-world recovery can reject an instance through ordinary throw;
 missing consumers remain unavailable.
 
-Standard malloc/free start at current top, relocate goes exactly to the parent
-with Pending unexecuted, and all standard non-root locate requires universal
-guaranteed parent submission plus lazy acceptance. Ordinary custom heaps remain
-allowed. Production Pre owns escape rejection; QS is no language premise.
 
-Atomic is a formed-type consumer requiring external-origin closure of all retained
-state names, including I/Index and S; it creates no enum Pattern. A real ordinary
-copy/formation can establish a fresh closed name, but state-number role or equal
-content cannot erase an existing dependency. Comparison-only, unretained input
-still satisfies ordinary access Pre. CAS success jointly transfers S_a/S_b and
-version/state at one point,
-failure retains incoming custody. Real result-branch causality and resource
-visibility are fixed; extra SeqCst/fence, OOTA proof and backend lowering have
-their precise pending gates. No field-to-outer atomic propagation, payload access
-from peek, automatic retry or arbitrary protocol-subset inference is licensed.
+Standard malloc/free start at the current top. Allocation establishes actual
+support and release policy under local Pre. [Lazy malloc](../design/lifetime/heap-stack-and-storage-responsibility.md#n28--分配成功时注册-lazy-drop-不变量) registers the
+actual Drop continuation. [Relocate](../design/lifetime/heap-stack-and-storage-responsibility.md#n29--relocate-精确向直接父层提交且不执行-pending-不变量) reinterprets only submitted support
+uses under the removed binding. Return compresses the actual latest projection. An independent local borrow can still
+block return.
+
+Keep recursive named layers in the ordinary Pattern algebra under extraction
+and `$` construction, including in Products. Compile producers carry admitted
+runtime input dependencies under the [compile admission rule](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers). The key
+and internal Pattern are compile-determined. Runtime values supply extraction
+and name comparison. Preserve actual hole identities.
+
+`->` uses ordinary operator dispatch outside built-in callable arrows.
+Infix `a ->::E b` calls the explicit Path with a two-entry Product.
+`a (->::E) b` is an ordinary expression sequence. `.->` is an ADL selector. Selected
+constructors interpret `_` at the supplied positions. An [ordinary borrowed sum transform](../design/patterns-overload/operator-patterns-and-generative-declarations.md#ordinary-borrowed-sum-transforms)
+uses actual exclusive authority to conditionally install a complete
+target. Take returns owned material. Retain gives a valid share under
+ordinary Region Pre and records its actual origin in Post. Atomic adds
+one conditional atomic commit and its read/write rights to the same
+transform description, consuming a formed E and selected transform with [actual Box wrappers](../design/lifetime/atomic-pattern-transitions-and-causality.md#n46--普通结构真实类型包装与表示预算-定义). A
+[typed leaf](../design/patterns-overload/pattern-relations-observation-and-extraction.md#external-typed-leaves) obtains its classifier through ordinary lookup/selection.
+Atomic also checks the allocation-time
+read lazy duty and finite Status/representation evidence. N47–N48 define
+complete versus same-arm matching, same-arm read replacement and the Keep/Exit
+results. Read Forget is a runtime NoOp and preserves the allocation-time Drop registration. Preserve
+Region, Color, origin, candidate custody and version causality independently.
+The [Atomic snapshot member](../design/lifetime/atomic-pattern-transitions-and-causality.md#n42--共享视图上的原子快照-定义及不变量) is `?` registered by Atomic
+on the associated `E share` of admitted `E`. It reads public state from one
+committed version as a single atomic action and delivers no resource.
+Ordinary extraction and other `?` operations retain their separate contracts.
+F13/F14/F16/F18/F19 remain pending; F15 retains only the extra ordering decision.

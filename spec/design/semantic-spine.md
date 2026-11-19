@@ -145,9 +145,12 @@ with mandatory erasure of external structural-source authority on projected
 Function Pattern values, without an inverse theorem or recovery from compile
 Val1. Opaque implementation provenance is not external authority. The
 [lifetime owner](lifetime/lifetime-policy-and-overload-boundary.md#216-call-boundary-summaries)
-consumes ordinary contract programs and implication, retaining U_default for
-genuinely new entry names, inherited preceding Post for InPlace automatic captures, and
-handwritten Function Pattern omitted-post NoDelta. Implemented bodies instead
+consumes ordinary contract programs and implication. Genuinely new entry
+names use the base exterior-origin ref/share relations and recursively
+composed Pattern-node `lifetime default` expression material, then serial
+explicit `lifetime pre` modifications; no universal Movable is inferred.
+Existing InPlace automatic captures inherit preceding Post, and handwritten
+Function Pattern omitted-post remains NoDelta. Implemented bodies instead
 form automatic Post from formed guarded body/operation descriptions before
 contract use; actual exits separately validate that their mapped Post implies
 the summary, without future-path execution. The complete
@@ -245,10 +248,21 @@ malloc/free and direct-parent relocation with lazy Pending custody; every
 standard non-root locate requires universal guaranteed submission. Independent
 [containers](control-flow/heterogeneous-computation-containers.md) separately
 check dispatch, Color and return/escape.
-[Atomic](lifetime/atomic-pattern-transitions-and-causality.md) consumes formed
-type material and jointly transfers state/resources at one actual successful
-point. Actual result branches retain their distinct causal histories; ownership
-visibility is a backend duty. F15 extra SeqCst/fence is pending.
+Recursive named Pattern material is available in Products and sums. LHS
+extraction and RHS construction share its ordinary structural positions.
+A selected compile producer can carry runtime dependencies into that
+structure when outward compile work stays independent of runtime values.
+Ordinary `->` dispatch and `->::E` formation precede any specialized
+consumer.
+
+[Atomic](lifetime/atomic-pattern-transitions-and-causality.md) consumes complete
+E, selected transform, actual wrapped Box and admitted two-word representation.
+Read exit or same-arm replacement discharges slot custody under an existing
+allocation-time lazy duty. Write replacement requires a real arm change.
+Actual commit and failure preserve the rights, causal and candidate rules.
+Heap relocation maps covered local support to the direct parent's name in
+the lifecycle projection; the actual return consumes that Post.
+
 The [unified correspondence](unified-static-name-and-structural-semantics.md#cross-owner-correspondence)
 and [evidence ledger](../planning/lifetime-concurrency-consolidation.md) link these
 owners without another evaluator or duplicated Region definition.

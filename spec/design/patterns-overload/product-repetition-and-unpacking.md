@@ -94,6 +94,10 @@ Nested layers decide independently. Named extraction followed by explicit
 ordered assembly is required to turn an unordered layer into a bare sequence;
 neither map order nor `?` supplies that sequence.
 
+A Product can contain [recursive named Pattern layers](pattern-relations-observation-and-extraction.md#92-recursive-named-pattern-material).
+Their group and name incidence survive contextual exposure. Product ordering
+is still decided independently at each actual Product layer.
+
 ## 3. Underscore and the singleton form
 
 ```text
@@ -199,6 +203,32 @@ grant no reverse-migration authority. An unconnected unpacking or iteration
 consumer is explicitly unavailable; it supplies no guessed runtime residual.
 
 ## Anonymous aggregation and lifecycle precision
+
+Val1 relocation alone does not allow lifecycle-name loss. Every anonymous
+insertion consumes the lifetime owner's N20–N24 and the complete recursively
+composed Pattern-local `lifetime default` of the element. Non-default
+origin/Region dependencies must be represented conservatively at aggregate
+granularity before insertion, or the action rejects.
+
+The ordinary lifecycle path expression includes indexed `[]` steps:
+`[i]` for compile-known i, `[0:n]` for an unknown runtime index of a
+length-n array, `[0:ω]` for the regular repetition `T * ω`. These are
+path descriptions, not permission to read every element, runtime value
+enumeration, or identity merging. Policy-selected operations can distinguish
+compile-known versus runtime index observations.
+
+The ordinary relation material may express aggregation schematically as
+`array@.origin ||= out_lines`, together with the strict Region conditions
+for each valid external origin. Extracting an element produces a new name
+with the aggregate's conservative origin summary and the actual selected
+operation's source/Move obligations. The remaining array cannot subtract
+that summary merely because an element was taken. Origin, Color, and
+access rights remain distinct; conservative obligations can combine but
+exclusive permissions cannot. Original element names are not recovered
+from equal values, index numbers or type equality. Non-Copy elements remain
+admissible with their actual legal Move/Drop; no implicit heap allocation
+or generic Copyable trait. Missing source/consumer/proof evidence is
+Unavailable, not a guessed independence or automatic bounds proof.
 
 Val1 relocation does not itself permit loss of lifecycle names. Anonymous
 insertion consumes the lifecycle owner's [N20–N23 rules](../lifetime/lifetime-policy-and-overload-boundary.md#16-anonymous-names-executable-operations-and-partial-recovery):

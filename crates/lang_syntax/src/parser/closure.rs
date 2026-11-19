@@ -106,16 +106,17 @@ pub fn try_parse_closure(parser: &mut Parser<'_>) -> Option<AtomAst> {
         ));
     }
 
-    // A grouped value followed by a bracketed closure argument is not a
-    // callable head. Only a complete local strategy tail supplies that anchor.
+    // A parenthesized expression needs a syntactic head continuation.
+    // Keep recovery for malformed strategy tails on a Product head.
     let (class, after) = parser.cursor.classify_paren_at_segment_position();
-    if class == super::cursor::ParenClassification::Group
-        && after.is_some_and(|index| {
-            token_index_starts_strategy_annotation_candidate(parser, index)
-                && !token_index_starts_complete_strategy_tail(parser, index)
-        })
-    {
-        return None;
+    if let Some(index) = after {
+        let malformed_product_strategy = class == super::cursor::ParenClassification::Product
+            && token_index_starts_strategy_annotation_candidate(parser, index);
+        if !token_index_starts_closure_head_continuation(parser, index)
+            && !malformed_product_strategy
+        {
+            return None;
+        }
     }
     let saved = parser.cursor.current_index();
     parser.gate_diagnostics();
@@ -343,12 +344,12 @@ fn closure_atom(
     span: Span,
 ) -> AtomAst {
     AtomAst {
-        kind: AtomKind::Closure(ClosureAst {
+        kind: AtomKind::Closure(Box::new(ClosureAst {
             placement,
             head,
             body,
             span,
-        }),
+        })),
         span,
     }
 }
@@ -600,9 +601,55 @@ pub(super) fn token_index_starts_closure_head_continuation(
     let (_, token) = parser.cursor.peek_at_skip_trivia(from);
     matches!(
         token.kind,
-        TokenKind::Symbol(Symbol::Colon | Symbol::ThinArrow | Symbol::FatArrow | Symbol::LBrace)
+        TokenKind::Symbol(Symbol::Colon | Symbol::FatArrow | Symbol::LBrace)
     ) || token_index_starts_head_clause(parser, from)
         || token_index_starts_complete_strategy_tail(parser, from)
+        || (token_index_starts_bare_arrow(parser, from) && arrow_has_callable_tail(parser, from))
+}
+
+pub(super) fn token_index_starts_bare_arrow(parser: &Parser<'_>, from: usize) -> bool {
+    let (index, token) = parser.cursor.peek_at_skip_trivia(from);
+    matches!(token.kind, TokenKind::Symbol(Symbol::ThinArrow))
+        && !matches!(
+            parser.cursor.peek_at_skip_trivia(index + 1).1.kind,
+            TokenKind::Symbol(Symbol::ColonColon)
+        )
+}
+
+// A parenthesized Product and an arrow alone do not establish a callable.
+// Search for the tail at this delimiter level before treating the Product
+// as a parameter clause. The head parser handles recovery once anchored.
+fn arrow_has_callable_tail(parser: &Parser<'_>, from: usize) -> bool {
+    let (arrow, _) = parser.cursor.peek_at_skip_trivia(from);
+    let mut index = arrow + 1;
+    let mut closes = Vec::new();
+    loop {
+        let (at, token) = parser.cursor.peek_at_skip_trivia(index);
+        if closes.is_empty() && token_index_starts_strategy_annotation_candidate(parser, at) {
+            return true;
+        }
+        match token.kind {
+            TokenKind::Eof => return false,
+            TokenKind::Symbol(Symbol::FatArrow | Symbol::LBrace) if closes.is_empty() => {
+                return true;
+            }
+            TokenKind::Symbol(Symbol::Semicolon | Symbol::Comma | Symbol::PipeGreater)
+                if closes.is_empty() =>
+            {
+                return false;
+            }
+            TokenKind::Symbol(Symbol::LParen) => closes.push(Symbol::RParen),
+            TokenKind::Symbol(Symbol::LBracket) => closes.push(Symbol::RBracket),
+            TokenKind::Symbol(Symbol::LBrace) => closes.push(Symbol::RBrace),
+            TokenKind::Symbol(close @ (Symbol::RParen | Symbol::RBracket | Symbol::RBrace)) => {
+                if closes.pop() != Some(close) {
+                    return false;
+                }
+            }
+            _ => {}
+        }
+        index = at + 1;
+    }
 }
 
 pub(super) fn at_callable_implementation_tail(parser: &mut Parser<'_>) -> bool {
@@ -693,7 +740,8 @@ fn parse_fn_head_prefix(parser: &mut Parser<'_>) -> Option<FnHeadPrefixAst> {
         None
     };
 
-    let returns = if parser.cursor.consume_symbol(Symbol::ThinArrow).is_some() {
+    let returns = if token_index_starts_bare_arrow(parser, parser.cursor.current_index()) {
+        parser.cursor.bump_non_trivia();
         let inherited = parser.active_deduce_list();
         Some(parse_return_clause(parser, inherited.as_ref()))
     } else {

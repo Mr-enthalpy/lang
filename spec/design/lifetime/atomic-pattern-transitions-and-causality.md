@@ -1,32 +1,38 @@
-# Atomic Pattern transitions and causal memory
+# 原子模式变换与内存因果
 
-Status: canonical owner of atomic registration, one-attempt CAS/resource
-handoff and causal memory. D is established for N34–N42/N44–N45; F13–F18
-proofs, source consumers and machine lowering remain pending. N43 is a bounded
-open semantic decision. No executable atomic API or cross-ISA support is claimed.
-All equations and conventional call notation below are metanotation; source
-sketches are target syntax with unconnected consumers.
+本文件规定 `Atomic` 的变换准入、资源交接、共享视图快照和内存因果。
+源码和后端消费者尚待接入。普通模式形成、变换选择及生命周期契约均由
+同一个 `E` 求值。
 
-### N34 — atomic 消费 `$` 已形成的模式类型 [不变量]
+### N34 — Atomic 消费 `# 原子模式变换与内存因果
 
-`atomic` 与 `struct` 处于相同的类型材料消费者层次：输入是已经通过 `$` 及既有结构形成规则生成的完整类型，输出注册所需原子操作的完整类型。**其基本语义是受信任的和模式变换**：在合法原子状态实例上，对既有和 Pattern 的某个当前分支执行不可分割的条件状态转换，相关的状态数、受控资源与结果交付一并提交。它不是新的 enum 声明语法、Pattern 类别、和模式构造器或 Object 坐标。
+本文件规定 `Atomic` 的变换准入、资源交接、共享视图快照和内存因果。
+源码和后端消费者尚待接入。普通模式形成、变换选择及生命周期契约均由
+同一个 `E` 求值。
 
-源码位置：
+ 已形成的模式类型 [不变量]
 
-```text
-formed_type |> atomic::
+Atomic 消费通过[普通递归命名 Pattern](../patterns-overload/pattern-relations-observation-and-extraction.md#92-recursive-named-pattern-material)形成的完整 E：
+
+```lang
+let ReadStorage = ReadBox read::atomic::;
+let WriteStorage = WriteBox write::atomic::;
+let E = ((
+    ((ReadStorage$ resource) (I1 state1, I2 state2) A) |
+    ((WriteStorage$ resource) (I3 state3) B) |
+    ((I4 state4) C) |
+    D
+) E)$;
 ```
 
-Cell 的结构意图用元记号表达为：
+这里 `ReadBox` 和 `WriteBox` 是已形成的完整 `T Box` 分类器。
+前两次调用按普通 V 解释形成完整包装类型。`ReadStorage$` 和
+`WriteStorage$` 在 S 中读取这些类型值。各分支中的 `resource` 是
+结构名，协议由 N46 的形成证据确定。
 
-```text
-P_Cell(T) = Empty | Live(uint32, Stable(T)) | Retired
-Cell(T)   = atomic(Form$(P_Cell(T)))
-```
-
-这不是传统 `f(args)` 源码。实际源拼写必须沿既有生成式声明、`self` 名字及 `$` 极性语法形成。状态身份与 Stable 资源可使用现有 bare Product；若引入更语义化的 `I op S`，它只能是一般合法模式材料运算，不能作为 atomic 私有的第二套模式语法。该 operator 名称不是冻结项。
-
-输入模式可以结构化复用既有 atomic 类型和普通语言材料，形成合法递归组合。一次一般模式构造/提取的“原子完整提交”不自动等于跨执行主体的机器 CAS。
+每层保留实际结构和名字对应。Atomic 由真实形成的类型包装和结构
+证据识别状态、Status 和资源。分支 I/S 均可缺省；实际保留名字遵守
+N35。完整 Object 的构造/提取提交与跨执行主体的 CAS 是不同契约。
 
 ### N35 — Atomic 所有保留状态名字均须对外来源闭合 [不变量]
 
@@ -47,13 +53,21 @@ for every n in RetainedStateNames(A):
 
 该限制使 atomic 的全部保留状态材料不需要依靠外部挂起点的自动 repair 来恢复借用关系；atomic 事务不引入“重演旧 CAS 以修复内部资源”的特殊机制。闭合检查在真实硬件提交前完成，失败不能先安装 `I_b`/`S_b` 再修复来源。外部持有的 Cell ref/share 及凭证仍是普通依赖名字，遵守自己的交接规则。
 
+源资源不论包装协议都受 N35 约束。成功交付的 S share 具有真实
+origin/Region/Color；它保持现有回收责任，不构成第二份所有权。
+
 ### N36 — 受信任的重叠独占染色只覆盖注册协议 [不变量]
 
 atomic 产生的类型提供其原子访问域的受信任兼容关系，允许多个独立执行主体对同一实例具有重叠独占染色。
 
 异构容器仍在入参/捕获传入 Pre 检查存活 Region；只是在 Color 兼容判断上消费这个类型已经提供的保证。容器无需认识“Atomic 是特殊线程类型”，atomic 也不内建 Thread 规则。
 
-该保证不自动授予内部一般资源的重叠独占写，不替代稳定资源借用的独立 Pre，不让任何普通字段访问绕过原子协议。
+该保证不自动授予内部一般资源的重叠独占写，不替代稳定
+资源借用的独立 Pre，不让任何普通字段访问绕过原子协议。
+`S share` 一旦依法交付，只有普通共享读 Color，不能塞进
+一般内部可变性；需要改变受管辖资源则必须另走真实、合法、
+不会与既存 share 冲突的资源权限交接。注册的所有 CAS 操作
+共同维持这一安全条件，不能要求使用者自行约定“不去偷”。
 
 ### N37 — 组合封闭性不向外传播 Atomic 性质 [不变量]
 
@@ -76,8 +90,9 @@ OpenHere 提供注册能力，不提供伪造生命周期/原子权限的能力�
 
 ```text
 P : current ordinary sum-Pattern alternative
-I : comparable state identity/count/index value
-S : held resource admitted by N35
+I : optional state-number material inside the selected state arm
+    (may have nonpublic components)
+S : optional actual T Box under an admitted read/write type wrapper
 v : identity of a committed atomic event
 n/g : ordinary lifetime name and generation
 ```
@@ -88,51 +103,65 @@ n/g : ordinary lifetime name and generation
 
 数值 ABA 不被默认禁止；需要“自观察以后绝无改变”的协议必须另外提供版本/世代判定。无需把语义事件身份实现为无限增长机器整数，也不从名字等同性推出物理地址相等。
 
-### N39 — 原始 CAS：受信任和模式变换、资源交接及结果和模式 [不变量]
+### N39 — 单次 CAS 原子性、Keep/Exit 与失败材料 [不变量]
 
-最基本的原始 CAS 不是仅比较一个整数，而是对已由 `$` 形成的和 Pattern 的**单个实例**实施一次不可分割的条件转换。采用语义元记号（不是新增源码语法）：
+对实例 `a`，已依法构造的 `E` 相对变换值 `t`
+通过 Atomic 受信任消费者发起一次 CAS；
+构造 `t` 时不执行本次 CAS：
 
 ```text
-CAS_a:  (I_a) A  ->  (I_b, S_b) B
+attempt(a:E, t:Transform(E))
+old actual arm A(I_a?, S_a?)
+desired arm B(I_b?, S_b?) after ordinary formation/normalization
 
-old actual state:  A(I_a; S_a)
-provided input:   I_b, S_b
-on success:       atomic state becomes B(I_b; S_b)
-                  old S_a is delivered to caller (if A holds S_a)
-                  result = Committed(S_a, receipt?, version facts)
-on failure:       atomic state is NOT changed by this attempt
-                  input S_b remains with/is returned to caller
-                  no S_a or success credential is produced
-                  result = Rejected(S_b, actual observation if any)
+successful single commit:
+  match actual A with the source evidence required by t
+  publish B and its actual State/Resource/permission Post atomically
+  if old S_a exits its source slot:
+    source resource role write => Committed receives owned S_a
+    source resource role read  => discharge slot custody under existing lazy duty;
+                                  Committed receives valid S_a share
+  if old S_a remains (Keep):
+    source write => Committed has no old-resource access
+    source read, target read => Committed receives valid S_a share
+    source read, target write => Committed receives no S_a share
+  deliver actual committed version and causal facts
+
+failure:
+  atomic instance unchanged by this attempt
+  Rejected returns all *actually formed* incoming new I_b/S_b
+  and their unconsumed ownership; only real failure observations
+  neither returns old S_a nor mints an unproved share/success receipt
 ```
 
-`A/B` 是原有和 Pattern 分支；`I_a/I_b` 是相应分支中实际可比较或更新的状态数；`S_a/S_b` 是分支实际持有的资源位置。成功条件要求**当前模式确实为 A**且满足本次提交所声明的 `I_a` 匹配条件，同时满足 N35 对目标状态全部保留名字（含 `I_b`/`S_b`）的闭合准入、访问、Generation、Color 和生命周期 Pre。仅临时比较且不保留的输入依其普通 Pre 处理。仅与某个旧观察数值相等不能证明提交版本身份不变（允许数值 ABA）。
+源状态或目标状态缺少 `I` 或 `S` 时，相应位置不产生候选材料、返回
+材料或继承关系。按旧状态计算但尚未形成的 `I_b` 不作为返回名字。
+目标确有兼容的资源槽而描述省略该资源时，按已选构造器保留实际旧资源的
+身份，即 `Keep`。省略须有实际槽位和相容性证据。
 
-一次成功提交把 `A` 的资源 `S_a` 与其合法持有责任移交给调用方，把调用方提供的 `S_b` 与其责任移交给新状态 `B`，并形成新提交事件版本；这些都是**同一个原子提交点的契约效果**，不允许先成功机器 CAS 再试着用可能失败的普通 Post 补全所有权。失败不取得 `S_a`，不消耗/遗失 `S_b`，不发布成功凭证。结果是一般语言已经支持的 `Committed(...) | Rejected(...)` 和模式材料，生命期 Post 分别由实际分支建立；回执是普通受控仿射对象而非新资源本体。`Committed` 分支还须承担对其新事件的真实因果描述。
+资源离槽只提交一次责任交接。`write` 源按普通排斥和转移规则交付
+旧资源所有权。`read` 源按分配时登记的延迟释放责任结束槽位持有
+资格，并交付有效的共享借用。`Keep` 保留实际资源身份，其结果依源
+和目标协议确定。没有源资源时，没有旧资源权利可交付。
 
-原始 CAS 的角色可以按原有 Pattern 材料及普通关联 API 做以下**不需要新原语**的变体：
-
-| 受控转换 | 实际语义 |
-|---|---|
-| 没有 `I_a`/`I_b` | 仅用当前分支模式及其他合法条件判定转换；不虚构状态数字段 |
-| 没有 `S_a` 或 `S_b` | 成功时只交付实际存在的资源；另一侧可以为空；不能伪造空缺资源 |
-| `A/B` 资源类型相同且选择保持旧资源 | 通过受控 `cas_keep` 仅改变模式/状态数，使**同一** `S` 保持原位；类型相同本身不推出对象身份相同 |
-| `A=B`，更新 `I` | `update_id` 等 API 在同一模式下进行原子 RMW/条件更新；不取出 `S`、不创建第二份所有权 |
-| 仅观察 `observe/peek` | 取得内存模型允许的当前状态/版本观察；既非模式转换也不交付受保护资源 |
-
-便捷 API 可以组合这些基础能力，但不得绕开同一实例上的提交竞争。`cas_keep` 与 `cas_take` 必须竞争同一个原子状态；绝不因为保留 `S` 就有另一条不受 `take` 约束的计数修改路径。原子状态资源不应通过普通结构提取直接被夺取，见 N35–N37。
-
-**结果的和模式转换还有真实的因果效果。** 成功/失败结果经已有和 Pattern 提取进入实际不同分支，其后只执行被选分支的续体和业务/生命周期动作。分支中已经建立的原子版本观察、提交事实和由此取得的因果过去进入该分支的 `C_K`；随后的原子转换将该执行路径已经建立的因果事实发布到它的新版本中，后来的真实版本观察再继承这些事实（N41）。没有发生的分支、失败时未发生的提交、仅相同的状态数都不能提供这条因果来源。
-
-强 CAS 因实际状态不匹配而失败，若确定实际观察了哪个已提交版本，可按普通失败分支导入其 `rf/Past`；弱 CAS 的虚假失败标记不推出一个具体 `rf`。即使同一种结果 Pattern 的多个来源合流，也仍遵守 N15 的相关来源选择，不恢复已失的分支精度。已封印调用的实际竞争失败不重新选择另一个候选。
+提交边界检查实际的源和目标对应、N35 来源闭合、`Region`、`Color`、
+来源、世代、访问和所有权。完整或局部匹配由 N48 规定。失败分支保留
+已形成的候选材料及其剩余责任。成功和失败各自只发布实际发生的因果
+历史。状态数相等不足以排除 ABA。
 
 ### N40 — 一般安全组合与外部事实的信任边界 [不变量]
 
-ARC、Mutex、Mailbox、队列和事务算法尽可能由普通调用、和模式分支、契约、资源交接及 atomic 材料组合表达，不逐个增加与 atomic 同级的受信任内建。
+ARC、RCU、GC、Mutex、读者登记、版本共存、读写排斥、按需 clone
+与延迟回收都可以是普通 Pattern、CAS、Pre/Post、资源交接和
+调度/effect 构成的**工程协议示例**，不应升格为 Atomic
+本体或强制受信任库。计数有时协调写入资格，有时管理资源
+回收；其存在、用途和维持方法都取决于具体协议。
+语言提供安全组合的必要权限边界，而不事先选择工程实现、
+回收结构或是否等待/重试。
 
 安全组合可递归分解实际 Pre/Post 义务，但不得据此宣称任意目标协议可自动证明。支持族之外的证明缺失不得用一条便捷语言规则掩盖。
 
-原子提交、特定宿主原语及设备/FFI/寄存器等无法从语言内部推出的事实由明确受信任基础负责；额外真实成功事实可用兼容的 unsafe post。没有 unsafe pre，不允许从 `check=true`、OpenHere 或一个普通模式标签创造授权。
+原子提交、原子快照及特定宿主原语等无法从语言内部推出的事实由明确受信任基础负责；额外真实成功事实可用兼容的 unsafe post。没有 unsafe pre，不允许从 `check=true`、OpenHere 或一个普通模式标签创造授权。
 
 ### N41 — 分支因果闭包、版本发布与所有权同步 [定义及不变量]
 
@@ -161,19 +190,38 @@ rf(r)=v &\Rightarrow C_K(s^+)\supseteq Past(v)\cup\{v\},\\
 
 CAS 成功若在其真实原子事件中观察旧版本 `v_a`，新版本 `v_b` 的因果过去还必须包含对应的旧版本及其 `Past(v_a)`。强 CAS 的实际不匹配失败在能够确认所观察版本时增加失败分支的因果知识；虚假失败不自动获得这样的知识。若在 `Committed`/`Rejected` 和模式转换后，路径所知事实不同，则各自的下一个原子提交发布各自的实际因果历史；另一线程**只在真正观察到该新版本时**继承它。这里保证的是 `rf` 与实际续体因果的**传递闭包**，不是所有独立原子对象上事件的全局总序。
 
-已知对象 `a` 的已提交版本 `v` 后，后续对 `a` 的合法观察不能在 `mo_a` 中退回严格早于 `v` 的版本。普通 `peek` 不承诺真实时间最新版本。生命周期 `origin`、原子 `rf`、历史存储来源、Region 和 Color 互不替代；因果知识不自己发放资源权限。
+已知对象 `a` 的已提交版本 `v` 后，后续对 `a` 的合法观察不能在 `mo_a` 中退回严格早于 `v` 的版本。N42 的原子快照可以读取模型允许的较早版本。生命周期 `origin`、原子 `rf`、历史存储来源、Region 和 Color 互不替代；因果知识不自己发放资源权限。
 
 **所有权系统能推出 CAS 资源交接所必须满足的同步义务**：在同一次 CAS 提交上移交 `S_a/S_b` 时，合法继任持有者对转交资源的访问必须看见契约要求的、在转交前已建立的资源状态。这个从生命周期 Pre/Post 推出的可见性要求是**源语言承诺及后端实现义务**，不是声称所有权类型检查会自动产生机器屏障。目标 ISA/编译器必须实际实现这些顺序要求；绝不能用 relaxed 机器指令产生不满足资源交接保证的代码。
 
+任何实际由 CAS 成功分支交付的 `S share` 必须观察到其
+已发布且合法存活的资源状态，满足来源、Region、Color 以及
+`rf` 和 `Past` 所要求的初始化可见性。取得原子快照、相等的状态数
+或读取原子指针，都不能据此取得借用。库协议允许旧读者与新版本共存时，
+旧借用可在其合法 `Region` 内继续读取。要求撤销旧读权的协议必须在
+写入前完成合法交接。两种情况下，普通共享借用都只提供其已取得的读权限。
+
 因此语言核心**不保留**要求用户逐次选择 `relaxed/acquire/release/acq_rel` 的操作数或另设相应的源级内存序原语。所有已确认的基本顺序由分支因果闭包与所有权交接义务导出。是否还需某种 SeqCst 级额外约束，只留在 N43/F15，不能静默加入默认全局顺序。
 
-### N42 — 提交线性化不扩大为 peek 的实时最新性 [不变量]
+### N42 — 共享视图上的原子快照 [定义及不变量]
 
-一次成功 CAS/RMW 有该实例的不可分割提交点。普通 peek 只承诺读取模型允许的已提交版本并导入其因果，不默认真实时间最新值，也不因此取得资源访问权。
+对由 `Atomic` 登记的模式材料 `E`，`Atomic` 在其实际关联类型
+`E share` 上登记一项 `?` 操作。该成员通过普通关联成员查找与调用规则选择。
+只有选中这项登记的操作，并以真实
+`E share` 视图通过普通存活、访问及 `Region`、`Color` 前置条件，
+才取得本条定义的快照契约。普通模式的 `?` 及其余已登记操作按各自
+契约解释。单凭模式形状、共享类型的拼写或一个 `E` 值不能推出这项登记。
 
-消息传递最低要求：T0 成功写出 x 的 vx，再写 y 的 vy；若 T1 实际观察 vy 且 `vx∈Past(vy)`，T1 此后不能对 x 观察早于 vx 的版本。`I=1` 数值相等不代替“观察了 vy”。
+每次成功的快照读取本身是**一次原子动作**。它从同一实例的一个已提交
+版本取得该分支与快照契约公开的状态分量，形成普通无资源值。
+结果排除资源槽、资源内容及其所有权或借用，也不授予隐藏状态的完整
+比较凭证。快照读取不改写原实例或提交新版本。实现必须证明整个投影
+来自同一次原子观测，具体读取算法由后端选择。
 
-必须排除自我支撑的凭空值；“因果图无环”或少量模型测试不能单独充当完整 no-thin-air 形式化。完整操作/公理模型及编译保持性见第四部分证明门槛。
+实际读取事件按 N41 记录 `rf` 并继承该版本的 `Past`。所读版本
+须满足内存模型和调用路径的因果下界，可以是模型允许的较早版本。
+成功 CAS／RMW 的单点提交保证不赋予快照实时最新性。额外内存排序
+仍由 N43/F15 决定。快照消费者和证明义务继续待接入。
 
 ### N43 — SeqCst 是否必需及 `fence;` 的保留边界 [未封闭规范义务]
 
@@ -181,7 +229,7 @@ CAS 成功若在其真实原子事件中观察旧版本 `v_a`，新版本 `v_b` 
 
 现在唯一明确保留的排序设计问题是：**是否仍需要 SeqCst 意义的更强跨对象顺序，以及如果需要应由什么最小机制表达。** `fence;` 是无操作数、独立于单次 CAS 的候选表面形式，而非已经证明完整公理的必备源级原语。若最终采用，它不能创建资源凭证、无中生有地引入其他线程 `rf`，也不能用一个抽象全局顺序代替真实因果与来源证明。是否需要全局 SC 域、何种局部/累积约束，必须先完成 F15 再固定。
 
-原方案的双边 SB（两个执行流分别 `write X; fence; read Y` 与 `write Y; fence; read X`，两读均为初始版本）可作为**考察额外 SeqCst/fence 价值的候选验收实验**，但在这项语义决策之前，**不是语言已承诺排除的结果**。单边 SB、IRIW、2+2W、R/R、R/W、W/R、W/W 与 fence 的累积性均须根据最终选定的规则判定；不能借助某 ISA 偶然提供的更强指令倒推源级保证。
+双边 SB（两个执行流分别 `write X; fence; read Y` 与 `write Y; fence; read X`，两读均为初始版本）可作为**考察额外 SeqCst/fence 价值的候选验收实验**，但在这项语义决策之前，**不是语言已承诺排除的结果**。单边 SB、IRIW、2+2W、R/R、R/W、W/R、W/W 与 fence 的累积性均须根据最终选定的规则判定；不能借助某 ISA 偶然提供的更强指令倒推源级保证。
 
 初始域只包括普通缓存一致共享内存。DMA/MMIO、持久化、设备内存及非一致共享内存需要独立的外部世界对象/域协议。任何选定的额外排序设施都需要真实机器/IR lowering 证明，而不是仅有编译器优化屏障。
 
@@ -195,30 +243,176 @@ CAS 成功若在其真实原子事件中观察旧版本 `v_a`，新版本 `v_b` 
 
 async 与异构执行正交，异构执行与自动逃逸正交。基础内存模型不依赖某个调度器，实际调度器也不得违反它的事件/访问承诺。无死锁、无饥饿、lock-free、wait-free 和回收进展不由资源安全自动推出。
 
-### N45 — 协议样例与有限检查的证明范围 [证明义务]
+### N45 — 工程协议案例与有限检查的证明范围 [证明义务]
 
-ARC 的计数 n 必须等于实际尚未撤销的 ticket 数，包括仍在成功回执内的票据；有效 ticket 关联具体 cell。clone、release、take_last 分别在一次真实成功提交内改变状态和权利；失败不丢票据，上溢不产生票据。
+已有 ARC 票据/计数、Mutex 和 Mailbox 有限模型是检验
+组合表达力的**特定工程案例**，不要求语言提供任何一种
+通用 ARC、RCU、GC、读写锁或 HeapStack 退休协议。
+若某个库选择用计数协调读写，必须自己证明所计对象与
+实际读取凭证的对应；若用于回收，则须证明最后一个合法
+引用/借用终止之前不执行失效 Drop。`n=1` 仅是普通
+状态数事实，不能直接推出唯一存活读者或已经取得独占权。
+已有有限模型不构成对所有 Region、Color、来源、版本、
+机器后端、复杂回收或一般库协议的证明。
 
-Mutex 的安全样例是通过状态转换唯一交接一般资源，不能由 peek Free 发放 guard。Mailbox 的安全样例是 Empty/Full 的单次资源交接，不是对任意大小 T 宣称一条机器指令搬运。
+### N46 — 普通结构、真实类型包装与表示预算 [定义]
 
-这些是组合表达力与局部保持性的验收实例，不使 ARC/Mutex/Mailbox 成为语言核心。特定协议公开的转换必须闭合；不能把“内部操作 memory-safe”直接当成任意人为限制子集已经强制。
+令 `m` 为 read 或 write，`Family_m` 为标准库 Path
+`read::atomic::` 或 `write::atomic::` 解析到的实际类型形成家族。
+以下为普通调用、完整类型和结构证据的合取，不是 Atomic 私有注册表：
 
-附件有限模型重跑结果与原输出一致，但只覆盖有限抽象状态。它没有检验完整 Region/Color、源语言消费者、自动 repair、fence ISA 行为、IRIW、OOTA、overflow、Weak、回收或编译正确性。不得把这些空白写成“全部通过”。
+```text
+WrapperType(m, B, W, route)
+    iff B is the exact complete classifier formed by the ordinary T Box contract
+    and ordinary selection of (B, Family_m) commits the declared wrapper type W
+    and the selected formation of W proves a structural route to B with mode m
 
-## Ordinary transaction and proof boundary
+WrapperLeaf(E, node, m, B, W, route)
+    iff the formed E registers the actual child at node with LeafSource(child, W)
+    and WrapperType(m, B, W, route)
 
-Input is the actual admitted cell/version, selected transition, candidate/frame,
-source names, incoming resource custody, Region/Color and established branch
-causality. Ordinary registered calls form the declared result Pattern. Pre
-checks all those premises and external-origin closure of every retained state
-name, including stored I and S, before the actual
-hardware commit. Committed transfers S_a/S_b and publishes one version/Post;
-Rejected retains S_b and supplies only its actual observation. Contract checking
-and scratch computation are not a post-CAS rollback scheme. Missing registration,
-version/authority, causal or backend consumers are Unavailable, not Rejected.
+FormedWrapper(s, m, b)
+    iff s is the actual resource at such a child of the selected E arm
+    and ordinary construction/extraction along its registered route identifies
+        b of exact classifier B and preserves its actual allocation/ownership evidence
+```
 
-The [lifecycle owner](lifetime-policy-and-overload-boundary.md) alone defines
-Region/Color/origin and repair. The [effect owner](../control-flow/effect-steps-and-continuation-handoff.md)
-owns ordinary result branching and scheduling composition. See the
-[implementation gates](../../planning/lifetime-concurrency-consolidation.md)
-and [paired atomic/memory acceptance](../../planning/lifetime-concurrency-acceptance.md).
+`WrapperType` 的来源是这一标准家族所选调用的成功交付及实际结构。
+别名或绑定在普通求值下交付同一个家族或完整类型时，使用该材料已具有的
+证据。`(ReadStorage$ resource)` 根据
+[普通外部类型叶子](../patterns-overload/pattern-relations-observation-and-extraction.md#external-typed-leaves)
+把实际 `W` 作为叶子来源。仅使用裸 `resource` 或同名 `read`，
+仅有同型布局，或返回不具该结构对应的类型，均不建立推导。
+`FormedWrapper` 检查实际资源，不能由仅有的类型规格虚构一个 Box。
+
+read 入口另消费 [HeapStack N28](heap-stack-and-storage-responsibility.md)
+对同一 Box 分配及世代建立的 lazy 责任。普通带所有权转换可检查实际句柄，
+依法构造 read 包装并保持义务；转换失败保持原资源责任。表示标签只是供
+所选普通检查验证的材料。无资源状态合法。具体包装/检查消费者仍待接通。
+
+I 可以用普通数值 Slice，含非公开分量。Atomic 要求实际 Status 能
+平凡移动、析构及合法原子比较。一次条件提交的逻辑表示至多两个
+目标机器字，预算覆盖实际判别位、模式、比较状态和 Box 链接。
+可压缩时使用单字；双字是准入上限，不保证目标具有双字 CAS。
+没有原生操作时，需要经验证的等价整体提交表示，保持比较、结果
+权限及 N41 因果；缺少该证明或平台消费者时不可用。超预算材料不
+满足当前 Atomic 准入。规范不规定具体布局、后备算法或进度保证。
+
+### N47 — 源资源角色、离槽与 Keep 的成功权利 [不变量]
+
+| 实际动作 | Committed 的旧资源结果 | 源槽位与清理责任 |
+| --- | --- | --- |
+| write Exit | owned S | 在真实独占交接中转移所有权与相应义务 |
+| read Exit 或同 arm read 替换 | valid S share | 原子解除旧槽位持有资格，分配期 lazy 责任继续有效 |
+| write Keep | 无 | 槽位保留 S |
+| read Keep → read | valid S share | 槽位保留 S，继续读协议 |
+| read Keep → write | 无 | 保留 S，按 N48 关闭旧读资格 |
+| 无源资源 | 无 | 无旧资源责任可交付 |
+
+`Forget_read(oldBox)` 的运行时回收动作是 NoOp。解除槽位持有资格
+与交付 share 属同一成功 CAS。已登记的 Drop 续体及其最终释放责任继续承担唯一
+清理，并覆盖新交付的 share 及其他有效读者的实际 Region、origin、
+Color 和存储有效性。这里没有提交后接收人搜索、动态登记或重复
+析构；普通 share 仍只授予证明过的读权限。
+
+### N48 — 完整比较、原位替换与共享权恢复 [不变量]
+
+真实 arm 或协议变化需要匹配完整源 arm 与全部实际 Status，包括
+非公开部分。源值只能通过受控比较观察时仍须完成该比较。继承
+目标材料不减少这个义务。
+
+同 arm 可以部分匹配和更新 Status，并保留未指定的实际分量。
+同 arm read 可更换 Box，条件是同一提交比较确认实际旧 Box 身份，
+实际旧 share 仍有效，且新 Box 具备真实 read 包装与分配期 lazy
+义务。成功交付旧 share 并解除旧槽位资格；合法比较失败归还新 Box。
+同 arm write 不得更换 Box。即使新旧 Box 的业务类型相同，write
+更换也要求真实跨 arm、完整源比较及相应独占交接。
+
+read → write 的 Keep 必须证明此前全部冲突读权结束并已关闭旧读权
+发放。计数值和切片本身不能证明这些条件。该提交不交付 share；
+真正取出 owned Box 另需一次符合 Pre 的 CAS。若该 Box 在分配期
+建立了最终释放义务，后来交付 owned Box 仍须保留该义务和实际
+释放所需的对应，不能重复取得析构责任。write → read 同样需要
+该实际 Box 已具备分配期 lazy 资格。
+
+### N49 — E 关联变换值、结构省略与 Atomic 执行 [定义]
+
+普通变换值的形成、省略正规化及源匹配义务由
+[普通可调用变换契约 §7](../patterns-overload/operator-patterns-and-generative-declarations.md#7-e-relative-transforms-and-snapshot-registration)
+定义。[借用下的普通变换](../patterns-overload/operator-patterns-and-generative-declarations.md#ordinary-borrowed-sum-transforms)
+规定普通取出与保留的结果。Atomic 复用同一描述及普通匹配、交付关系，
+额外为获准的操作保证单点条件原子提交。资源结果和访问由 N47/N48 的
+`read`／`write` 规则确定。普通保留变换交付借用的规则不覆盖这些限制。
+
+`Atomic` 消费实际形成的完整 `E`、已选普通生产者形成的可调用值
+`t` 及其真实类型、分支和绑定对应。拼写 `->::E` 本身不证明登记、
+选择或可调用性。构造 `t` 不取得旧资源权限。
+
+目标省略按实际选定的构造器和兼容槽位解释。保持原分支时适用 N48 的
+同分支规则。保留资源需要实际兼容的目标槽。普通变换提供所需的匹配、
+保留与交付对应。`Atomic` 的借用变更经一次合法条件提交。持有完整值
+时可使用普通拥有值的和模式代数。
+
+对实例的一次尝试可写为目标形状：
+
+```lang
+e transform ?
+  |> (self, data success) { ... }
+  |> (self, data failure) { ... }
+```
+
+准入检查真实实例、资源、`Color`、`Region`、N35 来源闭合及
+其他普通前提。完整比较和目标提交使用同一原子事件中的实际状态。
+准入后比较不符或声明的弱操作发生合法虚假失败时，交付 `Rejected`
+及已形成的候选材料。缺少消费者或证据时操作不可用。已知准入条件
+为假则在提交前拒绝。
+
+变换尝试和共享视图的快照读取各有已选操作。快照的登记、原子读取及结果范围
+由 N42 规定。变换成功或失败的资源交付由 N39、N47 规定，实际版本的因果
+由 N41 规定。普通变换生产者和 `Atomic` 的源码、后端消费者尚待接入。
+
+### N50 — 固定安全证明义务，开放具体方法 [不变量及证明义务]
+
+任何依法发放的 `S share` 都必须真实具有
+origin、Region、Color、版本可见性和支撑
+其整个合法读窗口的资源有效性；share 不得
+包含一般内部可变性。`read -> write` 源协议切换要证明
+此前发放且冲突的读权均已终止，不能只
+凭原子计数的某个数值。槽位交接与权限结果在提交点完成，
+read 的唯一回收责任已在分配 Post 确定，且覆盖提交后的真实 share。
+同一次 CAS 失败须保持所有拟写入状态数/
+资源材料及对应责任。全部保留状态名字
+仍满足 N35 来源闭合，现有权限/Region/
+Color/因果与 N41 同步要求照常成立。
+
+这些是**固定的证明义务**，不是强制的
+RCU/ARC/GC/Mutex/reader guard、Clone/写时复制或 HeapStack
+回收算法。允许旧读者跨新版本存活的协议
+必须保证其读取/Drop 的延迟合法性；
+要求写前撤销旧读权的协议则必须真实
+协作完成写入资格的交接。计数若用于
+协作，必须证明它正确追踪全部活读资格；
+若用于回收，必须证明回收条件；二者都
+不是语言默认含义。安全原语和普通
+生命周期表达式/库可以承担这些证明，
+需要的外部设施可通过相容的受信任成功
+事实提供，但不能形成无条件的权限来源。
+缺源/消费者/证明为 Unavailable；已知
+前提为假在真实 Pre 拒绝，不能事后修复
+已失败提交。F13/F14/F16/F18/F19 仍分别
+负责相应单点事务、内存、组合及证明
+消费者，F15 只保留额外排序选择。
+
+## 事务及证明边界
+
+每次变换尝试的输入包括已准入的实际实例、版本、已选模式变换和表达式材料，
+以及已有的资源持有责任、来源、`Region`、`Color` 和因果观察。提交按
+N39、N47、N48 交接资源和责任。失败按 N39 交还实际形成的拟写入材料及
+剩余责任。共享视图上的原子快照由 N42 单独规定。缺少相应消费者或必要证据
+时，所需操作不可用。
+
+[生命周期契约](lifetime-policy-and-overload-boundary.md)规定来源、`Region`、
+`Color` 和修复。[效果契约](../control-flow/effect-steps-and-continuation-handoff.md)
+规定普通结果分支和调度组合。接入状态见
+[实施清单](../../planning/lifetime-concurrency-consolidation.md)和
+[原子操作与内存模型验收](../../planning/lifetime-concurrency-acceptance.md)。

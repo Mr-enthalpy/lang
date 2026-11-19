@@ -620,7 +620,13 @@ spread. Projected Function Pattern values necessarily erase external structural-
 source authority and cannot recover it, even from compile Val1; opaque internal
 provenance is not permission to navigate/reselect source candidates. Former
 captures become explicit input positions of the projected Function Pattern value.
-LHS lifetime omission preserves U_default for genuinely new input names and
+LHS lifetime omission preserves the scoped outside-tree ref/share origin
+assumptions and recursively composed Pattern-node `lifetime default`
+expressions. At each annotated node local defaults are complete; explicit
+function `lifetime pre` incrementally modifies the material through ordinary
+serial expression evaluation. Caller Pre must validate known names/Regions or
+forward lawful exterior-unknown obligations. Neither default grants Movable.
+Existing captures retain their real continuation history. The ordinary LHS/RHS distinction still
 promises NoDelta on omitted Post; existing InPlace automatic captures instead
 inherit preceding Post under the empty-slice law;
 compatibility checks Pre_F implies Pre_A and Post_A implies Post_F immediately.
@@ -781,5 +787,28 @@ executable Move/Drop. Ordinary extraction inherits those obligations; partial
 default-world recovery in reify cannot restore a hidden non-default dependency.
 An atomic version is a committed event identity, separate from a state number,
 LifeName/generation, origin and rf. Only actual observation imports its Past.
-The [atomic owner](../design/lifetime/atomic-pattern-transitions-and-causality.md)
-defines the one-attempt resource transition and bounded F15 decision.
+
+A recursive named Pattern retains its grouped structural material and each
+actual name occurrence, including inside Products and sum alternatives.
+`E name` and `E (E name)name` share ordinary extraction and construction
+structure. Opposite-context construction uses `$`.
+
+A [mixed-stage compile input](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers) contributes complete compile-side
+observations and an admitted runtime source description. Runtime realization
+participates in extraction and concrete name comparison. The compile key and
+internal Pattern remain fixed.
+
+An E-relative transform is a callable value from a selected ordinary
+producer such as `->::E`. Atomic consumes it with a complete E, actual
+read/write-wrapped `T Box` where present, and finite atomic representation.
+The [typed leaf](../design/patterns-overload/pattern-relations-observation-and-extraction.md#external-typed-leaves) and [wrapper formation](../design/lifetime/atomic-pattern-transitions-and-causality.md#n46--普通结构真实类型包装与表示预算-定义) retain actual
+construction evidence. [Lazy malloc](../design/lifetime/heap-stack-and-storage-responsibility.md#n28--分配成功时注册-lazy-drop-不变量) registers the Drop continuation;
+[Submit](../design/lifetime/heap-stack-and-storage-responsibility.md#n29--relocate-精确向直接父层提交且不执行-pending-不变量) reinterprets only actual covered support uses.
+An actual arm/protocol change compares full Status. A same-arm read
+replacement requires old Box identity and preserves the allocation-time
+release duty. N47 specifies Keep and Exit rights. Failure returns formed input
+material. The [Atomic share snapshot](../design/lifetime/atomic-pattern-transitions-and-causality.md#n42--共享视图上的原子快照-定义及不变量) comes from the `?` member
+registered by Atomic on its associated `E share`. It atomically observes public
+state from one committed version and returns a resource-free value.
+The [Atomic owner](../design/lifetime/atomic-pattern-transitions-and-causality.md)
+defines the complete transaction and causal obligations.

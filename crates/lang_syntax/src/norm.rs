@@ -204,6 +204,18 @@ pub enum NormPattern {
         elements: Vec<NormPattern>,
         origin: NormOrigin,
     },
+    /// A grouped structural layer followed by its own name occurrence.
+    NamedLayer {
+        material: Box<NormPattern>,
+        group_span: Span,
+        name: Box<NormPattern>,
+        origin: NormOrigin,
+    },
+    Sum {
+        alternatives: Box<[NormPattern; 2]>,
+        operator_span: Span,
+        origin: NormOrigin,
+    },
     Skeleton {
         skeleton: NormSkeleton,
         origin: NormOrigin,
@@ -282,6 +294,15 @@ pub fn visit_structural_value_occurrences<'a>(
         }
     }
     match pattern {
+        NormPattern::NamedLayer { material, name, .. } => {
+            visit_structural_value_occurrences(material, visitor);
+            visit_structural_value_occurrences(name, visitor);
+        }
+        NormPattern::Sum { alternatives, .. } => {
+            for alternative in alternatives.iter() {
+                visit_structural_value_occurrences(alternative, visitor);
+            }
+        }
         NormPattern::InterpretationFlip { operand, .. } => visitor(operand),
         NormPattern::Pack { inner, .. } => visit_structural_value_occurrences(inner, visitor),
         NormPattern::Sequence { elements, .. } => {
@@ -365,6 +386,16 @@ pub fn validate_pack_pattern_layers(pattern: &NormPattern) -> Result<(), PackPat
                 });
             }
             validate_pack_pattern_layers(inner)
+        }
+        NormPattern::NamedLayer { material, name, .. } => {
+            validate_pack_pattern_layers(material)?;
+            validate_pack_pattern_layers(name)
+        }
+        NormPattern::Sum { alternatives, .. } => {
+            for alternative in alternatives.iter() {
+                validate_pack_pattern_layers(alternative)?;
+            }
+            Ok(())
         }
         NormPattern::Sequence { elements, .. } => {
             let packs = elements
@@ -513,6 +544,15 @@ fn collect_pattern_pack_errors(pattern: &NormPattern, errors: &mut Vec<PatternVa
                     }
                     NormPatternElem::Unit { .. } => {}
                 }
+            }
+        }
+        NormPattern::NamedLayer { material, name, .. } => {
+            collect_pattern_pack_errors(material, errors);
+            collect_pattern_pack_errors(name, errors);
+        }
+        NormPattern::Sum { alternatives, .. } => {
+            for alternative in alternatives.iter() {
+                collect_pattern_pack_errors(alternative, errors);
             }
         }
         NormPattern::Sequence { elements, .. } => {
@@ -1613,6 +1653,15 @@ impl HoleAlphaNormalizer {
                     }
                 }
             }
+            NormPattern::NamedLayer { material, name, .. } => {
+                self.normalize_pattern(material, holes, root, declared);
+                self.normalize_pattern(name, holes, root, declared);
+            }
+            NormPattern::Sum { alternatives, .. } => {
+                for alternative in alternatives.iter_mut() {
+                    self.normalize_pattern(alternative, holes, root, declared);
+                }
+            }
             NormPattern::Sequence { elements, .. } => {
                 for element in elements {
                     self.normalize_pattern(element, holes, root, declared);
@@ -2218,6 +2267,9 @@ fn normalize_operator_expr(expr: &OperatorExprAst) -> NormExpr {
             args,
             span,
         } => normalize_operator_sugar(operator, *fixity, args, *span),
+        OperatorExprKind::QualifiedBinarySugar { lhs, target, rhs } => {
+            normalize_binary_operator(lhs, rhs, normalize_operator_expr(target), expr.span)
+        }
         OperatorExprKind::NavPath {
             components,
             span,
@@ -2360,26 +2412,12 @@ fn normalize_operator_sugar(
                 },
             )
         }
-        OperatorFixity::Binary if args.len() == 2 => {
-            let source = NormProduct {
-                elements: vec![
-                    NormProductElem::Expr(normalize_operator_expr(&args[0])),
-                    NormProductElem::Expr(normalize_operator_expr(&args[1])),
-                ],
-                origin: NormOrigin::Generated {
-                    rule: NormRule::OperatorLowering,
-                    span,
-                },
-            };
-            make_call(
-                source,
-                operator_target(operator, NormOperatorFixity::Binary, 2),
-                NormOrigin::Generated {
-                    rule: NormRule::OperatorLowering,
-                    span,
-                },
-            )
-        }
+        OperatorFixity::Binary if args.len() == 2 => normalize_binary_operator(
+            &args[0],
+            &args[1],
+            operator_target(operator, NormOperatorFixity::Binary, 2),
+            span,
+        ),
         _ => NormExpr::Unsupported {
             raw_kind_summary: format!(
                 "operator sugar fixity={} arity={}",
@@ -2392,6 +2430,26 @@ fn normalize_operator_sugar(
             },
         },
     }
+}
+
+fn normalize_binary_operator(
+    lhs: &OperatorExprAst,
+    rhs: &OperatorExprAst,
+    target: NormExpr,
+    span: Span,
+) -> NormExpr {
+    let origin = NormOrigin::Generated {
+        rule: NormRule::OperatorLowering,
+        span,
+    };
+    let source = NormProduct {
+        elements: vec![
+            NormProductElem::Expr(normalize_operator_expr(lhs)),
+            NormProductElem::Expr(normalize_operator_expr(rhs)),
+        ],
+        origin: origin.clone(),
+    };
+    make_call(source, target, origin)
 }
 
 fn normalize_member_sugar(object: NormExpr, selector: &SelectorAst, span: Span) -> NormExpr {
@@ -2868,6 +2926,15 @@ fn collect_pattern_binder_names(pattern: &NormPattern, bound: &mut BTreeSet<Stri
         NormPattern::BindingSlot { slot, .. } => {
             collect_pattern_binder_names(&slot.value_pattern, bound)
         }
+        NormPattern::NamedLayer { material, name, .. } => {
+            collect_pattern_binder_names(material, bound);
+            collect_pattern_binder_names(name, bound);
+        }
+        NormPattern::Sum { alternatives, .. } => {
+            for alternative in alternatives.iter() {
+                collect_pattern_binder_names(alternative, bound);
+            }
+        }
         NormPattern::Sequence { elements, .. } => {
             for element in elements {
                 collect_pattern_binder_names(element, bound);
@@ -3298,20 +3365,40 @@ fn normalize_pipe_as_pattern(pipe: &PipeExprAst, holes: &[VisibleHole]) -> NormP
     // sequence material. It does not participate in value-side call lowering.
     let mut elements = Vec::new();
     for segment in &pipe.segments {
-        for element in &segment.elements {
+        let mut segment_elements = segment.elements.iter().peekable();
+        while let Some(element) = segment_elements.next() {
             match element {
                 SegmentElementAst::OperatorExpr(expr) => {
-                    elements.push(normalize_operator_expr_as_pattern(expr, holes));
+                    match (&expr.kind, segment_elements.peek()) {
+                        (
+                            OperatorExprKind::Atom(AtomAst {
+                                kind: AtomKind::Group(material),
+                                span: group_span,
+                            }),
+                            Some(SegmentElementAst::OperatorExpr(OperatorExprAst {
+                                kind: OperatorExprKind::Atom(name),
+                                ..
+                            })),
+                        ) if matches!(&name.kind, AtomKind::Name(n) if n.text != "_") => {
+                            elements.push(NormPattern::NamedLayer {
+                                material: Box::new(normalize_expr_as_pattern(material, holes)),
+                                group_span: *group_span,
+                                name: Box::new(normalize_atom_as_pattern(name, holes)),
+                                origin: NormOrigin::Source(group_span.join(name.span)),
+                            });
+                            segment_elements.next();
+                        }
+                        _ => elements.push(normalize_operator_expr_as_pattern(expr, holes)),
+                    }
                 }
                 SegmentElementAst::Product(product) => {
-                    let product_pattern = normalize_expr_as_pattern(
+                    elements.push(normalize_expr_as_pattern(
                         &ExprAst {
                             kind: ExprKind::Product(product.clone()),
                             span: product.span,
                         },
                         holes,
-                    );
-                    elements.push(product_pattern);
+                    ));
                 }
             }
         }
@@ -3345,6 +3432,19 @@ fn normalize_operator_expr_as_pattern(
             ..
         } if operator.spelling == "$" && args.len() == 1 => NormPattern::InterpretationFlip {
             operand: Box::new(normalize_operator_expr(&args[0])),
+            origin: NormOrigin::Source(*span),
+        },
+        OperatorExprKind::OperatorSugar {
+            operator,
+            fixity: OperatorFixity::Binary,
+            args,
+            span,
+        } if operator.spelling == "|" && args.len() == 2 => NormPattern::Sum {
+            alternatives: Box::new([
+                normalize_operator_expr_as_pattern(&args[0], holes),
+                normalize_operator_expr_as_pattern(&args[1], holes),
+            ]),
+            operator_span: operator.span,
             origin: NormOrigin::Source(*span),
         },
         OperatorExprKind::NavPath {
@@ -3780,7 +3880,7 @@ fn skeleton_span(skeleton: &CanonicalSkeletonAst) -> Span {
 
 fn annotation_operator_pattern_summary(kind: &OperatorExprKind) -> String {
     match kind {
-        OperatorExprKind::OperatorSugar { .. } => {
+        OperatorExprKind::OperatorSugar { .. } | OperatorExprKind::QualifiedBinarySugar { .. } => {
             "operator sugar in annotation pattern".to_string()
         }
         OperatorExprKind::MemberSugar { .. } => "member sugar in annotation pattern".to_string(),
@@ -4214,6 +4314,42 @@ fn dump_pattern(output: &mut String, pattern: &NormPattern, indent: usize) {
             line(output, indent + 1, "components:");
             for component in components {
                 dump_nav_component(output, component, indent + 2);
+            }
+        }
+        NormPattern::NamedLayer {
+            material,
+            group_span,
+            name,
+            origin,
+        } => {
+            line(
+                output,
+                indent,
+                &format!(
+                    "PatternNamedLayer {} group={}",
+                    origin_inline(origin),
+                    span_inline(*group_span)
+                ),
+            );
+            dump_pattern(output, material, indent + 1);
+            dump_pattern(output, name, indent + 1);
+        }
+        NormPattern::Sum {
+            alternatives,
+            operator_span,
+            origin,
+        } => {
+            line(
+                output,
+                indent,
+                &format!(
+                    "PatternSum {} operator={}",
+                    origin_inline(origin),
+                    span_inline(*operator_span)
+                ),
+            );
+            for alternative in alternatives.iter() {
+                dump_pattern(output, alternative, indent + 1);
             }
         }
         NormPattern::Sequence { elements, origin } => {
@@ -4769,6 +4905,15 @@ fn collect_path_value_observations(
     match pattern {
         NormPattern::InterpretationFlip { operand, .. } => {
             collect_free_non_call_names_expr(operand, bound, false, names)
+        }
+        NormPattern::NamedLayer { material, name, .. } => {
+            collect_path_value_observations(material, bound, names);
+            collect_path_value_observations(name, bound, names);
+        }
+        NormPattern::Sum { alternatives, .. } => {
+            for alternative in alternatives.iter() {
+                collect_path_value_observations(alternative, bound, names);
+            }
         }
         NormPattern::Sequence { elements, .. } => {
             for item in elements {

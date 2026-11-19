@@ -167,6 +167,11 @@ Persistent dependency/source encoding remains open, not the propagation law.
 
 ## Lifetime, Color, and access
 
+- How should the fixed
+  [Pattern-local lifetime default](../design/patterns-overload/pattern-relations-observation-and-extraction.md#121-pattern-local-lifetime-defaults)
+  be parsed and connected to ordinary evaluation? Remaining library and
+  representation questions include exact relation APIs, origin-line packaging
+  and whole-item overlap evidence.
 - What concrete IR represents LifeName, NameView, LifetimeValue, Region
   generations, and cleanup placement?
 - What source/storage syntax names an open Color vocabulary?
@@ -174,6 +179,14 @@ Persistent dependency/source encoding remains open, not the propagation law.
 - Which ordinary API names (including depends_on/live_with), argument packaging,
   namespaces, regular-material encodings, caches and boundary-transform
   algorithms implement the closed lifecycle relations?
+- How will source consumers form, register and select E-relative transforms
+  from recursive named Patterns and staged compile producers, and wire the
+  Atomic-registered snapshot member on `E share`? Which target layouts preserve the N46 two-word representation
+  budget, compare the actual old Box and realize a whole conditional commit?
+  The allocation-time Drop registration, typed wrapper formation and role
+  matrix are fixed. The allocation/compare/reclamation implementations remain
+  open. F15 retains the extra SeqCst/fence decision.
+
 - Which representations/algorithms realize the fixed name-item SCC collapse
   to original paired regular forms at Ordinary boundaries and participating
   InPlace exits, including preserved contribution/incidence mappings after an
@@ -188,7 +201,13 @@ Persistent dependency/source encoding remains open, not the propagation law.
   an uncached judgment or an explicit requirement summary?
 
 Cleanup is fixed before observation; Pre precedes mutation; Post describes only
-committed success. Killable is instance-local, MoveEffect is fixed, and Movable
+committed success. Recursive Pattern-local defaults provide relation expression
+material, while explicit Pre serially modifies it. Ref/share origins are
+exterior scoped unknowns by default; caller evidence or outward obligations
+validate them. Arrays conservatively aggregate their origin lines and index
+paths; HeapStack borrow captures and actual allocation/Box origins retain
+Region ordering. Killable is instance-local,
+MoveEffect is fixed, and Movable
 is frontier legality. A killing move ends and starts generations at one cut;
 preserving moves require the narrow proof. Directed with placement, default NLL,
 lexical empty-with, no duplicate destructor and same-K @ observations are closed.
@@ -353,7 +372,7 @@ continuation layout remain representation questions; consumer work is in roadmap
 
 ## Lifecycle/concurrency proof and remaining decision boundary
 
-The [ledger](lifetime-concurrency-consolidation.md) records F01–F18 with their
+The [ledger](lifetime-concurrency-consolidation.md) records F01–F19 with their
 actual proof/consumer status. The following are fixed semantics with pending
 proof/implementation: discrete Region/endpoint order and pure slicing; independent
 Color; source-driven repair and exact automatic/explicit responsibility;

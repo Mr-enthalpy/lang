@@ -1,0 +1,32 @@
+let ReadStorage = ReadBox read::atomic::;
+let WriteStorage = WriteBox write::atomic::;
+let E = ((
+    ((ReadStorage$ resource) (I1 state1, I2 state2) A) |
+    ((WriteStorage$ resource) (I3 state3) B) |
+    ((I4 state4) C) |
+    D
+) E)$;
+let leaf = (E name)$;
+let <idx> item: E (E (E idx)idx)idx = expr;
+let item: ((E (E name)name, E name)) = expr;
+let E (E name)name = expr;
+let (E name)name = expr;
+runtime let <val, length> val: length range = expr;
+let a: uint8 = expr;
+let a: uint8:: = expr;
+let a: uint8$ = expr;
+let a: uint8$$ = expr;
+let fn = (x, y) -> r => { x };
+let inline = (x) -> r { x };
+let arrow = (a, b) -> (c, d);
+let precedence = a + b -> c | d;
+let byPath = ((a, b), (c, d)) (->::E);
+let compact = x.->;
+let dot = x |> .->;
+let transform = ((val1 n1::A::E, _) A::E) ->::E ((newSource)(val3 B::E));
+let keepSource = ((val1 n1::A::E, val2 n2::A::E) A::E) ->::E ((_)(val3 B::E));
+let compare = a == b -> c == d;
+let (let <idx> a: E (E idx)idx, let <other> b: E (E other)other) = expr;
+let <idx> fresh: E (E idx)idx = expr;
+let <inner, outer> value: E (E inner)outer = expr;
+let <idx> conflict: E (E (E idx)idx)idx = differentNames;

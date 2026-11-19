@@ -76,6 +76,13 @@ remain architecture acceptance targets, separate from executed substrate tests.
 
 ## Contracts
 
+For Atomic work, start with [ordinary recursive Patterns](design/patterns-overload/pattern-relations-observation-and-extraction.md#92-recursive-named-pattern-material)
+and [selected ordinary transforms](design/patterns-overload/operator-patterns-and-generative-declarations.md#7-e-relative-transforms-and-snapshot-registration).
+The Atomic owner defines [shared snapshots](design/lifetime/atomic-pattern-transitions-and-causality.md#n42--共享视图上的原子快照-定义及不变量)
+and [conditional execution](design/lifetime/atomic-pattern-transitions-and-causality.md).
+The [status ledger](planning/lifetime-concurrency-consolidation.md)
+separates their definitions from pending source, proof and backend gates.
+
 - [`raw-ast-contract.md`](contracts/raw-ast-contract.md)
 - [`semantic-owner-namespace-graph.md`](contracts/semantic-owner-namespace-graph.md)
 - [`control-flow-end-events.md`](contracts/control-flow-end-events.md)
@@ -86,6 +93,16 @@ remain architecture acceptance targets, separate from executed substrate tests.
 - [`compile-construction-boundary.md`](contracts/compile-construction-boundary.md)
 - [`policy-migration.md`](contracts/policy-migration.md)
 - [Heap/IO/effect migration closure and acceptance](planning/heap-io-effect-migration.md)
+
+The handoffs for [typed Pattern leaves](design/patterns-overload/pattern-relations-observation-and-extraction.md#external-typed-leaves), [mixed-stage invocation](design/static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers),
+[Atomic wrapper admission](design/lifetime/atomic-pattern-transitions-and-causality.md#n46--普通结构真实类型包装与表示预算-定义), [allocation-time Drop registration](design/lifetime/heap-stack-and-storage-responsibility.md#n28--分配成功时注册-lazy-drop-不变量)
+and [committed Heap submission](design/lifetime/heap-stack-and-storage-responsibility.md#n29--relocate-精确向直接父层提交且不执行-pending-不变量) identify the canonical relations.
+The [definition and consumer status](planning/lifetime-concurrency-consolidation.md#definition-and-consumer-status)
+tracks their source wiring and the open memory-order choice.
+
+The [qualified infix rule](design/patterns-overload/operator-patterns-and-generative-declarations.md#qualified-binary-operator-targets)
+defines the explicit Path call target. The [recursive layer rule](design/patterns-overload/pattern-relations-observation-and-extraction.md#formation-and-relational-derivation)
+uses ordinary structural formation and intermediate-layer extraction.
 
 ## Open questions
 

@@ -5,21 +5,56 @@ Status: canonical semantics; source consumers remain pending.
 ## 1. One declaration, two surface projections
 
 ```lang
-P let f = (self,args):compile => { B }
-P let (self,args) f => { B }
+P let f = <T>[capture](self, x:T):runtime -> result:R
+    lifetime pre E_pre lifetime post E_post => { B }
+
+P let <T>[capture](self, x:T) f:runtime -> result:R
+    lifetime pre E_pre lifetime post E_post => { B }
+
+P let <T>[capture](self, x:T) f::path:runtime -> result:R
+    lifetime pre E_pre lifetime post E_post => { B }
 ```
 
-These are equal surface projections of ordinary compile callable material:
+The first two are equal surface projections of the **same general Ordinary
+callable declaration material**, not just of a `:compile` body with a bare
+parameter Product. The schema covers every admitted DeduceList, capture
+specification, contextual self/explicit parameter Pattern (including supported
+Pack and defaults), callable-head P2 (`compile`, `runtime`, or `reify`),
+result `->` clause, ordinary lifetime pre/post head clauses and implementation
+tail (ordinary block, named strategy, default or delete), with their original
+Policy, source order, binder identities, lexical scope and dependencies.
+A particular form remains subject to the same independent grammatical
+restrictions as its ordinary closure counterpart. No omitted component is
+filled by reparsing the other form, and neither body nor capture initializer
+executes twice. In particular, the head's contextual self is not an extra
+explicit call argument.
 
-    CallableDeclaration<Policy, NameHead, SelfPattern, ArgPattern, Body>
-    Norm(Form_call_value) = Norm(Form_pattern_name)
+    CallableDeclaration<Policy, NameDestination, GeneralClosureHead, ImplementationTail>
+    ProjectCallableMaterial(Form_call_value)
+      = ProjectCallableMaterial(Form_pattern_name)  // for the same destination
 
-The callable-value form preserves ordinary self; the name form receives a
-requested NameValue. Source normalization preserves syntax without lookup or
-semantic declarations. Both use ordinary dependency formation and selected
-CompilePartner identity. Requested-name observations enter canonical inputs.
-The established callable may retain legally formed dependencies; invocation
-uses only the actual self-name and admitted dependency material.
+This is a semantic material correspondence, not a mandated new AST node.
+Source normalization preserves the respective syntax without lookup, Pattern
+solving or semantic declarations. Both use ordinary dependency formation and
+selected CompilePartner identity. Requested-name observations enter canonical
+inputs. The established callable retains its legally formed dependencies;
+invocation uses only the actual self-name and admitted dependency material.
+
+The third form extends the **name destination** to `f::path` in the existing
+structural direction. Its terminal selector is `f`; `path` is interpreted by
+the ordinary qualified-name/Path consumer. When the declaration forms a
+qualified name it must satisfy the names owner's resolved structural-root,
+current OpenHere, selector, freshness, ordinary Place/initialization and
+publication premises. The name's destination and associated scope do not
+change the GeneralClosureHead or its P2. The post-destination `:runtime` above
+is callable-head P2, not the initializer-free `P let f::path:t` Place-type
+annotation. The `=>` callable form supplies that syntactic distinction.
+
+Qualified name formation does not by itself establish V_tau callability,
+Pattern registration, a member on a different type snapshot, or a special
+receiver. Concrete, wildcard and HoleRef requested heads keep the existing
+requested-coordinate and specificity rules; this extension grants no
+independent generator or naming authority.
 
 Ordinary P let lhs = rhs has extractive polarity: the known RHS is matched by
 R_Gamma(lhs,rhs,rho). Generative P let H => B has the direction:
@@ -106,6 +141,36 @@ evaluation. OperatorUse and OperatorNameValue are distinct roles: the op
 argument of operator[op] reads the ordinary operator name and does not
 recursively invoke operator[op]. Ordinary lookup, type, policy and lifetime
 checks still apply; this rule is not a raw token bypass.
+
+### Qualified binary operator targets
+
+In an operator expression, a binary-capable operator after its left
+operand may start the target with a written Path suffix. In that
+infix position, `a op::Path b` parses as a binary operation. The
+ordinary Path production consumes its components and the expression
+parser then consumes one right operand at the operator's usual
+precedence. The initial operator token determines both precedence
+and associativity, independent of the qualifier. Required operands
+use ordinary operator recovery. No selection or lookup decides this
+syntax.
+
+```lang
+source ->::E target
+(source, target) |> (->::E)
+
+let arrow = ->::E;
+source (->::E) target
+```
+
+The first two expressions deliver the same ordered two-entry Product
+to the same explicit Path target. Raw preserves the two operands and
+the written operator-rooted Path. Norm uses ordinary binary operator
+lowering with that Path as the call target. At the start of an
+operand, `->::E` is an ordinary Path value expression. A grouped Path
+within a sequence remains ordinary Product/expression call material,
+as in the final example. Its parentheses do not become transparent
+to the infix recognizer. A bare arrow in a callable head retains its
+existing syntactic priority.
 
 ### 2.1 OperatorOverloadGroup and current-slot selection
 
@@ -335,3 +400,172 @@ OrdinaryADLCall != RegisteredStructuralExtraction
 A selected type-path candidate produces a NameExpr; a receiver candidate
 delivers its ordinary result. Dot syntax alone supplies no structural role
 or private Place projection.
+
+## 7. E-relative transforms and snapshot registration
+
+Outside a strong built-in callable arrow position, bare `lhs -> rhs`
+is a binary, non-associative operator at the weakest precedence tier.
+It lowers to `(lhs, rhs) |> operator[->]` through the ordinary operator
+dispatch. In a callable head with an applicable built-in arrow, the return
+clause uses that built-in syntax. An explicit `(->::E)` names the operator
+through a Path and `.->` uses ordinary dot-name dispatch. Grammar decides
+which form is present before resolving any candidate.
+The built-in input/output relation also uses the ordinary operator algebra
+in its own context. A qualified Path and a dot-name selector retain their
+ordinary call binding. The direct `source ->::E target` call uses the qualified binary rule.
+
+For a complete E formed by ordinary Pattern construction, ordinary
+registered members can construct descriptions and a callable transform:
+
+```lang
+let transform =
+    ((val1 n1::A::E, _) A::E)
+    ->::E
+    ((newSource)(val3 B::E));
+let keepSource =
+    ((val1 n1::A::E, val2 n2::A::E) A::E)
+    ->::E
+    ((_)(val3 B::E));
+```
+
+The selected ordinary constructors (including `A::E`, `B::E` and
+`->::E`) determine the actual represented positions and the meaning of
+available material at those positions. RHS `_` is ordinary universerank
+material. Where a constructor contract admits it, it can denote an omitted
+source comparison or inherited target material. Inheritance requires a
+compatible actual slot and evidence for the retained material. A missing
+slot cannot supply a value, resource or permission. Ordinary Pattern-side
+`_` retains its independent anonymous meaning.
+
+The transform retains correspondence to E, its selected producers and
+actual source/target positions. Formation uses ordinary selection,
+dependencies and lifecycle, and confers no access to a held subject.
+
+### Ordinary borrowed sum transforms
+
+With an owned sum `S`, ordinary `S − M + O` consumes the actual
+`M` and constructs `O` under the selected ownership and delivery
+contracts. A borrow of `S` is a capability to access its resident.
+`S ref − M ref + O ref` supplies neither ownership of the old payload
+nor authority to install the new arm. Even a real child projection
+yields only the related borrow. A conditional change through an
+exclusive borrow needs one operation that describes the expected
+source and complete destination, along with the disposition of
+the actual resource. An ordinary transform formed by `->::E`
+supplies that description.
+
+Write `t = Transform_E(M,O)` for the callable value formed by the
+selected ordinary producer from source description `M` and target
+description `O`. In the rule below `M` denotes its formed source
+Pattern. Formation does
+not observe or modify the borrowed resident or acquire its payload.
+
+The ordinary borrowed consumer uses the selected transform on the actual
+exclusive view of a resident of `E`. Its attempt Pre admits the
+observation of the actual source through that live view. A match
+uses the ordinary Pattern relation. Before a matched change can
+commit, the selected operation also checks the target correspondence
+and applicable replacement, Writable, ownership, Region, Color, and
+cleanup premises. A change of resident requires a compatible complete
+replacement of the same declared type. Taking a payload requires
+actual transfer of the resident's owned material through the selected
+operation. Exclusive access and Writable alone do not supply that
+transfer. A shared borrow does not authorize replacement.
+
+The successful action is an ordinary conditional commit. For actual
+continuation `K`, occupied Place `q` and view `u`, the premises are:
+
+```text
+formed t = Transform_E(M,O) and the ordinary attempt through u is admitted
+Exclusive_K(u,q) and Resident_K(q) = v
+R_Gamma(M, Content(v), rho)
+Pre_t(K,q,u,rho,O) proves complete destination, lawful disposition and result
+------------------------------------------------------------------------
+<K,q,u,t> --commit--> <K',q,u',Success(r)> with Post_t
+```
+
+These are observations and actions of the same E. `u'` stands for any
+authority the ordinary Post actually retains or delivers. The rule
+replaces or retains the resident of `q` as selected and grants no
+implicit revival of a view whose target generation ended.
+
+Once admitted, a decided source mismatch follows the selected normal
+failure branch with the resident unchanged by this attempt. The branch
+accounts for any formed candidate materials passed to the operation
+and their remaining duties. Missing required observation or authority
+is unavailable, and a proved-false operation Pre rejects before
+commit. A failed selected operation does not reopen or retry.
+On success the ordinary action commits the complete destination,
+resource disposition and result together through the existing
+Pre/commit/Post. Semantically there is no intermediate empty Place
+or partial Object. Existing views retain their ordinary generation
+and access restrictions.
+
+| Ordinary successful resource disposition | Resource delivered to the caller | Post requirement |
+|---|---|---|
+| Take the actual old payload, by removing it or replacing it with a new payload | Owned old payload | Transfer its ownership and associated duties once. The destination retains the newly installed material, if any. |
+| Keep the actual payload in the resident through the selected correspondence | Shared borrow of that payload | Preserve the actual resource identity and custody. Record the borrow's source and target generation. |
+| The source has no resource at the selected position | No old-resource material | Account for any new material under the ordinary target contract. |
+
+Take and Keep follow from the actual material correspondence. The
+ordinary consumer checks the [lifecycle rules for Take and Keep](../lifetime/lifetime-policy-and-overload-boundary.md#borrowed-sum-transform-lifecycle).
+The Keep result's Pre must establish the borrow window through the
+exclusive view and actual storage support for that window. Its Post
+records the actual origin dependencies and constrains subsequent
+access while the share is live. If the containing generation changes,
+the share needs a lawful projection of the supported resulting
+resident. A failed share Pre prevents the complete change.
+
+An ordinary Option uses an explicitly grouped payload alternative.
+For a live exclusive view `r` of `Opt`, and with the named source and
+target descriptions already formed by ordinary producers, a take
+can be described as:
+
+```lang
+let Opt = (((T Some) | None) Opt)$;
+let take = someSource ->::Opt noneTarget;
+let outcome = r take ?;
+```
+
+| Actual source of an admitted attempt | Selected complete destination or failure | Delivered resource |
+|---|---|---|
+| Some(x), Take | None | Owned x |
+| Some(x), Take by replacement | Some(y) | Owned old x, with y installed |
+| Some(x), Keep | Some(x), with any other lawful update | Share of the actual x |
+| None | Some(y) | No old resource |
+| Decided source mismatch | Failure, no destination committed | Uncommitted candidate material and duties returned |
+
+A realization can exchange complete residents and extract from the
+owned old `Some` via its ordinary consuming correspondence. The caller
+can therefore express safe take or replace through the ordinary
+transform under its actual Move, access and storage Pre. The example
+and table specify consumer behavior. They introduce no take syntax.
+
+### Atomic consumes the same transform
+
+The [Atomic owner](../lifetime/atomic-pattern-transitions-and-causality.md)
+consumes the same E-relative transform descriptions for the material
+it admits. Its consumer adds a single externally atomic conditional
+commit and the associated causal evidence. Its registered access
+can admit controlled overlap under N36. The read/write resource
+protocol determines which admitted updates are legal and which rights
+success delivers, including N47's read Exit share and write Keep with
+no old-resource access. Ordinary transforms use the ordinary result
+table above and carry the usual exclusivity, with no Atomic protocol
+or ordering premise. Both consumers use ordinary Pattern matching
+and complete delivery. The ordinary commit rule alone supplies no
+cross-execution atomicity or memory-order guarantee. In particular,
+the ordinary commit does not establish an atomic modification order
+or rf/Past publication facts. Atomic comparison failures and any
+declared lawful spurious failure follow the Atomic consumer's contract.
+
+### Snapshot member on the Atomic share type
+
+The [Atomic snapshot contract](../lifetime/atomic-pattern-transitions-and-causality.md#n42--共享视图上的原子快照-定义及不变量)
+applies when ordinary call selection reaches the `?` member that Atomic
+registers on the associated `E share` type for admitted Pattern material
+`E`. The receiver must be an actual admitted `E share`. The operation
+reads the public state of one committed version as a single atomic action
+and returns a resource-free value. Ordinary `?` uses retain their own
+contracts. Operator dispatch, transform execution, and this registered
+snapshot have separate consumers and evidence.

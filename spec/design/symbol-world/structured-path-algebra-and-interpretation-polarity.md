@@ -402,6 +402,15 @@ does not copy the original root endpoint or anchor into the relative result.
 It reads no external resident and grants no authority. Its evaluation retains
 ordinary source/dependency checks; projection does not extend anchor lifetimes.
 
+This `p[i]` is indexing **the segments of a formed Path value**. It is not
+the `[]` segment of an ordinary lifecycle access-path expression:
+`[i]` there describes a specific element route, `[0:n]` a conservative
+range of possible element routes and `[0:ω]` a regular repetition. That
+family belongs to the [lifecycle regular-access owner](../lifetime/lifetime-policy-and-overload-boundary.md#11-regular-access-material-and-capability-boundaries)
+and still requires its actual Policy-selected producer, original name/Region
+and access/Color Pre. Neither family's `[]` spelling grants the other
+family's source identity, index validation or structural access authority.
+
 RHS colon is ordinary structural construction, not a new Path or slicing
 primitive. Lexing uses maximal munch `:: > :`. Value parsing uses
 `FullExpr > : > ,`: each colon slot consumes its full ordinary expression,
@@ -512,6 +521,13 @@ Bare names use shared navigation completion. Bare S operators use
 
 Each reached operand executes once under the common E; projection never repeats
 its effects or establishes another stage copy.
+
+For recursive named Patterns, the flip preserves the same actual structural
+positions across construction and extraction. A compile producer invoked by
+the selected interpretation follows the [ordinary staged-input rules](../static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers).
+A name that depends on runtime input uses that actual input at the lawful
+frontier. The sealed compile instance and compile-formed internal Pattern stay
+fixed. Polarity does not manufacture a compile-time NameValue for it.
 
 ### 4.2 No textual macros or implicit binders
 

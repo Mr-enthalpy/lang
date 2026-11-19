@@ -113,8 +113,15 @@ the complete-type classifier home and non-generative RegisteredCallability_T.
 The candidate union above therefore ranges over ordinary callable values,
 each entering through its own classifier's associated ().
 
-Ordinary let f=C installs tau_C:type. Only an already established same-name
-contribution role consumes CallabilityContribution(T_f,C)=c_C^f instead.
+Ordinary let f=C installs tau_C:type. The general named-callable head
+`P let (self,args) f:P2 -> result:R => B` (including DeduceList,
+capture material, lifetime clauses and implementation tails) projects the
+corresponding ordinary closure declaration material. A qualified destination
+`f::path` is resolved and formed by the existing structural-name rules; its
+callable `:P2` is not an initializer-free child Place-type annotation. Neither
+form changes contextual self or creates a registration shortcut. Only an
+already established same-name contribution role consumes
+CallabilityContribution(T_f,C)=c_C^f instead.
 Sibling materials jointly form T_f and all its members against a common
 snapshot; no first sibling supplies a standalone tau_C as the initial resident.
 Neither TypeAdd(T_f,tau_C) nor automatic bulk import of V_tau_C is that relation.

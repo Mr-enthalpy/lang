@@ -26,7 +26,7 @@ that the corresponding source semantics is implemented.
 | Proof-relevant Pattern relation, directional Function Pattern extraction/request and mandatory external structural-source authority erasure | [Pattern relation](patterns-overload/pattern-relations-observation-and-extraction.md) |
 | Restricted Split/D, internal chain completion and residual escape | [extraction chains](patterns-overload/static-pattern-spaces-and-extraction-chains.md) |
 | Pass action, move fixed point and directed with cleanup placement | [mechanical passing](mechanical-lowering/mechanical-argument-passing-and-move-fixed-point.md) |
-| Requested-name producer surfaces, operator dispatch and OG_s | [Operator Patterns](patterns-overload/operator-patterns-and-generative-declarations.md) |
+| Requested-name producer surfaces, operator dispatch, OG_s and ordinary E-relative transform contracts | [Operator Patterns](patterns-overload/operator-patterns-and-generative-declarations.md) |
 | Candidate pipeline and no reopen | [overload](patterns-overload/overload-resolution-design.md) |
 | Compile instance identity, result delivery, opening sources and current storage | [invocation](static-evaluation/compile-instance-invocation-and-result-delivery.md) |
 | Runtime main, active dominance, readiness, whole-original-K CPS correspondence, E projections, delivery-selected ABIKind and O1/O2 | [evaluation](static-evaluation/evaluation-residual-and-optimization.md) |
@@ -34,7 +34,7 @@ that the corresponding source semantics is implemented.
 | Standard current-top malloc/free, direct-parent submission, universal non-root locate capability, lazy Drop and storage responsibility | [heap protocols](lifetime/heap-stack-and-storage-responsibility.md) |
 | Step/Done/Wait, transparent propagation, handlers, throw and forced PatternMiss | [effect steps](control-flow/effect-steps-and-continuation-handoff.md) |
 | Ordinary lifecycle programs, whole-K projection, rank-0 @, Region/Color, Killable/MoveEffect/Movable, contract formation/defaults, boundary compression, regular access and library protocols | [lifecycle](lifetime/lifetime-policy-and-overload-boundary.md) |
-| Atomic formed-type registration, one-attempt Pattern/state/resource CAS, causal memory and bounded extra-order decision | [atomic transitions](lifetime/atomic-pattern-transitions-and-causality.md) |
+| Borrowed Atomic consumes ordinary recursive Pattern and selected transforms, actual Box wrappers and finite representation; owns commit, custody, atomic share snapshots, causal and proof boundaries | [atomic transitions](lifetime/atomic-pattern-transitions-and-causality.md) |
 | Heterogeneous effect-tree containers, independent dispatch and ordinary escape | [computation containers](control-flow/heterogeneous-computation-containers.md) |
 | SafetyPolicy, external admission and trusted semantic base | [unsafe admission](lifetime/unsafe-semantic-admission.md) |
 | Serial unit/fallthrough, separate return-event/target inference and internal completion | [control flow](control-flow/targeted-return-and-d-reduction.md) |
@@ -97,9 +97,9 @@ Type operations use the compile algebra. See the
 
 ## Lifecycle/concurrency implementation evidence
 
-The [N01–N45/M01–M31/U01–U12/F01–F18 ledger](../planning/lifetime-concurrency-consolidation.md)
+The [active N/M/U/F ledger](../planning/lifetime-concurrency-consolidation.md)
 records actual ownership, baseline, carrier/source coverage and proof gates.
-The [105 paired cases](../planning/lifetime-concurrency-acceptance.md) are
-normative source targets. Definitions do not imply proofs or connected consumers;
+The [131 paired cases](../planning/lifetime-concurrency-acceptance.md) are
+normative source targets, not executed source tests. Definitions do not imply proofs or connected consumers;
 extra SeqCst/fence alone remains an undecided ordering rule, while standard
 non-root locate's universal direct-parent relocation is already mandatory.

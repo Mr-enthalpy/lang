@@ -3000,6 +3000,8 @@ fn pattern_origin(pattern: &NormPattern) -> &NormOrigin {
         | NormPattern::Literal { origin, .. }
         | NormPattern::Nav { origin, .. }
         | NormPattern::Sequence { origin, .. }
+        | NormPattern::NamedLayer { origin, .. }
+        | NormPattern::Sum { origin, .. }
         | NormPattern::Skeleton { origin, .. }
         | NormPattern::BindingSlot { origin, .. }
         | NormPattern::InterpretationFlip { origin, .. }

@@ -156,13 +156,36 @@ Actual validation success establishes the delivered Index name's credential;
 serial validation does not itself add concurrent Color. Option's registered
 Some/None operation and ordinary map lookup remain ordinary library contracts.
 Standard non-root locate requires universal guaranteed direct-parent Submit
-and lazy reception before registration; a successful one-state probe is not that
+and allocation-time lazy capability before registration; a successful one-state probe is not that
 proof. This requirement does not constrain arbitrary custom Heap providers.
 
-[Atomic](atomic-pattern-transitions-and-causality.md) registration trusts the
-actual coherent-memory commit facility only within its admitted transition and
-Color domain. Resource closure, same-instance competition and successful
-single-point S_a/S_b exchange must hold before hardware commit. Failed attempts
-retain incoming custody. No unsafe pre, check=true or private ticket constructor
-proves an unrestricted count-changing API enforces ARC. Causal/ownership
-synchronization is fixed; extra SeqCst/fence remains F15 and backend proof pending.
+[Atomic](atomic-pattern-transitions-and-causality.md) consumes ordinary `$`-formed
+recursive Pattern and actual read/write type wrapper evidence and an actually selected ordinary
+E-relative callable transform. Formation grants no
+old-resource access. Its trusted scope is the one-point conditional state
+transition with joint access/ownership Post. Source write ExitSlot returns old
+owned S. Source read ExitSlot discharges slot custody under the established
+allocation-time lazy duty and returns a valid S share. Same-arm read
+replacement additionally compares real old Box identity. Keep write grants no old-resource access; Keep read
+to read returns valid share, while Keep read to write grants no share.
+Failure returns every already-formed proposed new Status/resource and its
+remaining duty, without silent Drop or unproved rights. The separately
+[registered snapshot on E share](atomic-pattern-transitions-and-causality.md#n42--共享视图上的原子快照-定义及不变量)
+requires a real admitted atomic read event and delivers only the public state
+of the observed committed version.
+
+The source Pattern, real I/S origin closure, Region/Color, active
+shares, same-instance competition and actual incoming custody are
+checked before the hardware commit. A read-to-write arm/protocol change
+requires full actual source-arm/Status matching and proof that conflicting old
+shares ended and new issuance is closed. Its Keep success grants no share;
+taking S requires a subsequent CAS. A numeric count alone proves none of this. Ordinary
+Pre/Post may supply a proof, or a compatible externally established
+`unsafe post` may report real trusted success evidence. There is no
+`unsafe pre`, and neither an `unsafe` marker nor `check=true` can
+mint permission or repair a failed transition. Counted reader,
+snapshot/reclamation, COW/clone, ARC/Mutex and waiting implementations
+remain optional library examples. N46–N50/F19 define necessary proof
+and consumer obligations, not a mandatory reader guard or
+lazy retirement implementation. F15 remains the sole extra-order
+design decision; F14/F16 still require causal and backend validation.

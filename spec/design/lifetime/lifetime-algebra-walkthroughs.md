@@ -55,21 +55,28 @@ helpers are ordinary library combinations except explicitly required host
 capabilities and guaranteed external submit facilities. All source execution
 remains pending (LC9–LC12); the traces are positive/negative acceptance evidence.
 
-1. Form `[heap:T]` where heap is absent: retain the required slot without reading
-   a source. At a new call with admitted local heap:T, ordinary candidate-local
-   evidence and unique selection bind that source, then one input transaction
-   moves it. Missing/incompatible local heap rejects or reports unavailable;
-   a global visible at formation cannot fill the gap. `[let heap=globalheap]`
-   instead forms once and ignores later same-name shadowing. Repeated/equal
-   values never merge capture occurrence identities or sealed invocation inputs.
+1. Form `[heap:T ref]` where the required borrowed heap is absent: retain
+   the required borrow-typed capture slot without reading a source. At a
+   later call with an actual, admitted `heap ref` input, candidate-local
+   evidence and unique selection bind that **borrow instance**, not heap's
+   owned value. Its origin points to an already known outer source or a
+   scoped caller-exterior unknown with strict Region obligations; no
+   implicit borrow is created by parameter adaptation. Missing/incompatible
+   borrow rejects or is unavailable; an unrelated global visible at
+   formation cannot fill the slot. `[let heap=globalheap ref]` instead
+   forms the explicit initialized borrow once under the actual global
+   Place/Pre; later same-name shadowing cannot rebind it. Equal values
+   do not merge captures or authorize two exclusive borrows.
 2. At an empty InPlace slice, an existing r carries the preceding Post into
    AutoPre by the identity law Pre(id)=Post(id). The identity interval preserves
    r's complete observed state; it does not assert the closure body is id.
    New input q alone receives default entry generation. Recreating r's
    origin as a fresh default world would break Post=Pre and is rejected. An
    explicit Pre must hold in this inherited world, not overwrite its history.
-3. `let heap = heap ref .. locate(pool);` reads old heap and forms a legal local
-   next_pool dependency. A selected guaranteed `heap relocate;` transfers all
+3. `mut let heap_locate = heap .. locate(pool); let heap = heap_locate ref;`
+   first uses a borrowed outer heap to form a local layer, then borrows that
+   local layer. Neither operation captures/moves the parent heap by value;
+   the actual outer name or scoped exterior unknown and its Region Pre are retained. A selected guaranteed `heap relocate;` transfers all
    covered support/release duties/descriptors, preserving live x's Place and
    history, then reveals the old heap binding. A pool without that guarantee
    cannot submit; metadata exhaustion cannot appear as a hidden legal failure.
@@ -103,6 +110,14 @@ remains pending (LC9–LC12); the traces are positive/negative acceptance eviden
    Yield of an instance-open self root is rejected, never classified as return
    NameExpr. Reify with fixed A || B may choose either runtime branch; a shape
    inferred from runtime values must first be closed by an ordinary wrapper.
+
+A Box may first satisfy malloc Pre under the current located heap H1.
+If that action succeeds, a later guaranteed HeapRelocate can submit its
+covered support to up(H1) and reinterpret the local heap name in the
+lifecycle projection. The actually reached return then compresses that
+support through its real input/capture correspondence. On a path that
+skips relocate, or retains an independent borrow of a local, the same malloc
+can succeed and the applicable return can reject. See HeapStack N28–N32.
 
 ## 1. Branches, recursion and nested InPlace exits
 
@@ -992,6 +1007,18 @@ an assumed unconditional commute with choice combination.
 
 ### try_trust and ordinary success/failure Patterns
 
+The minimally required trusted success assertion may be ordinary lifecycle
+expression material, e.g. `index@ .. in(array@)` in the actual success
+branch's compatible `unsafe post`. Here `in` is an ordinary compile
+operation whose meaning and entailment/transitivity are supplied by the
+library's own contracts. The consuming array access Pre uses the same
+expression material and real name/source/generation mapping. Neither the
+name `try_trust` nor an `in` expression creates a builtin Hoare-logic
+solver; the real validation must hold and remain protected. A forged value
+or bare numeric equality supplies no trusted Post.
+
+
+
 The compact design seed is:
 
 **Origin:** user-source uses, both fragments below. **Basis:** L ordinary ADL
@@ -1080,7 +1107,7 @@ let try_trust =
         unsafe post {
             let (ok_role, err_role) = out@ |> outcome_roles::trust;
             let s = ok_role share |> success_id_role::trust;
-            let validated = (v@, num@, s) |> validated_index_rows::trust;
+            let validated = s .. in(v@);  // s is the projected lifecycle Index role
             let no_fact = () |> empty_rows::lifetime;
             ((ok_role, validated), (err_role, no_fact))
                 |> guarded_rows::lifetime |> form_post return;
@@ -1206,6 +1233,14 @@ An actual Move of s preserves only the relations granted by its selected
 Post and MoveEffect. A selected clone or arithmetic transformation needs its
 own Post; it cannot inherit trust merely by producing an equal integer.
 
+Here `s` in the successful `unsafe post` is already the projected lifecycle
+role for the delivered Index name, so `s .. in(v@)` is the same name-parametric
+shape as the public example `index@ .. in(array@)`; applying `@` again to
+that lifecycle role would instead observe the name of the lifecycle value.
+The qualified source `v@` remains the actual validated container view.
+A different library may choose different names/registration while preserving
+the same ordinary contract and actual source mapping.
+
 The library may protect `capacity` and a range, but must cover **every** action
 that can falsify validation: shrinking length, reallocating/reordering storage,
 replacing the resource generation, changing the index and any other relevant
@@ -1239,14 +1274,9 @@ are illustrative; none denotes a compiler shortcut.
 let range_access =
     (self, v:VectorShare$, index:Index::):runtime -> _:Word::
         lifetime pre {
-            let source = (v@, index@) |> require_validation_source::trust;
-            let generations = (v@, index@) |> require_validation_generations::trust;
-            let shared = (v@, index@) |> require_active_shared_dependency::trust;
-            let interval = (v@, index@) |> require_access_interval::trust;
-            let operations = (v@, index@) |> require_range_read_and_moves::trust;
-            (source, generations, shared, interval, operations)
-                |> concatenate_rows::lifetime
-                |> required_contract_pattern::trust |> form_post return;
+            let relation = index@ .. in(v@);
+            relation |> required_contract_pattern::trust
+                |> form_post return;
         }
         => {
             let element = (v, index) |> element_share_at::vector;
@@ -1257,22 +1287,24 @@ let value = (vector share, safeid) |> range_access;
 ```
 
 The runtime Index enters the compile contract through **index@**, not by
-evaluating its integer in the lifecycle world. These are ordinary typed
-requirement rows consumed by the same W2 self-root constructor and its
-associated check/admit. Their registered ordinary component checks must test:
+evaluating its integer in the lifecycle world. The `in` expression is ordinary
+compile lifecycle material; the enclosing contract constructor/check/admit
+are also ordinary consumers. No compiler-provided Hoare logic is assumed.
+The library's justified `in` relation must itself maintain or consume the
+following specific source/validation/interval observations:
 
 | Requirement / W2 check component | Actual material which must match |
 |---|---|
 | Validation source / source_matches | An already established ValidatedIndex for this index name, mapped source choice, actual Q and protected ranges; v's actual read target must be that Q, not an equal container or copied descriptor |
 | Generations / source_matches | Current index and resource generations, including the permitted actual input-Move mapping; an old index/resource generation supplies no current credential |
-| Shared dependency / actual access requirement | Presence of the required live shared dependency on every protocol-protected endpoint, and actual access/validation conditions. Independent-access Color is checked
-only when present; historical Color alone or absence of conflict is insufficient |
+| Shared dependency / actual access requirement | Presence of the required live shared dependency on every protocol-protected endpoint, and actual access/validation conditions. Independent-access Color is checked only when present; historical Color alone or absence of conflict is insufficient |
 | Interval / region_fits | This access and its temporary element observation lie in the credential's maintained interval and actual target validity; no invalidating resource/index action has intervened |
 | Range/read/transfers / access_is_subset and effects_match | The selected element endpoint is in both the validated range and v's permitted read structure; actual input Moves, temporary borrowing, clone and cleanup satisfy their own Pre |
 
-The row constructors create descriptions, not validation facts. Missing evidence
-makes the required check false or unavailable at its actual consumer; a true
-user check cannot substitute for any operation's independent Pre.
+The registered `in` operation and contract constructor describe/check a real
+source protocol; they do not manufacture validation facts. A failed or
+unavailable required observation rejects or remains unavailable at its actual
+consumer. A user-written true check cannot substitute for independent Pre.
 
 | Call position | Name/credential mapping |
 |---|---|

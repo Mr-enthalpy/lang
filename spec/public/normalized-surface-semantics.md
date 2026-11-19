@@ -322,6 +322,23 @@ OperatorTarget carrier does not itself implement family lookup or the registered
 Pattern/generative projections described by the
 [operator owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md).
 
+### Qualified infix targets
+
+```lang
+source ->::E target
+(source, target) |> (->::E)
+```
+
+Both forms normalize to a call with an ordered Product of two entries
+and a `Nav` target with the written components. The first uses
+`OperatorLowering` provenance. The corresponding bare operator supplies
+the same precedence and associativity but uses the ordinary unresolved
+operator dispatch target. An explicit Path preserves its ordinary
+lookup identity. A standalone `->::E` is a Path expression.
+`source (->::E) target` preserves ordinary expression-sequence call
+binding. In particular, grouping a Path does not put it into infix
+position. Built-in callable return arrows keep their syntax priority.
+
 ### Prefix negative
 
 ```text
@@ -1314,11 +1331,34 @@ surface and must not be assumed:
 
 ## Canonical construction and consumer alignment
 
-The canonical equal callable/name-producer declaration surfaces `P let f = (self,args):compile => B`
-and `P let (self,args) f => B` preserve the same declaration material. This is
-a syntax/semantic handoff requirement, not a claim that the current parser has
-connected the latter form. Neither form normalizes by resolving a name or
-solving a Pattern. Likewise bare `let` preserves an absent override, written
+The canonical callable/name-producer equivalence applies to the **whole
+admitted general Ordinary closure head**: DeduceList, explicit/automatic capture
+material, contextual self and argument Pattern, P2 (including reify), return
+Pattern/Policy, lifetime head clauses, and the implementation tail with its
+source order and effects. For example:
+
+```lang
+P let f = <T>[cap](self, x:T):runtime -> r:R
+    lifetime pre E_pre lifetime post E_post => { B };
+
+P let <T>[cap](self, x:T) f:runtime -> r:R
+    lifetime pre E_pre lifetime post E_post => { B };
+
+P let <T>[cap](self, x:T) f::path:runtime -> r:R
+    lifetime pre E_pre lifetime post E_post => { B };
+```
+
+The first two project equal callable declaration material at the same
+destination; the third uses the ordinary structured-name destination
+`f::path`, which must independently satisfy qualified-name formation and
+publication. The `:runtime` after that destination is callable P2, distinct
+from initializer-free `P let f::path:t`'s Place type. No closure-head component,
+capture source or contextual self is lost, recaptured or evaluated twice;
+`=>` determines the callable form, not a different name or type system.
+These are syntax/semantic handoff requirements, not claims that the current
+parser has connected the named forms. Raw/Norm preserves roles and syntax
+without name lookup or Pattern solving. Likewise bare `let` preserves an
+absent override, written
 `const` / `mut` concrete constraints, and `<p> p let` an explicit deduction hole;
 later elaboration computes Pin/Pout overlays and any default completion.
 
@@ -1407,7 +1447,12 @@ retains Hole identities and inserts no implicit Path conversion or resident Read
 polarity decoding rule. Index p[i] yields relative single-name
 path_pattern. RHS colon forms ordinary Product |> slice; empty structural
 colon/comma slots are unit. Slice consumers use ordinary overload/Pattern
-extraction, without a separate slicing primitive. Textual roots
+extraction, without a separate slicing primitive. A selected typed
+finite-integer slice (e.g. `1u32:`) can be used as an ordinary Pattern
+interval whose missing right endpoint denotes that domain's maximum;
+`NotZero = ((1u32:) NotZero)$` matches all nonzero u32 values and
+`NotOne = ((0u32 | (2u32:)) NotOne)$` excludes precisely one.
+This adds no Atomic-only range grammar, special AST or integer authority. Textual roots
 resolve at resident use, while explicit roots retain their dependencies.
 Current source consumers remain pending, including # and general polarity interpretation.
 
@@ -1602,13 +1647,30 @@ omitted Post still promise NoDelta. The four
 [walkthroughs](../design/lifetime/lifetime-algebra-walkthroughs.md) show the
 design data flow, including the specifically registered Option `?` that
 returns Some's content and throws on None; Product/effect views remain separate. Their schematic APIs do not assert executed source coverage.
+Inside RHS structural `(...)$`, an attached `lifetime default E` is a
+complete local Pattern-node relation declaration, recursively composed
+child-first and ancestor-last. At new-formal Pre it is substituted by real
+Pattern name expressions; `lifetime pre` then serially evaluates ordinary
+lifecycle expression material and incrementally changes only the stated
+relations, before check/admit. Existing captured/held names are never reset;
+Pattern default is no Movable proof. Raw/Norm must preserve node attachment,
+Pattern binder identity and entire relation-expression material; equal layout
+or match applicability cannot cause the default to be erased from the complete
+Pattern identity. The lifecycle path relation interface
+also admits schematic indexed `[i]` / `[0:n]` / `[0:ω]` material; ordinary
+`in` and `origin ||=` relations are not compiler Hoare-logic intrinsics.
 See [LC1–LC8](../contracts/lifetime-program-consumers.md) for the source handoff.
 
 ## 17. Unified resource and effect surface (consumer pending)
 
 The [effect owner](../design/control-flow/effect-steps-and-continuation-handoff.md)
 defines `(yield_val,resume_pattern) wait @{repair}` and
-`(yield_val) |> wait (resume_pattern)@{repair}` as one handoff contract. Repair
+`(yield_val) |> wait (resume_pattern)@{repair}` as one handoff contract. Each actual wait/throw request is stage-indexed by
+the selected enclosing callable's P2: compile requests compile effects,
+runtime requests runtime effects, and reify has an outward runtime horizon.
+Effect-stage matching applies to transparent propagation and declared regular
+effect interfaces; it does not change the Policy of yield values, lifecycle
+projection or the unique E. Repair
 binds to the complete preceding expression more weakly than full E; parentheses
 delimit it, and omission requests source-derived automatic repair, reducing to id only when no replay is required. The lifecycle owner's identity law Pre=Post
 also generates InPlace automatic-capture and held handoff-material AutoPre;
@@ -1677,23 +1739,61 @@ has no preference parameter: malloc/free enter current top and standard
 relocate submits to up(H) without executing Pending. All standard non-root
 locate operations prove universal guaranteed parent submission and lazy
 acceptance before registration. Custom heaps remain ordinary permitted providers.
-Escape fails at production Pre, not by a last-minute reader check at heap Drop.
+A local allocation checks its current Region and establishes its actual
+release policy. A successful lazy malloc registers its actual Drop continuation
+under [N28](../design/lifetime/heap-stack-and-storage-responsibility.md#n28--分配成功时注册-lazy-drop-不变量). Successful relocate maps only submitted
+support uses that depended on the removed binding to the actual restored
+parent under [N29](../design/lifetime/heap-stack-and-storage-responsibility.md#n29--relocate-精确向直接父层提交且不执行-pending-不变量). An actual return checks compression on
+the latest reached projection. Uncovered local dependencies fail at that return boundary.
+
+[Recursive named Pattern material](../design/patterns-overload/pattern-relations-observation-and-extraction.md#92-recursive-named-pattern-material)
+retains `E name`, `E (E name)name` and deeper groups at each Product or
+sum layer. LHS extraction and RHS construction share structural positions
+through ordinary `$` polarity. The [invocation owner](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers)
+fixes the compile instance and internal Pattern before runtime material is
+realized. Runtime holes and concrete name comparison consume the actual
+runtime material. This source structure has a Raw/Norm carrier;
+Pattern formation, extraction and runtime name identity still need
+their semantic consumers.
+
+Ordinary `lhs -> rhs` lowers through binary operator dispatch.
+`lhs ->::E rhs` targets the explicitly written Path with the same
+two-input Product. Callable return arrows keep their existing priority,
+and `.->` supplies an ADL name. Selected A::E, B::E and ->::E contracts determine
+the meaning of RHS `_` in a transform description and whether the target
+can inherit actual material. Transform formation grants no held-subject
+access.
+
+An [ordinary borrowed sum transform](../design/patterns-overload/operator-patterns-and-generative-declarations.md#ordinary-borrowed-sum-transforms)
+describes a conditional complete update through an exclusive borrow.
+A `Some → None` take returns the owned payload and installs complete
+`None`. A retaining success returns a shared borrow of the actual
+resource when the Region and access Pre hold. Its Post records the
+actual borrowing origin. These are ordinary operations under E.
 
 [Atomic](../design/lifetime/atomic-pattern-transitions-and-causality.md)
-consumes ordinary $-formed type material with no external-origin dependency in
-any retained state name, including stored I/Index and S. A selected ordinary
-copy/formation may supply a genuinely closed new name; I's role never erases
-origin. A comparison-only input not retained by the state keeps its normal Pre.
-One successful CAS jointly changes Pattern/state, delivers old S_a and installs
-S_b; Rejected retains S_b. State count, version and lifecycle identity differ.
-Actual branches publish/import real causal histories; ownership visibility
-must be implemented by the backend. No per-operation relaxed/acquire/release
-operand, implicit retry, outer atomic propagation or arbitrary safe-subset proof
-is implied. Only extra SeqCst/fence is undecided at F15.
+adds a single conditional atomic commit and the read/write resource
+protocol for the same E-relative transform. It consumes admitted E/transform and actual read/write wrappers over `T Box`.
+For admitted `E`, Atomic registers a [snapshot member](../design/lifetime/atomic-pattern-transitions-and-causality.md#n42--共享视图上的原子快照-定义及不变量)
+named `?` on the associated `E share`. A selected call through that
+member reads public state from one committed version in one atomic
+action and returns a resource-free value. Other `?` operations follow
+their own contracts.
+The [external typed leaf](../design/patterns-overload/pattern-relations-observation-and-extraction.md#external-typed-leaves) retains the complete type.
+[N46](../design/lifetime/atomic-pattern-transitions-and-causality.md#n46--普通结构真实类型包装与表示预算-定义) requires the actual wrapper construction/extraction
+correspondence.
+Status has trivial Move/Drop and valid atomic comparison within the total
+two-word budget. Arm or protocol change requires full comparison. A
+same-arm read update can replace an actual compared Box with a new read Box
+whose lazy release duty was installed at allocation. A same-arm write
+replacement fails. Read exit discharges slot custody under existing lazy
+duty and returns a valid share. Write exit returns owned S. Keep and
+read-to-write follow N47–N48, including closure of prior conflicting read
+authority. A real failed comparison returns all formed incoming material.
 
 [Independent containers](../design/control-flow/heterogeneous-computation-containers.md)
 transform ordinary effect trees and separately check dispatch, Color and escape.
 [Status and paired acceptance](../planning/lifetime-concurrency-consolidation.md)
 distinguish definitions, proofs, syntax, consumers, tests and backends. This
-section changes no lexer/parser/Norm/diagnostic behavior and claims no source
-implementation of these pending protocols.
+section records Raw/Norm syntax coverage separately from the pending
+source protocols and proof consumers.

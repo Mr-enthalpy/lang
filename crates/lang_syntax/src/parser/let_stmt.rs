@@ -366,7 +366,7 @@ fn parse_binding_pattern(
                 TokenKind::Operator(crate::OperatorSpelling::Dollar)
             )
         });
-    if grouped_flip {
+    if grouped_flip || parser.cursor.starts_grouped_named_pattern() {
         let expression = super::expr::parse_pattern_expr_until(parser, |p| {
             at_binding_pattern_boundary(p, context) || p.cursor.at_name("with")
         });

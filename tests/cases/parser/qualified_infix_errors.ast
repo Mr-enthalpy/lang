@@ -1,0 +1,112 @@
+Program
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName missing
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  QualifiedBinarySugar
+                    lhs:
+                      Atom
+                        Name source
+                    target:
+                      NavPath
+                        components:
+                          component Operator ->
+                          component Name E
+                    rhs:
+                      Error "expected operator right-hand side"
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName chained
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  OperatorSugar fixity=Binary operator="->"
+                    lhs:
+                      QualifiedBinarySugar
+                        lhs:
+                          Atom
+                            Name a
+                        target:
+                          NavPath
+                            components:
+                              component Operator ->
+                              component Name E
+                        rhs:
+                          Atom
+                            Name b
+                    rhs:
+                      Atom
+                        Name c
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName malformed
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  QualifiedBinarySugar
+                    lhs:
+                      Atom
+                        Name a
+                    target:
+                      NavPath
+                        components:
+                          component Operator ->
+                          component Name E
+                          component Error "operator cannot be an outer navigation component"
+                    rhs:
+                      Atom
+                        Name b
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName next
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name x

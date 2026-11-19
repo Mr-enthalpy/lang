@@ -84,21 +84,21 @@ they do not run RequiredCapture fulfillment or an initializer.
 
 | ID | Positive required behavior | Negative / non-derivable boundary | Defined semantics | Pending consumer | Executed evidence |
 |---|---|---|---|---|---|
-| C01 | Form [heap:T] without heap; admitted new call binds local heap | Do not read a source at formation | D dependency §3 | P LC9 | S syntax only |
-| C02 | Admitted matching context fulfills requirement | Missing/wrong local heap cannot use formation global | D dependency §3 | P LC9 | S unavailable gate only |
-| C03 | [let heap=globalheap] retains initialized source | Later local shadow cannot rebind it or replay initializer | D dependency §3 | P realization | S source distinction only |
+| C01 | Form required [heap:T ref] without a source; admitted new call binds an actual heap borrow | Do not move the parent heap into the capture or invent an implicit ref at binding | D dependency §3 | P LC9 | S syntax only |
+| C02 | Admitted heap ref satisfies required borrow capture | Missing/wrong ref or exterior-region evidence cannot use unrelated global or copy by value | D dependency §3 | P LC9 | S unavailable gate only |
+| C03 | [let heap=globalheap ref] forms initialized borrow at creation | Later local shadow cannot rebind/reforge borrow or replay initializer | D dependency §3 | P realization | S source distinction only |
 | C04 | Raw/Norm [x] has required slot, no initializer | Never synthesize =x; malformed required annotation diagnoses | D syntax contract | P source fulfillment | S |
 | C05 | Candidate-local evidence and unique seal precede selected binding | Post-seal capture failure never selects runner-up | D overload §4 | P LC9 | S pre-install/prepare gate only |
 | C06 | Self/captures/args transfer coherently once; live output maps to successor context with separate name, custody and cleanup proofs | No duplicate Kill, implicit self-field ownership or permission from name mapping alone | D call §6/effect §2 | P LC3/LC9/LC12 | None |
 | C07 | Fn value exposes capture specifications as explicit formals even without same-name context at projection | No projection-site value witness or hidden source recovery proves future calls | D Pattern §11 | P FnExtract | None |
 | C08 | Env Object forwards heap/IO fields normally | Wrapper grants no new access/lifetime or mandatory Box | D Pattern §11.2 | P ordinary forwarding | None |
-| H01 | Locate reads old heap then installs shadowing node | No self-resolving new binding or special push | D heap §1 | P LC11 | None |
+| H01 | mut let heap_locate = heap .. locate(pool); let heap = heap_locate ref forms local heap and explicit current borrow | No self-resolving new binding, owner Move into parent, or hidden parent rewrite | D heap §1 | P LC11 | None |
 | H02 | Subborrow next_pool, replenish outward and terminate at None; standard globalheap exposes the compatible terminal root and terminating root protocol | No reverse prev pointer or pool copy inferred; an incompatible standard root fails its contract, other user Heap/IO need no isomorphism, and root capacity is not infinite | D heap §1 | P standard provider/library | None |
-| H03 | Standard malloc starts at top and replenishes through each next_pool | Top need not supply physical storage; no magical search | D heap §2 | P library | None |
-| H04 | Free submits real credentials and responsibility to current top, which handles/forwards | No preference arg or forced historical pool path | D heap §2 | P credentials | None |
-| H05 | Guaranteed submit preserves live Places and reveals old heap | Name deletion/history rewrite cannot substitute for transfer | D heap §4 | P LC11 | None |
+| H03 | Standard malloc starts at actual top and replenishes through next_pool. Its Post establishes fresh origin and support, and registers the actual Drop continuation on lazy success | No infinite capacity, forged unsafe Post or final registration at logical end | D heap §2 | P library | None |
+| H04 | Immediate free routes actual credentials and duty through the current top. Lazy release uses the verified existing registration | No preference arg, forced historical pool path or second Drop registration | D heap §2 | P credentials | None |
+| H05 | Guaranteed submit preserves live Places, restores the direct parent and maps only support uses covered by the actual duty handoff and removed binding | No equivalent mapping from spelling, arbitrary Region lengthening or history rewrite | D heap §4 | P LC11 | None |
 | H06 | At standard locate, every non-root pool proves universal direct-parent Submit and lazy acceptance over all admitted reachable states | No hidden metadata-allocation failure on legal submit | D heap §4 | P guarantee proof | None |
-| H07 | Post-submit free uses transferred complete duties | No orphaned or duplicate release duty | D heap §4 | P library | None |
+| H07 | After Submit, lawful finalization uses the same previously registered lazy Drop continuation at the parent | No speculative drain, orphaned duty or duplicate release | D heap §4 | P library | None |
 | H08 | Standard relocation requests exactly up(H); repeated legal operations traverse one link each | No no-action source rewrite or automatic alias repair | D heap §§4–5 | P library | None |
 | H09 | All local layers submitted eliminates covered local storage barrier | Unsubmitted/uncovered or independent ref barrier still blocks | D heap §5 | P regular proof | None |
 | L01 | Lifecycle-continuation id has equal complete Pre/Post; empty slicing composes that identity | No reset of names/generations/history/cleanup duties, weakening of complete observations or creation of unknown facts | D lifecycle §2.1.8 | P LC10 | None |
@@ -146,6 +146,81 @@ Optional result adaptation additionally follows
 normal Error-shaped data delivery has no implicit effect, while explicitly
 requested value/effect adapters retain ordinary contracts. All adapter execution
 is pending; these rows add no Rust coverage claim.
+
+## Named callable, wait-stage and Pattern-local default acceptance
+
+These are canonical **design targets**; no parser, lifetime source consumer,
+effect execution or proof is claimed as connected by this specification change.
+The source `lifetime default E` annotation attaches to a named node
+inside RHS structural Pattern material. Its relation API is ordinary compile
+material and actual runtime/source consumers remain pending; no new generic
+Hoare-logic engine is claimed.
+
+| ID | Admitted or contrasting source | Required relation and negative boundary |
+|---|---|---|
+| NW01 | `P let f = <T>[cap](self,x:T):runtime -> r:R lifetime pre Epre => B` versus `P let <T>[cap](self,x:T) f:runtime -> r:R lifetime pre Epre => B` | Same formed declaration material, actual capture occurrence order, self, Pattern roots, Policy, return, clause, effects and single body. No extra self input, recapture, double initializer or compiler-only restriction |
+| NW02 | Same pair with compile/reify P2, explicit/omitted return and legal implementation tails | General corresponding heads use their existing grammar and semantic rules; no special named restriction or inferred Function Pattern `->` for ordinary closures |
+| NW03 | `P let (self,args) fname::path:runtime => B` versus initializer-free `P let fname::path:t` | Structural target is NameCoord(resolved root(path),fname) with real OpenHere/freshness/Place/initialization. `:runtime` is callable P2, not child Place type; no V_tau/Pattern registration or authority from spelling |
+| NW04 | Runtime callable actually executes wait; compile callable actually executes wait | Request runtime effect in the former and compile effect in the latter; same-stage effect contract is checked at each actual boundary, not inferred from payload Policy |
+| NW05 | Compile function forwards runtime wait unhandled, or runtime function forwards compile wait unhandled | Stage/interface mismatch cannot silently recolor, migrate or reopen; an admitted ordinary handler/wrapper must close it, with actual control/cleanup still checked |
+| NW06 | Reify callable wait versus reverse-dependent compile work | Outward wait/effect shape is runtime and compile-closed; internal reverse-dependent work keeps active-boundary premises. No second E or user-directed effect stage |
+| NW07 | New typed formal has recursive Pattern-local lifetime default and no explicit Pre | Construct ordinary serial material `U_base; PatternDefault` with actual binder-to-name substitution; ref roots exterior and distinct by default, share roots may alias; no Movable or source permission follows |
+| NW08 | An explicit lifetime pre modifies only one default relation | Evaluate default and Pre as ordinary serial lifecycle expressions, before check/admit; unmodified relations persist and actual caller evidence must satisfy the changed material |
+| NW09 | Existing InPlace capture or held Wait continuation carries a ref/share source | Preserve preceding Post/actual exterior-source mapping through handoff; no redefault, copied authority or unconditional long life |
+| NW10 | Name forgetting or recovery across Policy ranks | Ordinary Pattern-default relation is not universal Movable; preserve non-default source dependencies and executable Move/Drop; restore only a concrete instance satisfying the full default in closed reify, never infer inverse identity |
+| NW11 | Two lifetime default declarations on the same Pattern node | New local declaration fully replaces old node relations; descendant defaults compose before shallower nodes and only colliding whole relation items are replaced |
+| NW12 | Pattern-local srt default nested in wrapper with sibling others | srt sees only own registered descendants; caller maps root srt@ to object@ or nested srt@ to object@.srt, never sibling/ancestor by spelling |
+| NW13 | Ref/share formal default with external unknown | Ref has a scoped outside-owner origin distinct from other independent refs; share may alias; a known external name substitutes, unresolved unknown forwards checked Region obligations outward |
+| NW14 | Indexed paths with known i, runtime length n, repetition ω | Lifetime paths are respectively [i], [0:n], [0:ω]; they denote route descriptions, not index trust, range permission or resident-value reads |
+| NW15 | Array insertion with non-default origin line | ordinary array@.origin \|\|= out_lines collects conservative external origin/Region, before actual insertion; lacking legal compression rejects |
+| NW16 | Extract element from anonymous array | New name inherits conservative aggregate origin; remainder keeps aggregate constraints; no subtraction or lost operation responsibility |
+| NW17 | try_trust success produces Index name and index@ .. in(array@) | Successful compatible unsafe Post can establish the real validation fact, ordinary range-access Pre consumes the in expression; false/missing protocol evidence rejects without invented builtin Hoare-logic inference |
+| NW18 | Borrowed heap-stack locate with mut let heap_locate = heap .. locate(pool); let heap = heap_locate ref | Parent heap remains borrowed, not moved through capture; actual source has strict Region order and unknown duties propagate to caller |
+| NW19 | malloc and Box storge dependency | Allocation has real fresh independent origin and Region less than supporting heap; boxobject@.storge .. live_with(heap@) is ordinary relation; actual top source known or exterior unknown |
+| NW20 | Wait or exit with captured borrowed heap | At request Pre reject fixed future Region/Color conflict; at Post local compression reject uneliminated local heap_locate dependency; legal Wait inherits valid Post without rerunning a global solver |
+| NW21 | Two Patterns match identical contents with distinct node-local lifetime defaults | Preserve distinct default expression observations in complete Pattern/Norm identity; do not merge by matching, field layout, Core or cached TypeValueId alone |
+| NW22 | A pair of share formals with distinct known caller roots enters may-alias default Pre | The interface forgets the distinction through an ordinary lawful relation abstraction without rewriting caller history; no equality or inequality becomes an assumption |
+| NW23 | Path p[i] segment extraction and lifecycle [i]/[0:n] route construction | Keep ordinary Path-relative-segment and lifecycle path-route meanings distinct under their actual selected operation and evidence; neither creates index trust or access permission |
+
+## Recursive Pattern, Atomic and Heap acceptance targets
+
+AS01–AS14 cover grammar preservation, formation,
+admission, execution and remaining proof obligations. The [parser fixture](../../tests/cases/parser/recursive_named_patterns_and_arrow.lang)
+and [Norm fixture](../../tests/cases/norm/recursive_named_patterns_and_arrow.norm)
+exercise syntax. The [qualified-infix Norm golden](../../tests/cases/norm/qualified_infix.norm)
+exercises the ordinary Path target and two-entry Product. The owner rules for [typed leaves](../design/patterns-overload/pattern-relations-observation-and-extraction.md#external-typed-leaves), [staged inputs](../design/static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers), [wrappers](../design/lifetime/atomic-pattern-transitions-and-causality.md#n46--普通结构真实类型包装与表示预算-定义), [registered Drop](../design/lifetime/heap-stack-and-storage-responsibility.md#n28--分配成功时注册-lazy-drop-不变量), [submitted support](../design/lifetime/heap-stack-and-storage-responsibility.md#n29--relocate-精确向直接父层提交且不执行-pending-不变量) define the semantic cases. The contract outcomes below are normative
+scenarios even when the frontend boundary is executable.
+
+| ID | Positive required behavior | Negative or non-derivable boundary |
+|---|---|---|
+| AS01 | Raw/Norm goldens cover bare `uint8`, `uint8::`, `uint8$` and `uint8$$`. Under `R_Gamma`, bare `uint8` binds the classifier rank; the others follow Path and local polarity. | Each flip preserves rank/correspondence and adds no Move, Read or lifecycle action. Formation and extraction remain semantic obligations. |
+| AS02 | The same sealed frame description with two lawful runtime realizations forms the same pre-body CompileInstance and compile-formed internal Pattern. Extraction and concrete runtime name comparison consume the respective actuals. | Missing required compile observation/source description is unavailable. A runtime value cannot choose the internal Pattern or extend the key even when already known. Equal instance/Pattern does not imply equal name. Mixed-stage execution pending. |
+| AS03 | `let <inner, outer> value: E (E inner)outer = expr;` uses two actual layer observations. The repeated `idx` example joins three observations of one binder. Structural construction and extraction share the same admitted incidence. | With decided unequal observations on a shared binder the derivation fails. Missing correspondence/equality stays unavailable. Different positions with equal spelling retain their distinct roles. Source relation consumer pending. |
+| AS04 | Goldens compare `source ->::E target` with `(source, target) \|> (->::E)`, and cover prefix Path, Product operands, mixed precedence, and bare callable arrows. | Grouped `source (->::E) target` stays an ordinary chain. Missing RHS and mixed non-associative chains diagnose. Ordinary qualified lookup and selected transform execution remain pending. |
+| AS05 | Goldens preserve `_` in transform operands. The selected ordinary constructors interpret omission, same-arm partial matching and compatible inheritance. | No global `_` privilege or invented slot. Cross-arm partial status comparison rejects at applicability/Pre. Producer and Atomic execution pending. |
+| AS06 | An ordinary selected canonical read/write producer on exact T Box forms a complete wrapper type; an explicit external leaf retains it in E. The actual occupied child supplies ordinary construction/extraction evidence of that Box. | A same-spelled bare structural name supplies no wrapper. A lexical binding or alias preserves the role only when it delivers the actual complete formed type; an eager allocation fails the separate read check. Semantic consumers pending. |
+| AS07 | Single-word or two-word logical representation satisfies the width gate with trivial Status Move/Drop and legal comparison. A target without native dual CAS may realize an equivalent whole commit. | Wider material violates admission. A target missing a validated way to compare and commit the whole state reports unavailable. Backend proof pending. |
+| AS08 | Same-arm read may partially update Status and replace S by comparing actual old Box identity in the single commit. Commit returns valid old share; failed comparison returns formed new Box. | No split comparison, immediate reclamation of old Box while the share lives, or dropped candidate. Execution and memory evidence pending. |
+| AS09 | A write source can replace Box on a real arm change with full comparison of actual source Status and a legal ownership handoff. | Same-arm write replacement rejects, and partial cross-arm matching cannot omit hidden Status. Execution pending. |
+| AS10 | Read-to-write Keep requires actual end of all conflicting readers and closed issuance. Commit grants no share; a fresh CAS may later deliver owned S. | A counter or the first CAS cannot certify the second. Permission and backend proof pending. |
+| AS11 | Lazy malloc success registers the actual Drop continuation for an allocation/generation. Checked adoption may wrap that Box for read. Forget is runtime NoOp; the same registration survives until legitimate final execution. | A copied/stale tag and a matching type cannot convert an eager Box. Neither logical end nor CAS creates another cleanup continuation or duty. Allocation and retirement consumers pending. |
+| AS12 | After legal Submit, a support use tied to the actual removed heap binding and covered allocation maps to the restored direct parent; return compresses the latest reached LifeProject. | An identically named binding, unrelated borrow, foreign generation, skipped or failed Submit establishes no mapping. No Region extension by substitution. Projection and escape consumers pending. |
+| AS13 | Two paths share a local successful malloc and differ by their reached Submit Post. Return uses only the current committed projection, including any later invalidation, and ordinary input/capture correspondence. | Future return choices do not constrain allocation. Return cannot reconstruct missing Submit, extend a dying reference or register Drop. Full E/heap wiring pending. |
+| AS14 | Atomic registers `?` on the associated `E share` of admitted E. A selected call on the actual view reads one committed version atomically and returns public state with no resource. It imports the actual rf/Past. CAS separately checks ABA and preserves branch-specific Post and candidate duties. | Ordinary Pattern `?` and an unregistered share type do not inherit the snapshot contract. No mixed-version result, freshness, resource rights or hidden match evidence follows. Missing evidence or false Pre cannot become Rejected. Source and backend proof pending. |
+
+## Ordinary borrowed sum transform acceptance
+
+These are required source behaviors for the
+[ordinary transform consumer](../design/patterns-overload/operator-patterns-and-generative-declarations.md#ordinary-borrowed-sum-transforms).
+Execution remains pending.
+
+| ID | Positive required behavior | Negative or non-derivable boundary |
+|---|---|---|
+| BT01 | Owned material can use ordinary S − M + O. An exclusive borrow uses a selected source-to-destination transform on the actual resident. | Borrowed projection and a shared view do not authorize take or replacement. |
+| BT02 | On an admitted match of Some(T), take installs complete None and delivers owned T once. Replace can install a new complete Some, including within the same ordinary arm, and delivers the old T and its duties. None to Some installs the new resource with no old resource to deliver. | A bare ref cannot consume its target. A non-movable payload prevents take. No empty intermediate Place, retargeted saved projection, or duplicate Drop. |
+| BT03 | Keep returns a read-only share of the actual retained payload through a lawful projection of the committed generation. Pre checks the borrow and storage windows, actual access and Color. Post records actual origin dependencies, and ordinary access bars conflicting mutation while the share lives. | Equal selectors or values cannot restore an invalidated generation. False Region or Color Pre rejects before the update. Missing evidence is unavailable. A resource-free source produces no share. |
+| BT04 | Decided source mismatch on an admitted ordinary attempt leaves the resident unchanged by that action and accounts for incoming material and duties. | Neither missing evidence nor false borrow/replacement Pre becomes an ordinary match failure. No selected reopen or retry. |
+| BT05 | Atomic consumes the same transform description for admitted material with one conditional atomic commit and its N47–N48 read/write rights. | The ordinary complete commit confers no cross-execution atomicity, ordering or Atomic rights. Its retaining share rule confers no share on Atomic write Keep. |
 
 ## Stage, Policy and two-round calls
 
@@ -387,7 +462,7 @@ executed success.
 | 106-GN03 | Concrete and general generators both apply | Use ordinary specificity, without a separate generator priority. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-GN04 | Incomparable maxima or failure after selection | Ordinary ambiguity/terminal failure; do not reopen generation. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-GN05 | Expression body versus an ordinary enclosing body | Use the same result delivery without inserting a semantic temporary for surface differences. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
-| 106-GN06 | Value/call and Pattern/name forms of one compile declaration | Preserve the established equivalence domain without extending it to arbitrary lexical let. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
+| 106-GN06 | Value/call and Pattern/name forms of a general Ordinary callable declaration | Preserve all legal general head components, P2, capture, output, contracts and implementation tail at the same destination, without extending this correspondence to arbitrary lexical let. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-GN07 | let a=e and let _=e | Remain extraction/binding of an existing RHS, not generation. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-GN08 | let <a> (c Pattern) a | Reach a's layer, then apply the same R_Gamma with compatible valuations. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
 | 106-GN09 | Intermediate extraction in an unordered layer | At most one whole intermediate extraction, which may contain several named fields. | [GN owner](../design/patterns-overload/operator-patterns-and-generative-declarations.md) | Defined semantics; source/evaluator consumer pending |
@@ -512,7 +587,7 @@ executed success.
 | 106-PT19 | Index ((field::adl)#)[0] | Return relative field:: path_pattern, not string or a path retaining the adl endpoint. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT20 | Equal segment strings with different endpoints or explicit roots | Omega retains endpoint distinctions and actual root material, not an extra dependency coordinate. Ordinary dependency/lifetime obligations remain in force; strings cannot recover identity or authority. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
 | 106-PT21 | Reconstruct a Path whose target became unavailable | Surrounding Read_resident checks current access/validity without reopening or deriving authority from projection. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
-| 106-PT22 | Ordinary slice construction versus indexing | Indexing yields a relative single-name path_pattern. RHS colon forms ordinary Product |> slice; empty colon/comma slots are unit. Path/container families define ordinary Pattern extraction and boundary interpretation, with no Slice_Omega primitive. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
+| 106-PT22 | Ordinary slice construction versus indexing | Indexing yields a relative single-name path_pattern. RHS colon forms ordinary Product \|> slice; empty colon/comma slots are unit. Path/container families define ordinary Pattern extraction and boundary interpretation, with no Slice_Omega primitive. | [Owner](../design/symbol-world/structured-path-algebra-and-interpretation-polarity.md) | Defined semantics; source/evaluator consumer pending |
 
 The consumer scenarios are independently testable. Each acceptance or rejection depends
 on its owner's premises; schematic source is not an unconditional theorem.
@@ -629,7 +704,7 @@ recorded only after its actual consumer has positive and negative tests.
 | H03 | distinct Pin/Pout/HoleOverride | Hole override does not inherit ElabIn/ElabOut restrictions | [Policy](../design/symbol-world/policy-and-static-flow-projection.md) | consumer pending |
 | H04 | each Hole Pattern and Policy | solve independently through ordinary relation; compatible valuations required | [Pattern](../design/patterns-overload/pattern-relations-observation-and-extraction.md) | consumer pending |
 | H05 | <p> let <p let h> | inner p references preceding exact PatternRoot/HoleBinderId | [Pattern](../design/patterns-overload/pattern-relations-observation-and-extraction.md) | frontend scope; semantic consumer pending |
-| B01 | bool formation | true|false unique structural branches; if/else ordinary value bindings | [Pattern](../design/patterns-overload/pattern-relations-observation-and-extraction.md#9-bare-nodes-and-pipe-branch-shorthand) | consumer pending |
+| B01 | bool formation | true\|false unique structural branches; if/else ordinary value bindings | [Pattern](../design/patterns-overload/pattern-relations-observation-and-extraction.md#9-bare-nodes-and-pipe-branch-shorthand) | consumer pending |
 | B02 | bare branch | unique actual opaque value; no observable machine encoding or automatic field | [Unified](../design/unified-static-name-and-structural-semantics.md#15-bare-branches-and-ordinary-bool-values) | consumer pending |
 | B03 | compile Pattern/runtime value | ordinary branch matching; no extra runtime-policy type | [Policy](../design/symbol-world/policy-and-static-flow-projection.md) | consumer pending |
 | B04 | pipe name versus explicit head | Raw/Norm head equals (_, let _: (name)$) | [Pattern](../design/patterns-overload/pattern-relations-observation-and-extraction.md) | frontend connected: joint_extraction_and_polarity / parser and Norm goldens |
@@ -833,7 +908,7 @@ Owners: [dependency](../design/symbol-world/dependency-observation-and-realizati
 | CSF-T13 | CallType(tau) versus CallValue(x) | Keep CallTarget=tau, ActualSelf=c* versus both x. CallableOwner, ReceiverType, Param and tag/activation ReturnFrame remain independent with one selected identity. | call |
 | CSF-T14 | Pass self observed through capture Param | One coherent transaction, all affected Pre before existing atomic commit, joint Post. No duplicate whole-self/capture Kill, implicit Copy or reuse of killed generation. Preserve invokes no clone. | call / lifetime |
 | CSF-T15 | Param contains ref/share handles | Move handles with existing target/generation/origin. No direct referent ownership transfer, promotion or region extension. | call / lifetime |
-| CSF-T16 | Recursive (args) |> self, same tag with nested activations | Enter fresh activation through CallAnchor with actual Movable/borrow facts. Complete resolves tag plus active activation, respecting barriers/cleanup; no old sealed call reopens. Continue/break-like paths need no new primitive. | call / return |
+| CSF-T16 | Recursive (args) \|> self, same tag with nested activations | Enter fresh activation through CallAnchor with actual Movable/borrow facts. Complete resolves tag plus active activation, respecting barriers/cleanup; no old sealed call reopens. Continue/break-like paths need no new primitive. | call / return |
 | CSF-T17 | Mandatory source-authority-erasing Function Pattern projection, later compile-known Val1 | Expose former captures as explicit interface input; retain only opaque implementation facts/contract and remove external structural navigation/reselection authority, with no opt-out or recovery from known Val1. O specialization stays within interface. Before/after full Type equality is not required; ordinary complete-tau transport still retains V_tau. | Function Pattern |
 | CSF-T18 | Library reify forwarder changes lowest present external compile demand to runtime | Require ordinary same-Type migration, active ClosedReturn/ClosedInterface, readiness/dependency/lifetime evidence, and independent output migration if needed. No built-in Function Pattern conversion or restored source. | Function Pattern / Policy |
 | CSF-T19 | Same callable/result in let v=expr versus v=expr, including uninitialized designated target | E selects ABI1 versus ABI2. Alias/initialization/replacement authority remains checked. RVO/NRVO, result-type equality and direct versus temporary construction cannot switch ABIKind. | E delivery |
@@ -964,7 +1039,7 @@ decider assumed by this matrix.
 | LA02 | A directly written pre/post program uses an established runtime name whose business value is unknown | Evaluate ordinary lifecycle computation once, without @@ or a second partner. Do not read the unknown value, prune future paths or commit both branches | LC2/LC4; W1 |
 | LA03 | Form structure with actual registered selected field operations | Paired lifecycle fields satisfy `(x.field*)@ = x@.field_lifetime*`. Missing partner/registration is unavailable, not a special resolver; `$` itself adds no action | LC1/LC8; W1 |
 | LA04 | Observe equal literals/temporaries and two bindings/Places with equal residents | Temporaries can have LifeNames without Places; NameBinding, Place, target and generation remain distinct. Equal content or type does not merge identities/credentials | LC1/LC3; W1/W3 |
-| LA05 | Implement select_one with two legitimate guarded source returns and omitted explicit Post | Compress real material into the source-choice Post plus all other outward effects. `r1 || r2` is one correlated source choice, never simultaneous exclusive permission | LC4/LC5; W2 |
+| LA05 | Implement select_one with two legitimate guarded source returns and omitted explicit Post | Compress real material into the source-choice Post plus all other outward effects. `r1 \|\| r2` is one correlated source choice, never simultaneous exclusive permission | LC4/LC5; W2 |
 | LA06 | Extract into a handwritten Function Pattern with omitted Post | A genuinely NoDelta implementation can match; select_one's non-NoDelta implementation cannot. A sufficient explicit compatible contract can match. Known Val1/provenance cannot restore erased structure | LC6; W2 |
 | LA07 | Evaluate a contract helper containing local Products, branching, calls and justified recursion | Intermediates need not be NameExprs; final direct self-root complete type and associated behavior obey real instance/OpenHere/result rules. OpenHere alone grants no world-write authority | LC4/LC6; W2 and owner §9 |
 | LA08 | Caller Pre fails, while the body could admit an assumption; compare successful four-way use | Fail before the action/body. Successful path uses caller check/body admit/body check/caller admit with actual Param/output/activation mapping, without body replay or double transfer | LC3/LC4; W1/W3 |
@@ -1280,10 +1355,12 @@ tests is neither a lifecycle-source test nor a summary/recursion proof.
 
 ## Lifecycle and concurrency consolidation acceptance
 
-The [105 paired cases](lifetime-concurrency-acceptance.md) supersede conflicting
-old scenario assumptions in their named domains. [Evidence by N/M/U/F](lifetime-concurrency-consolidation.md)
-uses D/P/S/C/T/B explicitly. Existing table column P means pending consumer,
-not proof discharged. Full source acceptance for these 105 cases is pending;
+The [131 paired cases](lifetime-concurrency-acceptance.md) define the current
+paired source targets. [Evidence by N/M/U/F](lifetime-concurrency-consolidation.md)
+uses D/P/S/C/T/B explicitly. In that ledger P means proof discharged for a
+stated domain and C means a connected semantic consumer. The earlier
+Pending column in this document lists missing work. Full source acceptance
+for these 131 cases is pending;
 Rust event-set/transaction tests and the bounded Python model are separately
 identified. F15 is the sole open extra-memory-order decision; F17 is a fixed
 standard-locate obligation with proof/consumer pending.

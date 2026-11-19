@@ -1,0 +1,404 @@
+Program
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName direct
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  QualifiedBinarySugar
+                    lhs:
+                      Atom
+                        Name source
+                    target:
+                      NavPath
+                        components:
+                          component Operator ->
+                          component Name E
+                    rhs:
+                      Atom
+                        Name target
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName explicit
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                Product
+                  elements:
+                    Expr
+                      Pipe
+                        Segment has_incoming=false
+                          OperatorExpr
+                            Atom
+                              Name source
+                    Expr
+                      Pipe
+                        Segment has_incoming=false
+                          OperatorExpr
+                            Atom
+                              Name target
+              Segment has_incoming=true
+                OperatorExpr
+                  Atom
+                    Group
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              NavPath
+                                components:
+                                  component Operator ->
+                                  component Name E
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName standalone
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  NavPath
+                    components:
+                      component Operator ->
+                      component Name E
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName grouped
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Name source
+                OperatorExpr
+                  Atom
+                    Group
+                      Expr
+                        Pipe
+                          Segment has_incoming=false
+                            OperatorExpr
+                              NavPath
+                                components:
+                                  component Operator ->
+                                  component Name E
+                OperatorExpr
+                  Atom
+                    Name target
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName products
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  QualifiedBinarySugar
+                    lhs:
+                      Product
+                        elements:
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  Atom
+                                    Name a
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  Atom
+                                    Name b
+                    target:
+                      NavPath
+                        components:
+                          component Operator ->
+                          component Name E
+                    rhs:
+                      Product
+                        elements:
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  Atom
+                                    Name c
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  Atom
+                                    Name d
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName precedence
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  QualifiedBinarySugar
+                    lhs:
+                      QualifiedBinarySugar
+                        lhs:
+                          Atom
+                            Name a
+                        target:
+                          NavPath
+                            components:
+                              component Operator +
+                              component Name math
+                        rhs:
+                          OperatorSugar fixity=Binary operator="*"
+                            lhs:
+                              Atom
+                                Name b
+                            rhs:
+                              Atom
+                                Name c
+                    target:
+                      NavPath
+                        components:
+                          component Operator ->
+                          component Name E
+                    rhs:
+                      OperatorSugar fixity=Binary operator="|"
+                        lhs:
+                          Atom
+                            Name d
+                        rhs:
+                          Atom
+                            Name e
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName scope
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  QualifiedBinarySugar
+                    lhs:
+                      Atom
+                        Name a
+                    target:
+                      NavPath
+                        components:
+                          component Operator ->
+                          component Group
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    Atom
+                                      Name qualifier
+                          component Name E
+                    rhs:
+                      OperatorSugar fixity=Postfix operator="?"
+                        arg:
+                          Atom
+                            Name b
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName subtractionPath
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  NavPath
+                    components:
+                      component Operator -
+                      component Name math
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName closure
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  Atom
+                    Closure Ordinary
+                      FnHeadPrefix
+                        params:
+                          ParamClause
+                            extract:
+                              elements:
+                                BindingSlot let=false
+                                  deduce:
+                                    None
+                                  pattern:
+                                    Binder
+                                      TextName x
+                                  annotation:
+                                    None
+                                  with_clause:
+                                    None
+                                  initializer:
+                                    None
+                                BindingSlot let=false
+                                  deduce:
+                                    None
+                                  pattern:
+                                    Binder
+                                      TextName y
+                                  annotation:
+                                    None
+                                  with_clause:
+                                    None
+                                  initializer:
+                                    None
+                        returns:
+                          ReturnClause
+                            slot:
+                              BindingSlot let=false
+                                deduce:
+                                  None
+                                pattern:
+                                  Binder
+                                    TextName result
+                                annotation:
+                                  None
+                                with_clause:
+                                  None
+                                initializer:
+                                  None
+                      BodyBlock
+                        forms:
+                          ExprForm
+                            Expr
+                              Pipe
+                                Segment has_incoming=false
+                                  OperatorExpr
+                                    Atom
+                                      Name x
+  Let
+    slot:
+      BindingSlot let=true
+        deduce:
+          None
+        pattern:
+          Binder
+            TextName groupedInfix
+        annotation:
+          None
+        with_clause:
+          None
+        initializer:
+          Expr
+            Pipe
+              Segment has_incoming=false
+                OperatorExpr
+                  QualifiedBinarySugar
+                    lhs:
+                      Atom
+                        Group
+                          Expr
+                            Pipe
+                              Segment has_incoming=false
+                                OperatorExpr
+                                  QualifiedBinarySugar
+                                    lhs:
+                                      Atom
+                                        Name source
+                                    target:
+                                      NavPath
+                                        components:
+                                          component Operator ->
+                                          component Name E
+                                    rhs:
+                                      Atom
+                                        Name target
+                    target:
+                      NavPath
+                        components:
+                          component Operator ->
+                          component Name F
+                    rhs:
+                      Atom
+                        Name next

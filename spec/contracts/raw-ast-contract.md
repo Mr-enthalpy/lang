@@ -41,8 +41,9 @@ const / mut / compile / close / let
 
 are not lexer keywords.
 
-There are 20 structural `Symbol` variants. `Ellipsis` is structural Pattern
-syntax.
+The lexer retains its 20 structural Symbol variants. `ThinArrow` is shared by
+the built-in callable return boundary and the ordinary arrow operator.
+`Ellipsis` and postfix `~` retain their ordinary roles.
 
 Dot-family maximal munch is:
 
@@ -673,6 +674,31 @@ and reparses it as contribution. New source wiring requires span/recovery and
 golden coverage, and may not feed semantic facts back into parsing.
 
 
+## Recursive named Pattern and arrow handoff
+
+In S context, `E name`, `E (E name)name` and deeper nesting retain their
+ordinary Raw expressions, group spans, Product layers and name occurrences.
+This applies to extraction slots, annotations and opposite-context
+construction under `$`. Norm records grouped named layers and ordinary
+sum alternatives, and visits their name occurrences under the current
+PatternRoot and HoleBinder environment.
+
+Outside an applicable callable head, bare `->` is a binary operator at
+the weakest, non-associative tier. A syntactic callable tail anchors the
+built-in return clause, including recoverable malformed tails. An infix
+binary-capable operator followed by `::` uses an ordinary operator-rooted
+Path target. `QualifiedBinarySugar` retains the left operand, that Path
+including its component spans, and the right operand. The token at the
+start of the Path supplies the same precedence and associativity as
+the corresponding bare operator.
+
+A Path in operand position (such as `let arrow = ->::E;`) remains a
+Path expression. A grouped Path in `source (->::E) target` preserves
+its Raw Group and the ordinary sequence. `.->` uses ordinary dot-name
+sugar. Infix lowering and the explicit Product call use the same
+two-entry input structure and written Path target. Semantic lookup
+and selection remain ordinary consumers.
+
 ## Structural interpretation handoff
 
 Policy syntax preserves ordinary independent constraints; internal Pv/Pp are linked adjacent ranks.
@@ -687,7 +713,12 @@ Read_name/Read_resident, path_pattern projection (#), relative single-name
 indexing and general $ consumer wiring are pending. # observes values rather
 than source AST; general $ does not insert Path conversion. RHS colon slots
 normalize to ordinary Product |> slice, empty colon/comma slots complete to unit,
-and no Slice node enters semantic IR. LHS colon remains annotation.
+and no Slice node enters semantic IR. Ordinary numeric slice Pattern formation
+(such as `1u32:` and `2u32:` under the selected u32 Slice consumer) uses
+that same carrier: an omitted upper bound means the finite integer domain
+maximum. The frontend must preserve typed endpoint values and opposite-context
+`$` information without claiming it has evaluated the range, matched a
+value, recognized an Atomic Status role or checked ownership. LHS colon remains annotation.
 Polarity-flip carriers preserve the opposite-context operand and arbitrary
 nested flips, with even/odd polarity and exact alpha-bound Hole identities.
 They establish no resident read, Stage change, semantic evaluation or readiness. Optional generator heads, HoleRef
@@ -808,5 +839,5 @@ association may be inferred from partial recovery.
 Postfix ? preservation selects no Option/validation semantics. Explicit @{...}
 still reports UnsupportedEffectRepair until its low-binding carrier connects.
 Atomic/fence/thread source consumers and the extra F15 fence decision are not
-implemented by names or normalizer nodes. This migration changes no parser,
+implemented by names or normalizer nodes. This contract changes no parser,
 normalizer or diagnostic behavior.

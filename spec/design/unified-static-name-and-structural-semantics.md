@@ -49,6 +49,11 @@ I = CompileInstance(CompileInstanceKey)
 n_I = InvokeName(I)
 ```
 
+[Compile invocation](static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers)
+fixes key admission for mixed-stage inputs. It uses canonical compile-side
+observations and admitted runtime source descriptions. The realized runtime
+input supplies neither an extra key coordinate nor an internal Pattern choice.
+
 The instance identity is independent of its result value. A compile call may
 return an integer, Product, closure, existing type, fresh self-rooted type, or
 another ordinary Object without changing the instance-formation rule.
@@ -808,9 +813,9 @@ held successor material:
 
 换了 self/activation/名字 generation 时使用真实映射，不把旧 self 和新 self 当成同一对象。新 resume 入参仍在真正调用时形成；未绑定 RequiredCapture 仍是声明，不因手握一个后继续体提前获取来源。
 
-## U05 — 类型全称命题是具体判断的证明，不是替代
+## U05 — Pattern 默认关系不替代实际名字判断
 
-“类型规定全部准入实例满足某性质”和“具体名字在具体事件上合法”可以同时存在。前者为后者提供证据，后者仍消费当前外部 Region、Access、Color 及目的地条件。
+Pattern 节点内的 `lifetime default` 是普通表达式材料，按子到父递归合成完整局部关系声明；`lifetime pre` 在默认表达式之后串行规约，只增量修改它明确表达的关系。普通 Pre/check/admit 消费最终形成的关系与真实调用映射，不存在另一个全局约束求解器。ref/share 默认外部来源是当前名字访问树之外的有根 unknown，已知来源代入，仍未知则沿调用边界递归传递带严格 Region 的义务；ref 默认来源互异，share 默认 may-alias。Pattern 默认不证明任何具体实例的 Movable，真实事件仍验证 Region、Access、Color、来源与目的地。
 
 同理，无外部 origin 是 atomic 全部保留状态名字（含保留的 I/Index 与 S）的准入约束，不给外部 Cell 借用永久存活；只有合法普通生产 Post 能建立真正闭合的新名字，状态数角色不清除旧依赖。保存 Move/Drop 操作给遗忘对象可执行性，不给 reify 可逆性。
 
@@ -819,7 +824,8 @@ held successor material:
 - Pattern 合流决定来源选择是否仍由结果模式区分。
 - 边界 origin 压缩移除已经退出的局部中间名，保留实际外部依赖。
 - SCC 在既定 closure 边界坍缩到原始正则材料，不凭类型重新重建名字身份。
-- 匿名名字遗忘主动降低精度，只在默认可恢复或保守摘要充分时准入。
+- 匿名名字遗忘主动降低精度，只在默认可恢复或保守摘要充分时准入。`[]` 路径表示已知 `[i]`、运行期区间 `[0:n]` 和重复 `[0:ω]`；元素外部来源以 `array@.origin ||= out_lines` 的普通关系表达式汇总并保留 Region 义务，取出新名继承、剩余数组不扣减。
+- runtime:compile 到 runtime:runtime 保留非默认 origin 与 Move/Drop 可执行材料；闭合 reify 的反向恢复必须让真实实例满足完整 Pattern 默认，偏离进入已声明失败。
 
 四者均不能提高权限或伪造 None/unknown。它们不是同一个“把看不懂的东西变 unknown”的操作。生产式重演也不得穿过已合法遗忘的边界恢复隐藏历史。
 
@@ -841,9 +847,14 @@ held successor material:
 
 ## U09 — Heap 回收不取代内存排序
 
-Heap 接收 Pending、Region 上界拒绝逃逸及单次责任交接解决存活/回收合法性；它们不自动建立发布/订阅的 rf、对象修改序或 fence 保证。
+malloc 登记实际 lazy Drop、各边界验证 Region 及单次责任交接解决存活/回收合法性；它们不自动建立发布/订阅的 rf、对象修改序或 fence 保证。
 
-反之，成功 CAS、fence 或观察到某版本不能证明目标 heap 足够长寿、没有读者逃逸或可以跳过 deferred Drop。不得用“回收安全”和“内存可见性”相互充当证明。
+malloc 的 Pre 只检查当下分配；HeapRelocate 的成功 Post 将已交接支持
+证据中的实际遮蔽绑定重解释到已恢复的直接父层，保留历史 origin、
+Places 和独立借用。
+实际返回独立检查最新 Post 下的名字压缩。分配期建立的 lazy 责任
+覆盖 Atomic read 槽位退出及合法旧 share；Forget_read 为运行时 NoOp。
+回收寿命、实际读权和 rf/Past 发布事实各有证据。
 
 ## U10 — Atomic 的复用边界是输入结构和关联 API
 
@@ -856,13 +867,33 @@ general $-formed Pattern/type material
     -> ordinary safe operations / Pattern branches / effects
 ```
 
-原始 CAS 是受信任的一般和 Pattern 状态变换，不是新的和模式本体。成功在单一真实提交点共同交接 `S_a/S_b` 并形成 `Committed`，失败形成 `Rejected`；不同结果分支的后续原子动作发布各自真实因果事实（N39、N41）。
+[普通递归命名 Pattern](patterns-overload/pattern-relations-observation-and-extraction.md#92-recursive-named-pattern-material)
+按普通中间层规则观察实际内层材料，再递归调用同一个 `R_Gamma`。
+共享 HoleBinder 的估值必须相容。构造使用同一已准入结构对应及独立的
+Pre/commit。普通限定中序 `source ->::E target` 向显式路径交付双输入
+Product，已选构造器决定可调用变换是否成立。
+[普通借用和模式变换](patterns-overload/operator-patterns-and-generative-declarations.md#ordinary-borrowed-sum-transforms)
+在独占借用下匹配实际源并提交完整目标。take 交付实际旧资源及其责任。
+保留资源的成功分支按普通 Region Pre 构造 share，并在 Post 记录真实
+origin 依赖。Atomic 消费同一变换描述，提供条件原子提交。Atomic 的
+准入另查完整 E、实际外部类型叶子的包装形成及实例对应（N46）与有限表示。
+全源匹配约束真实 arm/协议变化；同 arm read 可在同一提交确认旧 Box
+后原位替换，同 arm write 不可替换。N39/N47–N50 定义提交、Keep/Exit
+权利、失败候选交还及读协议转写协议时读权限的结束。N41 规定版本因果。
+[共享视图原子快照](lifetime/atomic-pattern-transitions-and-causality.md#n42--共享视图上的原子快照-定义及不变量)只由 `Atomic` 在实际关联类型 `E share`
+上登记的 `?` 提供。选中的成员以一次原子读取交付同一已提交版本的
+公开状态，结果不含资源。其他 `?` 调用遵守各自的普通契约。
 
 没有 `atomic enum` 新本体；没有自动 `struct-of-atomic -> atomic-struct` 规则；没有“用户声明安全即可”的任意世界写入口。
 
 更高层算法的可证明行为必须位于既有内部安全不变量的组合范围内。想强制一个更小的协议转换集合，必须让它成为真实的接口/材料/Pre 限制，不能只给一个包装名字。
 
 ## U11 — reify 保留阶段代数与失败效果
+
+[Compile producer 的 runtime 入参](static-evaluation/compile-instance-invocation-and-result-delivery.md#runtime-inputs-to-compile-producers)
+在实例形成前记录 compile 观察和已准入的 runtime 来源描述。内部 Pattern
+由 compile 观察确定；runtime 值只参与具体萃取及名字形成/比较。
+`$` 在各层执行普通极性翻转，选定的生产调用仍遵守同一阶段规则。
 
 默认世界恢复只是现有选定迁移中关于具体实例的准入条件。它不另立 Stage，不给 runtime 值写回过去 compile 世界，也不根据值的运行结果扩展 compile 已闭合接口。
 

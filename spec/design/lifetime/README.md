@@ -33,8 +33,16 @@ Region, Color, origin, automatic repair, name forgetting and partial recovery
 are defined only in the [lifetime owner](lifetime-policy-and-overload-boundary.md).
 [HeapStack](heap-stack-and-storage-responsibility.md) owns standard current-top
 routing, lazy duty and universal direct-parent submission at non-root locate.
-[Atomic transitions](atomic-pattern-transitions-and-causality.md) own admitted
-sum-Pattern CAS, resource exchange and branch causality.
+The [Pattern owner](../patterns-overload/pattern-relations-observation-and-extraction.md#92-recursive-named-pattern-material)
+defines recursive ordinary Pattern layers. The
+[ordinary callable owner](../patterns-overload/operator-patterns-and-generative-declarations.md#7-e-relative-transforms-and-snapshot-registration)
+defines selected ordinary transforms. [Atomic](atomic-pattern-transitions-and-causality.md)
+consumes admitted actual Box wrappers and representation evidence, then
+commits one conditional transition and its result rights. Its separately
+registered `E share` member provides the [resource-free atomic snapshot](atomic-pattern-transitions-and-causality.md#n42--共享视图上的原子快照-定义及不变量). The HeapStack
+owner defines allocation-time lazy release and direct-parent lifecycle
+name reinterpretation for actual boundary compression.
+
 [Heterogeneous containers](../control-flow/heterogeneous-computation-containers.md)
 own ordinary effect-tree transformation and independent dispatch.
 [Status and proof gates](../../planning/lifetime-concurrency-consolidation.md)

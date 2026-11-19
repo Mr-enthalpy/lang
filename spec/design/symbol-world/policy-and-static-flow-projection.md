@@ -1929,9 +1929,18 @@ This document does not freeze:
 A selected runtime:compile -> runtime:runtime observation migration must retain
 the actual instance's executable Move/Drop plus every required conservative
 dependency, using the [lifetime owner's N20–N24](../lifetime/lifetime-policy-and-overload-boundary.md#16-anonymous-names-executable-operations-and-partial-recovery).
-Type-wide trivial movement, type-wide uniform repair and the actual name's
-protocol-scoped instance proof are distinct sufficient evidence. No mandatory
-Copyable trait, vtable, hidden Box or ABI switch is implied.
+Pattern-node `lifetime default` expressions form a recursively composed,
+name-parametric default relation for new formals. The ordinary explicit
+`lifetime pre` is evaluated serially afterward, changing only the relations
+its expression actually modifies; it is neither a separate constraint solver
+nor universal Movable evidence. In runtime:compile -> runtime:runtime
+migration, non-default external origins may be conservatively abstracted only
+to real scoped outside-tree unknown frontiers with their open Region duties;
+Move/Drop implementation and responsibility remain. The reverse
+runtime:runtime -> runtime:compile recovery is partial inside closed reify
+and requires the actual instance to satisfy the complete Pattern default,
+not mere Core/type equality. No mandatory Copyable trait, vtable, hidden Box
+or ABI switch is implied.
 
 Inside an active closed reify boundary, runtime:runtime -> runtime:compile
 default recovery is partial. A legitimately selected operation succeeds only
