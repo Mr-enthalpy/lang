@@ -1762,8 +1762,7 @@ two-input Product. Callable return arrows keep their existing priority,
 and `.->` supplies an ADL name. Selected A::E, B::E and ->::E contracts determine
 the meaning of RHS `_` in a transform description and whether the target
 can inherit actual material. Transform formation grants no held-subject
-access. Ordinary E `?` exposes the proved readable projection of one
-version.
+access.
 
 An [ordinary borrowed sum transform](../design/patterns-overload/operator-patterns-and-generative-declarations.md#ordinary-borrowed-sum-transforms)
 describes a conditional complete update through an exclusive borrow.
@@ -1775,6 +1774,11 @@ actual borrowing origin. These are ordinary operations under E.
 [Atomic](../design/lifetime/atomic-pattern-transitions-and-causality.md)
 adds a single conditional atomic commit and the read/write resource
 protocol for the same E-relative transform. It consumes admitted E/transform and actual read/write wrappers over `T Box`.
+For admitted `E`, Atomic registers a [snapshot member](../design/lifetime/atomic-pattern-transitions-and-causality.md#n42--共享视图上的原子快照-定义及不变量)
+named `?` on the associated `E share`. A selected call through that
+member reads public state from one committed version in one atomic
+action and returns a resource-free value. Other `?` operations follow
+their own contracts.
 The [external typed leaf](../design/patterns-overload/pattern-relations-observation-and-extraction.md#external-typed-leaves) retains the complete type.
 [N46](../design/lifetime/atomic-pattern-transitions-and-causality.md#n46--普通结构真实类型包装与表示预算-定义) requires the actual wrapper construction/extraction
 correspondence.

@@ -473,7 +473,7 @@ substrate tests do not establish HA execution.
 normative/proof status; [the 131 paired source targets](lifetime-concurrency-acceptance.md)
 are not executed source coverage. The active N clauses and U01–U12 live across
 actual topic owners. F19 tracks source wiring for the defined typed wrapper, mixed-stage identity,
-E-relative transforms, matching, readable observation and resource/permission
+E-relative transforms, matching, registered Atomic share snapshots and resource/permission
 proofs. Raw/Norm goldens cover recursive named layers, sum choice, runtime
 hole syntax and bare/qualified infix targets. The recursive layer derivation
 is defined in the Pattern owner and its semantic consumer remains pending. F15 retains the extra-order decision.
@@ -494,7 +494,8 @@ atomic resource/causal/backend/protocol consumers; F19 additionally
 covers ordinary Pattern/transform consumers, including safe borrowed take,
 replace and retaining share under ordinary Region and origin obligations.
 Atomic additionally requires full versus same-arm comparison,
-same-arm read replacement and allocation-time lazy release, readable E `?`,
+same-arm read replacement, allocation-time lazy release, atomic snapshots through
+the Atomic-registered `?` on `E share`,
 and complete Rejected I/S return. Heap handoff transfers the actual Drop registration and maps only covered
 support uses. Actual return compresses the latest committed projection.
 The [status ledger](lifetime-concurrency-consolidation.md#definition-and-consumer-status)

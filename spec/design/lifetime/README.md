@@ -35,10 +35,11 @@ are defined only in the [lifetime owner](lifetime-policy-and-overload-boundary.m
 routing, lazy duty and universal direct-parent submission at non-root locate.
 The [Pattern owner](../patterns-overload/pattern-relations-observation-and-extraction.md#92-recursive-named-pattern-material)
 defines recursive ordinary Pattern layers. The
-[ordinary callable owner](../patterns-overload/operator-patterns-and-generative-declarations.md#7-ordinary-e-relative-transforms-and-readable-observation)
-defines selected transforms and readable observation. [Atomic](atomic-pattern-transitions-and-causality.md)
+[ordinary callable owner](../patterns-overload/operator-patterns-and-generative-declarations.md#7-e-relative-transforms-and-snapshot-registration)
+defines selected ordinary transforms. [Atomic](atomic-pattern-transitions-and-causality.md)
 consumes admitted actual Box wrappers and representation evidence, then
-commits one conditional transition and its result rights. The HeapStack
+commits one conditional transition and its result rights. Its separately
+registered `E share` member provides the [resource-free atomic snapshot](atomic-pattern-transitions-and-causality.md#n42--共享视图上的原子快照-定义及不变量). The HeapStack
 owner defines allocation-time lazy release and direct-parent lifecycle
 name reinterpretation for actual boundary compression.
 

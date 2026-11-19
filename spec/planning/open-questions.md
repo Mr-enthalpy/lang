@@ -180,8 +180,8 @@ Persistent dependency/source encoding remains open, not the propagation law.
   namespaces, regular-material encodings, caches and boundary-transform
   algorithms implement the closed lifecycle relations?
 - How will source consumers form, register and select E-relative transforms
-  and readable observations from recursive named Patterns and staged compile
-  producers? Which target layouts preserve the N46 two-word representation
+  from recursive named Patterns and staged compile producers, and wire the
+  Atomic-registered snapshot member on `E share`? Which target layouts preserve the N46 two-word representation
   budget, compare the actual old Box and realize a whole conditional commit?
   The allocation-time Drop registration, typed wrapper formation and role
   matrix are fixed. The allocation/compare/reclamation implementations remain

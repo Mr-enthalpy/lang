@@ -169,7 +169,10 @@ allocation-time lazy duty and returns a valid S share. Same-arm read
 replacement additionally compares real old Box identity. Keep write grants no old-resource access; Keep read
 to read returns valid share, while Keep read to write grants no share.
 Failure returns every already-formed proposed new Status/resource and its
-remaining duty, without silent Drop or unproved rights.
+remaining duty, without silent Drop or unproved rights. The separately
+[registered snapshot on E share](atomic-pattern-transitions-and-causality.md#n42--共享视图上的原子快照-定义及不变量)
+requires a real admitted atomic read event and delivers only the public state
+of the observed committed version.
 
 The source Pattern, real I/S origin closure, Region/Color, active
 shares, same-instance competition and actual incoming custody are

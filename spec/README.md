@@ -76,10 +76,11 @@ remain architecture acceptance targets, separate from executed substrate tests.
 
 ## Contracts
 
-For Atomic work, follow the [ordinary recursive Pattern](design/patterns-overload/pattern-relations-observation-and-extraction.md#92-recursive-named-pattern-material),
-[selected ordinary transform/observation](design/patterns-overload/operator-patterns-and-generative-declarations.md#7-ordinary-e-relative-transforms-and-readable-observation)
-and [Atomic execution](design/lifetime/atomic-pattern-transitions-and-causality.md)
-owners in that order. The [status ledger](planning/lifetime-concurrency-consolidation.md)
+For Atomic work, start with [ordinary recursive Patterns](design/patterns-overload/pattern-relations-observation-and-extraction.md#92-recursive-named-pattern-material)
+and [selected ordinary transforms](design/patterns-overload/operator-patterns-and-generative-declarations.md#7-e-relative-transforms-and-snapshot-registration).
+The Atomic owner defines [shared snapshots](design/lifetime/atomic-pattern-transitions-and-causality.md#n42--共享视图上的原子快照-定义及不变量)
+and [conditional execution](design/lifetime/atomic-pattern-transitions-and-causality.md).
+The [status ledger](planning/lifetime-concurrency-consolidation.md)
 separates their definitions from pending source, proof and backend gates.
 
 - [`raw-ast-contract.md`](contracts/raw-ast-contract.md)

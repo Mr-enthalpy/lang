@@ -45,6 +45,7 @@ RULE_STATUS = {
     "Qualified infix": ("Defined", "Raw/Norm covered"),
     "Named layers": ("Defined", "Source consumer pending"),
     "Ordinary borrowed transform": ("Defined", "Source consumer pending"),
+    "Atomic share snapshot": ("Defined", "Source consumer pending"),
     "Extra memory order": ("Open", "Semantic choice pending"),
 }
 OWNERS = [

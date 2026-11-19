@@ -806,7 +806,9 @@ construction evidence. [Lazy malloc](../design/lifetime/heap-stack-and-storage-r
 [Submit](../design/lifetime/heap-stack-and-storage-responsibility.md#n29--relocate-精确向直接父层提交且不执行-pending-不变量) reinterprets only actual covered support uses.
 An actual arm/protocol change compares full Status. A same-arm read
 replacement requires old Box identity and preserves the allocation-time
-release duty. N47 specifies Keep and Exit rights. `E?` observes one
-coherent readable projection. Failure returns formed input material.
+release duty. N47 specifies Keep and Exit rights. Failure returns formed input
+material. The [Atomic share snapshot](../design/lifetime/atomic-pattern-transitions-and-causality.md#n42--共享视图上的原子快照-定义及不变量) comes from the `?` member
+registered by Atomic on its associated `E share`. It atomically observes public
+state from one committed version and returns a resource-free value.
 The [Atomic owner](../design/lifetime/atomic-pattern-transitions-and-causality.md)
 defines the complete transaction and causal obligations.

@@ -47,6 +47,7 @@ the extra ordering decision.
 | Qualified infix | [Operator Patterns](../design/patterns-overload/operator-patterns-and-generative-declarations.md#qualified-binary-operator-targets) | Defined | Raw/Norm covered |
 | Named layers | [Pattern relation](../design/patterns-overload/pattern-relations-observation-and-extraction.md#formation-and-relational-derivation) | Defined | Source consumer pending |
 | Ordinary borrowed transform | [Operator Patterns](../design/patterns-overload/operator-patterns-and-generative-declarations.md#ordinary-borrowed-sum-transforms) | Defined | Source consumer pending |
+| Atomic share snapshot | [N42](../design/lifetime/atomic-pattern-transitions-and-causality.md#n42--共享视图上的原子快照-定义及不变量) | Defined | Source consumer pending |
 | Extra memory order | [F15](#f-admission-gates) | Open | Semantic choice pending |
 
 ## N clauses to owners and executable slices
@@ -93,14 +94,14 @@ the extra ordering decision.
 | N39 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | source/semantic consumer pending |
 | N40 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | source/semantic consumer pending |
 | N41 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | source/semantic consumer pending |
-| N42 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | source/semantic consumer pending |
+| N42 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | Registered member on the associated E share, one atomic read of a resource-free state projection |
 | N43 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | source/semantic consumer pending |
 | N44 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | source/semantic consumer pending |
 | N45 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | source/semantic consumer pending |
 | N46 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | Typed child and actual Box correspondence from selected ordinary formation; total two-word budget |
 | N47 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | Fixed Keep/Exit rights and preexisting read lazy duty |
 | N48 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | Full comparison on arm/protocol change; same-arm read replacement and safe read-to-write |
-| N49 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | Selected ordinary E-relative transform and readable snapshot consumed at actual CAS; rejected formed I/S retained |
+| N49 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | Selected ordinary E-relative transform consumed at the actual CAS, with Rejected returning formed I/S |
 | N50 | [atomic-pattern-transitions-and-causality.md](../design/lifetime/atomic-pattern-transitions-and-causality.md) | D | — | — | — | — | — | Fixed lifetime/permission/causal proof duties; implementation methods left to libraries |
 
 ## M consumer obligation map
@@ -171,25 +172,25 @@ selected transforms and Atomic access-right handoff without deciding memory-orde
 
 | ID | Required argument / consumer | Boundary while incomplete |
 |---|---|---|
-| F01 | 离散 Region 在固定事件、分支、循环/递归及 activation 下的解释；min/max 偏序及纯切片保持性；生产者/父子来源和当前 E/K 修订对应的独立准入 | 不用连续区间或 SupportClosure 顶替；缺端点、来源或修订证据不可用；纯端点为真或相同 K 身份不发放借用权限 |
-| F02 | 析构先定、生成新增修复片段与生产 Pre 的无循环衔接 | 不通过移动旧 cleanup 迭代到成功 |
-| F03 | 自动 repair 的来源切片、外层责任递归、根值保留、共享生产节点和支持的 SCC 重演 | 不重复所有者、不无限展开，不造未知根 |
-| F04 | 显式与自动 repair 的确定组合/替代责任；异常与 IO 重演路径的真实效果 | 无精确计划时不发布成功后继；不能默认双执行 |
-| F05 | Pattern 分层合流及实际提取与 origin/权限相关性；异 Pattern 精度保持 | 不隐含恢复同 Pattern 分支，不拼接来源权限 |
-| F06 | 索引验证生产者、有效性协议、借用传递及派生 copy 的端点规则 | 裸数值/相同数值不授权；无重复验证补救隐藏入口 |
-| F07 | 合法名字遗忘与 default-world 抽象的健全性；数组整体摘要与取出 | 无证据拒绝；不以 unknown 洗掉依赖 |
-| F08 | Drop/Move 可执行材料保留、Pattern-local 默认表达式与实例移动证据的适用域；默认不证明全称 Movable | 不强制 Copyable/类型 trait，不隐式 Box |
-| F09 | reify 具体实例默认性判定的真实性、成功身份映射、异常及 ClosedInterface | 偏离实例拒绝；缺消费者不能假作恢复异常 |
-| F10 | 独立容器的 effect 树变换、调用材料、Region/Color 和逃逸 | 无普通来源/同步关系不能并行发射或逃逸 |
+| F01 | Interpret discrete Regions over fixed events, branches, loops, recursion and activations. Prove endpoint order, preservation under pure restriction, and separate admission of actual producers, parent/child sources and current E/K revision correspondence. | Continuous intervals and SupportClosure cannot substitute. Missing endpoints, sources or revision evidence are unavailable. Endpoint order and equal K identity confer no borrow authority. |
+| F02 | Fix cleanup before forming new repair fragments. Connect the production Pre with founded, acyclic dependencies. | Repair uses established cleanup points. |
+| F03 | Slice actual sources for automatic repair. Preserve root values, recurse through outer duties and replay shared producers and supported SCCs. | Preserve unique custody and actual unknown roots. Require a founded replay. |
+| F04 | Assign composition and substitution duties for explicit and automatic repair. Preserve real exception and I/O effects along replay. | A successful successor requires a precise plan with each prescribed action performed once. |
+| F05 | Preserve source and permission correlation through actual extraction and same-Pattern convergence. Preserve distinctions between different Patterns. | A merged branch cannot be recovered implicitly. Permissions from separate origins stay separate. |
+| F06 | Connect index validation, validity, borrow transfer and endpoint checks for derived copies. | A numeric value supplies no credential. Repeated validation cannot repair a hidden entry. |
+| F07 | Prove sound name forgetting, default-world abstraction, whole-array summaries and extraction. | Require actual evidence and preserve source dependencies through any admitted unknown. |
+| F08 | Preserve executable Drop/Move and the separate domains of Pattern-local defaults and instance move proofs. | Instance movement requires its own evidence. Copyable traits and implicit Box are unnecessary. |
+| F09 | Prove reify's concrete default check, successful identity mapping, declared exception and ClosedInterface. | Known deviation rejects. A missing consumer is unavailable and cannot deliver the declared recovery exception. |
+| F10 | Connect independent-container effect-tree transformations, invocation material, Region/Color and escape. | Parallel dispatch and escape require actual ordinary source and synchronization evidence. |
 | F11 | Current-top malloc/free, standard direct-parent guaranteed Submit with storage/duty transfer, allocation-time lazy duty and scoped LifeProject correspondence | Preserve history and live Places; no execution of Pending at relocation |
 | F12 | Local allocation Pre, real Region and support at each actual handoff/return, with forward name compression and fixed cleanup | No retroactive malloc constraints or late proof at Drop; no QS premise |
 | F13 | Complete E, actual Box wrappers and finite representation with single CAS, N35 closure, fixed Keep/Exit rights and Rejected material return | No inferred roles, duplicate release duty, dynamic read retirement registration or lost candidate material |
-| F14 | Actual version/rf/mo; branch-specific causal inheritance/publication; visibility of returned owned S or valid S share; no-thin-air and weak/strong failure distinction. | Numeric Status equality, hidden-field comparisons or raw peek do not imply a committed version or any resource authority; backend/OOTA proof pending. |
-| F15 | 是否仍需 SeqCst 级更强保证；若需要，决定是否采用独立 fence 及完整公理，检查双边/单边 SB、IRIW、2+2W、累积性与 lowering | **唯一保留的额外内存序设计问题**；在选定前不得把双边 SB 目标或完整 fence 说成源级已保证 |
-| F16 | Backend correctness of single-point Pattern/Status/resource/right handoff including valid published share visibility; x86-TSO/AArch64/RVWMO/LLVM validated separately. | No finite ARC/RCU model or relaxed CAS instruction proves selected source ownership/synchronization; do not claim unconnected backend support. |
-| F17 | 标准 locate 在构造 Pre 对所有非根 Pool 验证普遍保证式父层提交、lazy 接收和非根/根边界；保证不依赖无限内存 | **规范已定，消费者与证明待接通**；不可注册仅在部分状态偶然可迁移的标准层 |
+| F14 | Actual version/rf/mo; branch-specific causal inheritance/publication; visibility of returned owned S or valid S share; no-thin-air and weak/strong failure distinction. | Numeric Status equality, hidden-field comparisons or a snapshot result alone do not provide a full comparison credential or any resource authority; backend/OOTA proof pending. |
+| F15 | Decide whether stronger SeqCst ordering is needed. If chosen, decide whether to use a standalone fence, state its axioms and check two-sided and one-sided SB, IRIW, 2+2W, cumulativity and lowering. | This extra ordering choice remains open. Treat the SB target and complete fence contract as unselected. |
+| F16 | Backend correctness of the atomic share snapshot and single-point Pattern/Status/resource/right handoff, including valid published share visibility; x86-TSO/AArch64/RVWMO/LLVM validated separately. | No finite ARC/RCU model or relaxed CAS instruction proves selected source ownership/synchronization; do not claim unconnected backend support. |
+| F17 | Standard locate checks universal guaranteed submission to the direct parent and lazy admission for every non-root Pool. The root follows its distinct contract. The guarantee works with finite resources. | The rule is defined. Consumers and proofs are pending. A partially migratable standard Pool fails registration. |
 | F18 | Safe library composition of all Atomic source-slot operations, ordinary counted-reader/hidden Status/version/clone/retirement/wait implementations under actual Pre/Post. | No mandatory ARC/RCU/GC/Mutex or lazy scheme; no share interior mutation, protocol-subset theorem or automatic progress from individual safe actions. |
-| F19 | Recursive Pattern formation, pre-body mixed-stage identity, typed wrapper and actual Box evidence, ordinary borrowed take/retain and selected transform, comparison and one-version projection, read registration and two-word target proof | No purely syntactic or numeric authorization; missing backend proof is unavailable |
+| F19 | Recursive Pattern formation, pre-body mixed-stage identity, typed wrapper and actual Box evidence, ordinary borrowed take/retain and selected transform, source comparison, an atomic snapshot registered on E share, and the two-word target proof | No purely syntactic or numeric authorization; missing backend proof is unavailable |
 
 The dependency order is event/source material → correlated join/index/forget
 → founded repair → standard heap/lazy responsibility → atomic/causal backend
@@ -200,8 +201,9 @@ unknown root, missing Post or hardware-CAS-then-rollback substitutes for a gate.
 ## Atomic source and proof boundary
 
 Recursive layer/binder incidence, selected ordinary transform construction,
-compatible omission, full/masked matching and single-version readable projection
-are the producer inputs to N34–N50. Each consumer must establish its actual
+compatible omission, and full or masked matching are producer inputs to the
+transform consumer. The separately registered E share snapshot must read one
+committed version atomically and project its public state without resources. Each consumer must establish its actual
 Pre/commit/Post, branch custody and causal obligations. Neither numeric counts
 nor a protocol name supply rights. Concrete reader/reclamation methods remain
 ordinary library choices; F19 does not choose an ARC/RCU/GC/Mutex scheme.

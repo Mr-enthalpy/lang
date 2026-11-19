@@ -269,8 +269,10 @@ same-arm write replacement is disallowed. Read exit or replacement discharges
 the slot under the allocation-time lazy duty; runtime Forget is NoOp. Write
 exit returns owned S. N47–N48 fix Keep and read-to-write rights, including
 closure of prior conflicting read rights and a separate CAS to take owned S.
-Rejected returns all actually formed incoming material. E `?` grants only
-coherent readable observations. Causal and machine evidence remain independent.
+Rejected returns all actually formed incoming material. Atomic registers its
+resource-free `?` snapshot on the associated `E share` for admitted `E`.
+That member reads one committed version in a single atomic action. Other
+`?` operations follow their own contracts.
 
 Atomic fields do not make an atomic outer type, and safe primitives do not
 prove arbitrary protocol subsets. No implicit retry or per-operation memory

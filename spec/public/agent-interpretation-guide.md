@@ -600,4 +600,8 @@ read lazy duty and finite Status/representation evidence. N47–N48 define
 complete versus same-arm matching, same-arm read replacement and the Keep/Exit
 results. Read Forget is a runtime NoOp and preserves the allocation-time Drop registration. Preserve
 Region, Color, origin, candidate custody and version causality independently.
+The [Atomic snapshot member](../design/lifetime/atomic-pattern-transitions-and-causality.md#n42--共享视图上的原子快照-定义及不变量) is `?` registered by Atomic
+on the associated `E share` of admitted `E`. It reads public state from one
+committed version as a single atomic action and delivers no resource.
+Ordinary extraction and other `?` operations retain their separate contracts.
 F13/F14/F16/F18/F19 remain pending; F15 retains only the extra ordering decision.

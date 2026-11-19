@@ -401,7 +401,7 @@ A selected type-path candidate produces a NameExpr; a receiver candidate
 delivers its ordinary result. Dot syntax alone supplies no structural role
 or private Place projection.
 
-## 7. Ordinary E-relative transforms and readable observation
+## 7. E-relative transforms and snapshot registration
 
 Outside a strong built-in callable arrow position, bare `lhs -> rhs`
 is a binary, non-associative operator at the weakest precedence tier.
@@ -559,12 +559,13 @@ the ordinary commit does not establish an atomic modification order
 or rf/Past publication facts. Atomic comparison failures and any
 declared lawful spurious failure follow the Atomic consumer's contract.
 
-### Readable observation
+### Snapshot member on the Atomic share type
 
-The selected ordinary `E?` producer exposes a coherent readable projection
-of one actual admissible version. The result grants only its proved readable
-observations. Hidden statuses, resource ownership and borrows, exact
-comparison credentials, and latest-version guarantees each require their
-own evidence. Other ordinary `?` consumers retain their established
-contracts. Dispatch, E-relative constructor/transform producers and their
-semantic consumers have separate wiring and evidence.
+The [Atomic snapshot contract](../lifetime/atomic-pattern-transitions-and-causality.md#n42--共享视图上的原子快照-定义及不变量)
+applies when ordinary call selection reaches the `?` member that Atomic
+registers on the associated `E share` type for admitted Pattern material
+`E`. The receiver must be an actual admitted `E share`. The operation
+reads the public state of one committed version as a single atomic action
+and returns a resource-free value. Ordinary `?` uses retain their own
+contracts. Operator dispatch, transform execution, and this registered
+snapshot have separate consumers and evidence.
